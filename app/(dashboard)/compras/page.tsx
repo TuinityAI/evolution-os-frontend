@@ -646,7 +646,7 @@ export default function ComprasPage() {
       </Modal>
 
       {/* Create Order Modal */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="2xl">
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
         <ModalContent className="bg-white dark:bg-[#141414]">
           <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
             <div className="flex items-center gap-3">
@@ -659,8 +659,8 @@ export default function ComprasPage() {
               </div>
             </div>
           </ModalHeader>
-          <ModalBody className="py-4">
-            <div className="space-y-4">
+          <ModalBody className="py-6">
+            <div className="space-y-5">
               {/* Supplier and Bodega */}
               <div className="grid grid-cols-2 gap-4">
                 <Select
@@ -670,6 +670,7 @@ export default function ComprasPage() {
                   onChange={(e) => handleFormChange('supplierId', e.target.value)}
                   variant="bordered"
                   size="sm"
+                  labelPlacement="outside"
                   isRequired
                   classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
                 >
@@ -684,6 +685,7 @@ export default function ComprasPage() {
                   onChange={(e) => handleFormChange('bodegaId', e.target.value)}
                   variant="bordered"
                   size="sm"
+                  labelPlacement="outside"
                   isRequired
                   classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
                 >
@@ -702,6 +704,7 @@ export default function ComprasPage() {
                   onChange={(e) => handleFormChange('supplierInvoice', e.target.value)}
                   variant="bordered"
                   size="sm"
+                  labelPlacement="outside"
                   classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                 />
                 <Input
@@ -711,6 +714,7 @@ export default function ComprasPage() {
                   onChange={(e) => handleFormChange('expectedArrivalDate', e.target.value)}
                   variant="bordered"
                   size="sm"
+                  labelPlacement="outside"
                   classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                 />
               </div>
@@ -723,6 +727,7 @@ export default function ComprasPage() {
                 onChange={(e) => handleFormChange('notes', e.target.value)}
                 variant="bordered"
                 size="sm"
+                labelPlacement="outside"
                 minRows={2}
                 classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
               />
@@ -735,11 +740,13 @@ export default function ComprasPage() {
                 <div className="flex items-end gap-2">
                   <div className="flex-1">
                     <Select
+                      label="Producto"
                       placeholder="Seleccionar producto..."
                       selectedKeys={newLineProduct ? [newLineProduct] : []}
                       onChange={(e) => setNewLineProduct(e.target.value)}
                       variant="bordered"
                       size="sm"
+                      labelPlacement="outside"
                       classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
                     >
                       {MOCK_PRODUCTS.slice(0, 20).map((product) => (
@@ -754,37 +761,43 @@ export default function ComprasPage() {
                   </div>
                   <div className="w-20">
                     <Input
-                      placeholder="Cant."
+                      label="Cant."
+                      placeholder="0"
                       type="number"
                       value={newLineQty}
                       onChange={(e) => setNewLineQty(e.target.value)}
                       variant="bordered"
                       size="sm"
+                      labelPlacement="outside"
                       classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                     />
                   </div>
                   {canViewCosts && (
                     <div className="w-24">
                       <Input
-                        placeholder="Costo"
+                        label="Costo"
+                        placeholder="0.00"
                         type="number"
                         value={newLineCost}
                         onChange={(e) => setNewLineCost(e.target.value)}
                         variant="bordered"
                         size="sm"
+                        labelPlacement="outside"
                         startContent={<span className="text-xs text-gray-400">$</span>}
                         classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                       />
                     </div>
                   )}
-                  <Button color="primary" size="sm" onPress={handleAddLine} isIconOnly className="bg-brand-600">
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <div className="pb-0.5">
+                    <Button color="primary" size="sm" onPress={handleAddLine} isIconOnly className="bg-brand-600">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Lines List */}
                 {orderLines.length > 0 ? (
-                  <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">
+                  <div className="mt-3 max-h-40 space-y-2 overflow-y-auto">
                     {orderLines.map((line) => (
                       <div key={line.id} className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-2">
                         <div className="flex-1 min-w-0">

@@ -815,7 +815,7 @@ export default function ProductosPage() {
       </Modal>
 
       {/* Create Product Modal */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="2xl">
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
         <ModalContent className="bg-white dark:bg-[#141414]">
           <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
             <div className="flex items-center gap-3">
@@ -828,15 +828,15 @@ export default function ProductosPage() {
               </div>
             </div>
           </ModalHeader>
-          <ModalBody className="py-4">
-            <div className="space-y-4">
+          <ModalBody className="py-6">
+            <div className="space-y-5">
               {/* Main Info */}
               <div className="flex gap-4">
                 <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] transition-colors hover:border-brand-400 cursor-pointer">
                   <ImagePlus className="h-6 w-6 text-gray-400" />
                   <span className="text-[10px] text-gray-500">Imagen</span>
                 </div>
-                <div className="flex-1 space-y-3">
+                <div className="flex-1 space-y-4">
                   <Input
                     label="Descripción"
                     placeholder="WHISKY JOHNNIE WALKER BLACK 12YRS 750ML"
@@ -844,6 +844,7 @@ export default function ProductosPage() {
                     onChange={(e) => handleFormChange('description', e.target.value)}
                     variant="bordered"
                     size="sm"
+                    labelPlacement="outside"
                     isRequired
                     classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                   />
@@ -855,6 +856,7 @@ export default function ProductosPage() {
                       onChange={(e) => handleFormChange('brand', e.target.value)}
                       variant="bordered"
                       size="sm"
+                      labelPlacement="outside"
                       isRequired
                       classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                     />
@@ -865,6 +867,7 @@ export default function ProductosPage() {
                       onChange={(e) => handleFormChange('group', e.target.value)}
                       variant="bordered"
                       size="sm"
+                      labelPlacement="outside"
                       isRequired
                       classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
                     >
@@ -885,6 +888,7 @@ export default function ProductosPage() {
                   onChange={(e) => handleFormChange('barcode', e.target.value)}
                   variant="bordered"
                   size="sm"
+                  labelPlacement="outside"
                   classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                 />
                 <Input
@@ -894,6 +898,7 @@ export default function ProductosPage() {
                   onChange={(e) => handleFormChange('reference', e.target.value)}
                   variant="bordered"
                   size="sm"
+                  labelPlacement="outside"
                   classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                 />
                 <Input
@@ -903,6 +908,7 @@ export default function ProductosPage() {
                   onChange={(e) => handleFormChange('tariffCode', e.target.value)}
                   variant="bordered"
                   size="sm"
+                  labelPlacement="outside"
                   classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                 />
               </div>
@@ -916,6 +922,7 @@ export default function ProductosPage() {
                   onChange={(e) => handleFormChange('supplier', e.target.value)}
                   variant="bordered"
                   size="sm"
+                  labelPlacement="outside"
                   isRequired
                   classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
                 >
@@ -929,6 +936,7 @@ export default function ProductosPage() {
                   onChange={(e) => handleFormChange('unit', e.target.value)}
                   variant="bordered"
                   size="sm"
+                  labelPlacement="outside"
                   classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
                 >
                   <SelectItem key="CAJA">Caja</SelectItem>
@@ -944,6 +952,7 @@ export default function ProductosPage() {
                   onChange={(e) => handleFormChange('minimumQty', e.target.value)}
                   variant="bordered"
                   size="sm"
+                  labelPlacement="outside"
                   classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                 />
               </div>
@@ -961,6 +970,7 @@ export default function ProductosPage() {
                     onChange={(e) => handleFormChange('priceA', e.target.value)}
                     variant="bordered"
                     size="sm"
+                    labelPlacement="outside"
                     classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                   />
                   <Input
@@ -972,6 +982,7 @@ export default function ProductosPage() {
                     onChange={(e) => handleFormChange('priceB', e.target.value)}
                     variant="bordered"
                     size="sm"
+                    labelPlacement="outside"
                     classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                   />
                   <Input
@@ -983,6 +994,7 @@ export default function ProductosPage() {
                     onChange={(e) => handleFormChange('priceC', e.target.value)}
                     variant="bordered"
                     size="sm"
+                    labelPlacement="outside"
                     classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                   />
                   <Input
@@ -994,6 +1006,7 @@ export default function ProductosPage() {
                     onChange={(e) => handleFormChange('priceD', e.target.value)}
                     variant="bordered"
                     size="sm"
+                    labelPlacement="outside"
                     classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                   />
                   <Input
@@ -1005,6 +1018,7 @@ export default function ProductosPage() {
                     onChange={(e) => handleFormChange('priceE', e.target.value)}
                     variant="bordered"
                     size="sm"
+                    labelPlacement="outside"
                     classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                   />
                 </div>

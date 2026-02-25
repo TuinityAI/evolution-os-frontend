@@ -762,7 +762,7 @@ export default function VentasPage() {
       </Modal>
 
       {/* Create Quote Modal */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="2xl">
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
         <ModalContent className="bg-white dark:bg-[#141414]">
           <ModalHeader className="border-b border-border">
             <div className="flex items-center gap-3">
@@ -781,6 +781,7 @@ export default function VentasPage() {
               <Select
                 label="Cliente"
                 placeholder="Seleccionar cliente..."
+                labelPlacement="outside"
                 selectedKeys={quoteFormData.customerId ? [quoteFormData.customerId] : []}
                 onChange={(e) => handleFormChange('customerId', e.target.value)}
                 variant="bordered"
@@ -834,6 +835,7 @@ export default function VentasPage() {
                 <Input
                   label="Válido hasta"
                   type="date"
+                  labelPlacement="outside"
                   value={quoteFormData.validUntil}
                   onChange={(e) => handleFormChange('validUntil', e.target.value)}
                   variant="bordered"
@@ -843,6 +845,7 @@ export default function VentasPage() {
                 <Input
                   label="Entrega solicitada"
                   type="date"
+                  labelPlacement="outside"
                   value={quoteFormData.requestedDeliveryDate}
                   onChange={(e) => handleFormChange('requestedDeliveryDate', e.target.value)}
                   variant="bordered"
@@ -973,6 +976,7 @@ export default function VentasPage() {
               <Textarea
                 label="Notas"
                 placeholder="Notas para el cliente..."
+                labelPlacement="outside"
                 value={quoteFormData.notes}
                 onChange={(e) => handleFormChange('notes', e.target.value)}
                 variant="bordered"
