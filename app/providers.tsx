@@ -1,7 +1,7 @@
 'use client';
 
 import { HeroUIProvider } from '@heroui/react';
-import { ThemeProvider, useTheme } from 'next-themes';
+import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/lib/contexts/auth-context';
 import { Toaster } from 'sonner';
 import type { ReactNode } from 'react';
@@ -11,11 +11,8 @@ interface ProvidersProps {
 }
 
 function HeroUIWrapper({ children }: { children: ReactNode }) {
-  const { theme } = useTheme();
   return (
-    <HeroUIProvider
-      defaultTheme={theme === 'dark' ? 'dark' : 'light'}
-    >
+    <HeroUIProvider>
       {children}
     </HeroUIProvider>
   );
