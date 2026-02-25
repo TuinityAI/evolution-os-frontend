@@ -2,20 +2,12 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
   Select,
   SelectItem,
-  Tabs,
-  Tab,
-  useDisclosure,
   Chip,
 } from '@heroui/react';
 import {
@@ -36,6 +28,7 @@ import {
   XCircle,
   Edit,
   Eye,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -74,10 +67,12 @@ export default function ClientesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priceLevelFilter, setPriceLevelFilter] = useState<string>('all');
   const [countryFilter, setCountryFilter] = useState<string>('all');
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
-  const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
-  const { isOpen: isNewOpen, onOpen: onNewOpen, onClose: onNewClose } = useDisclosure();
+  // Modal/Drawer states
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isNewOpen, setIsNewOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'info' | 'contacts' | 'stats'>('info');
 
   // Form state for new client
   const [newClientData, setNewClientData] = useState({
@@ -120,11 +115,30 @@ export default function ClientesPage() {
 
   const handleViewClient = (client: Client) => {
     setSelectedClient(client);
-    onViewOpen();
+    setActiveTab('info');
+    setIsViewOpen(true);
+  };
+
+  const resetNewClientForm = () => {
+    setNewClientData({
+      name: '',
+      tradeName: '',
+      taxId: '',
+      taxIdType: 'RUC',
+      country: '',
+      city: '',
+      address: '',
+      priceLevel: '',
+      paymentTerms: 'contado',
+      creditLimit: '',
+      contactName: '',
+      contactRole: '',
+      contactEmail: '',
+      contactPhone: '',
+    });
   };
 
   const handleCreateClient = () => {
-    // Validate required fields
     if (!newClientData.name.trim()) {
       toast.error('Campo requerido', { description: 'El nombre del cliente es obligatorio.' });
       return;
@@ -148,31 +162,13 @@ export default function ClientesPage() {
 
     setIsCreating(true);
 
-    // Simulate API call
     setTimeout(() => {
       toast.success('Cliente creado', {
         description: `El cliente ${newClientData.name} ha sido registrado exitosamente.`,
       });
-
-      // Reset form
-      setNewClientData({
-        name: '',
-        tradeName: '',
-        taxId: '',
-        taxIdType: 'RUC',
-        country: '',
-        city: '',
-        address: '',
-        priceLevel: '',
-        paymentTerms: 'contado',
-        creditLimit: '',
-        contactName: '',
-        contactRole: '',
-        contactEmail: '',
-        contactPhone: '',
-      });
+      resetNewClientForm();
       setIsCreating(false);
-      onNewClose();
+      setIsNewOpen(false);
     }, 500);
   };
 
@@ -182,7 +178,6 @@ export default function ClientesPage() {
     });
   };
 
-  // Redirect if not authorized
   if (!canManageClients) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -209,7 +204,7 @@ export default function ClientesPage() {
         <Button
           color="primary"
           startContent={<Plus className="h-4 w-4" />}
-          onPress={onNewOpen}
+          onPress={() => setIsNewOpen(true)}
         >
           Nuevo Cliente
         </Button>
@@ -452,394 +447,497 @@ export default function ClientesPage() {
         </div>
       )}
 
-      {/* View Client Modal */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="3xl">
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3 border-b border-border pb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-500/10">
-              <Building2 className="h-6 w-6 text-brand-500" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold text-foreground">{selectedClient?.name}</h2>
-              <p className="text-sm text-muted-foreground">{selectedClient?.id}</p>
-            </div>
-            {selectedClient && (
-              <span className={cn(
-                'inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium',
-                STATUS_CONFIG[selectedClient.status].bg,
-                STATUS_CONFIG[selectedClient.status].text
-              )}>
-                {STATUS_CONFIG[selectedClient.status].label}
-              </span>
-            )}
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <Tabs aria-label="Client details" variant="underlined">
-              <Tab key="info" title="Información">
-                <div className="space-y-6 py-4">
-                  {/* Basic Info */}
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-4">
+      {/* View Client Drawer */}
+      <AnimatePresence>
+        {isViewOpen && selectedClient && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsViewOpen(false)}
+              className="fixed inset-0 z-50 bg-black/50"
+            />
+            {/* Drawer */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed right-0 top-0 z-50 h-full w-full max-w-xl overflow-y-auto bg-white dark:bg-[#141414] shadow-2xl"
+            >
+              {/* Header */}
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-white dark:bg-[#141414] p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500/10">
+                    <Building2 className="h-5 w-5 text-brand-500" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-foreground">{selectedClient.name}</h2>
+                    <p className="text-xs text-muted-foreground">{selectedClient.id}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
+                    STATUS_CONFIG[selectedClient.status].bg,
+                    STATUS_CONFIG[selectedClient.status].text
+                  )}>
+                    {STATUS_CONFIG[selectedClient.status].label}
+                  </span>
+                  <button
+                    onClick={() => setIsViewOpen(false)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div className="border-b border-border">
+                <div className="flex gap-1 px-4">
+                  {(['info', 'contacts', 'stats'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={cn(
+                        'px-4 py-3 text-sm font-medium transition-colors',
+                        activeTab === tab
+                          ? 'border-b-2 border-brand-500 text-brand-500'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {tab === 'info' && 'Información'}
+                      {tab === 'contacts' && 'Contactos'}
+                      {tab === 'stats' && 'Estadísticas'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-4">
+                {activeTab === 'info' && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <span className="text-sm text-muted-foreground">Nombre Comercial</span>
-                        <p className="font-medium text-foreground">{selectedClient?.tradeName || '-'}</p>
+                        <span className="text-xs text-muted-foreground">Nombre Comercial</span>
+                        <p className="font-medium text-foreground">{selectedClient.tradeName || '-'}</p>
                       </div>
                       <div>
-                        <span className="text-sm text-muted-foreground">RUC / Tax ID</span>
-                        <p className="font-mono text-foreground">{selectedClient?.taxId}</p>
-                        <p className="text-xs text-muted-foreground">{selectedClient?.taxIdType}</p>
+                        <span className="text-xs text-muted-foreground">RUC / Tax ID</span>
+                        <p className="font-mono text-foreground">{selectedClient.taxId}</p>
                       </div>
                       <div>
-                        <span className="text-sm text-muted-foreground">País / Ciudad</span>
-                        <p className="text-foreground">{selectedClient?.country}, {selectedClient?.city}</p>
+                        <span className="text-xs text-muted-foreground">País / Ciudad</span>
+                        <p className="text-foreground">{selectedClient.country}, {selectedClient.city}</p>
                       </div>
-                    </div>
-                    <div className="space-y-4">
                       <div>
-                        <span className="text-sm text-muted-foreground">Nivel de Precio</span>
+                        <span className="text-xs text-muted-foreground">Nivel de Precio</span>
                         <p className="flex items-center gap-2 text-foreground">
                           <span className={cn(
                             'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold',
-                            selectedClient ? PRICE_LEVEL_COLORS[selectedClient.priceLevel] : ''
+                            PRICE_LEVEL_COLORS[selectedClient.priceLevel]
                           )}>
-                            {selectedClient?.priceLevel}
+                            {selectedClient.priceLevel}
                           </span>
-                          Nivel {selectedClient?.priceLevel}
+                          Nivel {selectedClient.priceLevel}
                         </p>
                       </div>
                       <div>
-                        <span className="text-sm text-muted-foreground">Términos de Pago</span>
+                        <span className="text-xs text-muted-foreground">Términos de Pago</span>
                         <p className="capitalize text-foreground">
-                          {selectedClient?.paymentTerms.replace('_', ' ')}
+                          {selectedClient.paymentTerms.replace('_', ' ')}
                         </p>
                       </div>
                       <div>
-                        <span className="text-sm text-muted-foreground">Vendedor Asignado</span>
-                        <p className="text-foreground">{selectedClient?.salesRepName || '-'}</p>
+                        <span className="text-xs text-muted-foreground">Vendedor Asignado</span>
+                        <p className="text-foreground">{selectedClient.salesRepName || '-'}</p>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Credit Info */}
-                  {selectedClient && selectedClient.creditLimit > 0 && (
-                    <div className="rounded-lg border border-border p-4">
-                      <h4 className="mb-3 text-sm font-medium text-foreground">Información de Crédito</h4>
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <p className="text-2xl font-bold text-foreground">
-                            {formatCurrency(selectedClient.creditLimit)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Límite</p>
+                    {selectedClient.creditLimit > 0 && (
+                      <div className="rounded-lg border border-border p-4">
+                        <h4 className="mb-3 text-sm font-medium text-foreground">Información de Crédito</h4>
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                          <div>
+                            <p className="text-xl font-bold text-foreground">
+                              {formatCurrency(selectedClient.creditLimit)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Límite</p>
+                          </div>
+                          <div>
+                            <p className="text-xl font-bold text-amber-500">
+                              {formatCurrency(selectedClient.creditUsed)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Utilizado</p>
+                          </div>
+                          <div>
+                            <p className={cn(
+                              'text-xl font-bold',
+                              selectedClient.creditAvailable > 0 ? 'text-emerald-500' : 'text-red-500'
+                            )}>
+                              {formatCurrency(selectedClient.creditAvailable)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Disponible</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-2xl font-bold text-amber-500">
-                            {formatCurrency(selectedClient.creditUsed)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Utilizado</p>
-                        </div>
-                        <div>
-                          <p className={cn(
-                            'text-2xl font-bold',
-                            selectedClient.creditAvailable > 0 ? 'text-emerald-500' : 'text-red-500'
-                          )}>
-                            {formatCurrency(selectedClient.creditAvailable)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Disponible</p>
+                        <div className="mt-4">
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={cn(
+                                'h-full transition-all',
+                                selectedClient.creditUsed / selectedClient.creditLimit > 0.8
+                                  ? 'bg-red-500'
+                                  : 'bg-brand-500'
+                              )}
+                              style={{
+                                width: `${Math.min((selectedClient.creditUsed / selectedClient.creditLimit) * 100, 100)}%`,
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
-                      {/* Credit bar */}
-                      <div className="mt-4">
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className={cn(
-                              'h-full transition-all',
-                              selectedClient.creditUsed / selectedClient.creditLimit > 0.8
-                                ? 'bg-red-500'
-                                : 'bg-brand-500'
-                            )}
-                            style={{
-                              width: `${Math.min((selectedClient.creditUsed / selectedClient.creditLimit) * 100, 100)}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Notes */}
-                  {selectedClient?.notes && (
-                    <div className="rounded-lg border border-amber-500/50 bg-amber-500/5 p-4">
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-500" />
-                        <p className="text-sm text-foreground">{selectedClient.notes}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </Tab>
-              <Tab key="contacts" title="Contactos">
-                <div className="space-y-3 py-4">
-                  {selectedClient?.contacts.map((contact) => (
-                    <div
-                      key={contact.id}
-                      className="flex items-center justify-between rounded-lg border border-border p-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                          <User className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">{contact.name}</p>
-                          <p className="text-xs text-muted-foreground">{contact.role}</p>
+                    {selectedClient.notes && (
+                      <div className="rounded-lg border border-amber-500/50 bg-amber-500/5 p-4">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-500" />
+                          <p className="text-sm text-foreground">{selectedClient.notes}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Mail className="h-4 w-4" />
-                          <span>{contact.email}</span>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'contacts' && (
+                  <div className="space-y-3">
+                    {selectedClient.contacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className="rounded-lg border border-border p-4"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                            <User className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">{contact.name}</p>
+                            <p className="text-xs text-muted-foreground">{contact.role}</p>
+                          </div>
+                          {contact.isPrimary && (
+                            <Chip size="sm" color="primary" variant="flat">Principal</Chip>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Phone className="h-4 w-4" />
-                          <span>{contact.phone}</span>
+                        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4" />
+                            <span>{contact.email}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4" />
+                            <span>{contact.phone}</span>
+                          </div>
                         </div>
-                        {contact.isPrimary && (
-                          <Chip size="sm" color="primary" variant="flat">Principal</Chip>
-                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {activeTab === 'stats' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-lg border border-border p-4 text-center">
+                        <ShoppingBag className="mx-auto mb-2 h-8 w-8 text-brand-500" />
+                        <p className="text-2xl font-bold text-foreground">{selectedClient.totalOrders || 0}</p>
+                        <p className="text-sm text-muted-foreground">Pedidos Totales</p>
+                      </div>
+                      <div className="rounded-lg border border-border p-4 text-center">
+                        <DollarSign className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
+                        <p className="text-2xl font-bold text-foreground">
+                          {formatCurrency(selectedClient.totalPurchases || 0)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Compras Totales</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </Tab>
-              <Tab key="stats" title="Estadísticas">
-                <div className="space-y-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="rounded-lg border border-border p-4 text-center">
-                      <ShoppingBag className="mx-auto mb-2 h-8 w-8 text-brand-500" />
-                      <p className="text-3xl font-bold text-foreground">{selectedClient?.totalOrders || 0}</p>
-                      <p className="text-sm text-muted-foreground">Pedidos Totales</p>
-                    </div>
-                    <div className="rounded-lg border border-border p-4 text-center">
-                      <DollarSign className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
-                      <p className="text-3xl font-bold text-foreground">
-                        {formatCurrency(selectedClient?.totalPurchases || 0)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Compras Totales</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-lg border border-border p-4">
+                        <p className="text-sm text-muted-foreground">Ticket Promedio</p>
+                        <p className="text-xl font-bold text-foreground">
+                          {formatCurrency(selectedClient.averageOrderValue || 0)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border p-4">
+                        <p className="text-sm text-muted-foreground">Último Pedido</p>
+                        <p className="text-lg font-medium text-foreground">
+                          {selectedClient.lastOrderDate ? formatDate(selectedClient.lastOrderDate) : '-'}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="rounded-lg border border-border p-4">
-                      <p className="text-sm text-muted-foreground">Ticket Promedio</p>
-                      <p className="text-2xl font-bold text-foreground">
-                        {formatCurrency(selectedClient?.averageOrderValue || 0)}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border p-4">
-                      <p className="text-sm text-muted-foreground">Último Pedido</p>
-                      <p className="text-lg font-medium text-foreground">
-                        {selectedClient?.lastOrderDate ? formatDate(selectedClient.lastOrderDate) : '-'}
-                      </p>
-                    </div>
-                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="sticky bottom-0 border-t border-border bg-white dark:bg-[#141414] p-4">
+                <div className="flex gap-3">
+                  <Button variant="light" className="flex-1" onPress={() => setIsViewOpen(false)}>
+                    Cerrar
+                  </Button>
+                  <Button
+                    color="primary"
+                    className="flex-1"
+                    startContent={<Edit className="h-4 w-4" />}
+                    onPress={() => {
+                      handleEditClient(selectedClient);
+                      setIsViewOpen(false);
+                    }}
+                  >
+                    Editar
+                  </Button>
                 </div>
-              </Tab>
-            </Tabs>
-          </ModalBody>
-          <ModalFooter className="border-t border-border pt-4">
-            <Button variant="light" onPress={onViewClose}>
-              Cerrar
-            </Button>
-            <Button
-              color="primary"
-              startContent={<Edit className="h-4 w-4" />}
-              onPress={() => {
-                if (selectedClient) {
-                  handleEditClient(selectedClient);
-                  onViewClose();
-                }
-              }}
-            >
-              Editar Cliente
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* New Client Modal */}
-      <Modal isOpen={isNewOpen} onClose={onNewClose} size="2xl">
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3 border-b border-border pb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500/10">
-              <Plus className="h-5 w-5 text-brand-500" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Nuevo Cliente</h2>
-              <p className="text-sm text-muted-foreground">Registrar un nuevo cliente B2B</p>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Nombre / Razón Social"
-                  placeholder="EMPRESA S.A."
-                  variant="bordered"
-                  labelPlacement="outside"
-                  isRequired
-                  value={newClientData.name}
-                  onChange={(e) => setNewClientData((prev) => ({ ...prev, name: e.target.value }))}
-                />
-                <Input
-                  label="Nombre Comercial"
-                  placeholder="Nombre de fantasía"
-                  variant="bordered"
-                  labelPlacement="outside"
-                  value={newClientData.tradeName}
-                  onChange={(e) => setNewClientData((prev) => ({ ...prev, tradeName: e.target.value }))}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="RUC / Tax ID"
-                  placeholder="000-000000-0-000000"
-                  variant="bordered"
-                  labelPlacement="outside"
-                  isRequired
-                  value={newClientData.taxId}
-                  onChange={(e) => setNewClientData((prev) => ({ ...prev, taxId: e.target.value }))}
-                />
-                <Select
-                  label="Tipo de Documento"
-                  variant="bordered"
-                  labelPlacement="outside"
-                  selectedKeys={newClientData.taxIdType ? [newClientData.taxIdType] : []}
-                  onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, taxIdType: Array.from(keys)[0] as string }))}
+      <AnimatePresence>
+        {isNewOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                if (!isCreating) {
+                  setIsNewOpen(false);
+                  resetNewClientForm();
+                }
+              }}
+              className="fixed inset-0 z-50 bg-black/50"
+            />
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl bg-white dark:bg-[#141414] shadow-2xl"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-border p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500/10">
+                    <Plus className="h-5 w-5 text-brand-500" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-foreground">Nuevo Cliente</h2>
+                    <p className="text-xs text-muted-foreground">Registrar un nuevo cliente B2B</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!isCreating) {
+                      setIsNewOpen(false);
+                      resetNewClientForm();
+                    }
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
-                  <SelectItem key="RUC">RUC</SelectItem>
-                  <SelectItem key="NIT">NIT</SelectItem>
-                  <SelectItem key="EIN">EIN</SelectItem>
-                  <SelectItem key="VAT">VAT</SelectItem>
-                  <SelectItem key="Cedula">Cédula</SelectItem>
-                </Select>
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Select
-                  label="País"
-                  variant="bordered"
-                  labelPlacement="outside"
-                  isRequired
-                  items={countries.map((c) => ({ key: c, label: c }))}
-                  selectedKeys={newClientData.country ? [newClientData.country] : []}
-                  onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, country: Array.from(keys)[0] as string }))}
-                >
-                  {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
-                </Select>
-                <Input
-                  label="Ciudad"
-                  placeholder="Ciudad"
-                  variant="bordered"
-                  labelPlacement="outside"
-                  value={newClientData.city}
-                  onChange={(e) => setNewClientData((prev) => ({ ...prev, city: e.target.value }))}
-                />
-              </div>
-              <Input
-                label="Dirección"
-                placeholder="Dirección completa"
-                variant="bordered"
-                labelPlacement="outside"
-                value={newClientData.address}
-                onChange={(e) => setNewClientData((prev) => ({ ...prev, address: e.target.value }))}
-              />
-              <div className="grid grid-cols-3 gap-4">
-                <Select
-                  label="Nivel de Precio"
-                  variant="bordered"
-                  labelPlacement="outside"
-                  isRequired
-                  items={PRICE_LEVELS.map((l) => ({ key: l, label: `Nivel ${l}` }))}
-                  selectedKeys={newClientData.priceLevel ? [newClientData.priceLevel] : []}
-                  onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, priceLevel: Array.from(keys)[0] as PriceLevel }))}
-                >
-                  {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
-                </Select>
-                <Select
-                  label="Términos de Pago"
-                  variant="bordered"
-                  labelPlacement="outside"
-                  isRequired
-                  selectedKeys={newClientData.paymentTerms ? [newClientData.paymentTerms] : []}
-                  onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, paymentTerms: Array.from(keys)[0] as string }))}
-                >
-                  <SelectItem key="contado">Contado</SelectItem>
-                  <SelectItem key="credito_15">Crédito 15 días</SelectItem>
-                  <SelectItem key="credito_30">Crédito 30 días</SelectItem>
-                  <SelectItem key="credito_45">Crédito 45 días</SelectItem>
-                  <SelectItem key="credito_60">Crédito 60 días</SelectItem>
-                </Select>
-                <Input
-                  label="Límite de Crédito"
-                  placeholder="0.00"
-                  type="number"
-                  variant="bordered"
-                  labelPlacement="outside"
-                  startContent={<span className="text-muted-foreground">$</span>}
-                  value={newClientData.creditLimit}
-                  onChange={(e) => setNewClientData((prev) => ({ ...prev, creditLimit: e.target.value }))}
-                />
-              </div>
-              {/* Contact */}
-              <div className="rounded-lg border border-border p-4">
-                <h4 className="mb-4 text-sm font-medium text-foreground">Contacto Principal</h4>
-                <div className="grid grid-cols-2 gap-4">
+
+              {/* Form */}
+              <div className="max-h-[60vh] overflow-y-auto p-4">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Nombre / Razón Social"
+                      placeholder="EMPRESA S.A."
+                      variant="bordered"
+                      labelPlacement="outside"
+                      isRequired
+                      value={newClientData.name}
+                      onChange={(e) => setNewClientData((prev) => ({ ...prev, name: e.target.value }))}
+                    />
+                    <Input
+                      label="Nombre Comercial"
+                      placeholder="Nombre de fantasía"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      value={newClientData.tradeName}
+                      onChange={(e) => setNewClientData((prev) => ({ ...prev, tradeName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="RUC / Tax ID"
+                      placeholder="000-000000-0-000000"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      isRequired
+                      value={newClientData.taxId}
+                      onChange={(e) => setNewClientData((prev) => ({ ...prev, taxId: e.target.value }))}
+                    />
+                    <Select
+                      label="Tipo de Documento"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      selectedKeys={newClientData.taxIdType ? [newClientData.taxIdType] : []}
+                      onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, taxIdType: Array.from(keys)[0] as string }))}
+                    >
+                      <SelectItem key="RUC">RUC</SelectItem>
+                      <SelectItem key="NIT">NIT</SelectItem>
+                      <SelectItem key="EIN">EIN</SelectItem>
+                      <SelectItem key="VAT">VAT</SelectItem>
+                      <SelectItem key="Cedula">Cédula</SelectItem>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Select
+                      label="País"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      isRequired
+                      items={countries.map((c) => ({ key: c, label: c }))}
+                      selectedKeys={newClientData.country ? [newClientData.country] : []}
+                      onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, country: Array.from(keys)[0] as string }))}
+                    >
+                      {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+                    </Select>
+                    <Input
+                      label="Ciudad"
+                      placeholder="Ciudad"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      value={newClientData.city}
+                      onChange={(e) => setNewClientData((prev) => ({ ...prev, city: e.target.value }))}
+                    />
+                  </div>
                   <Input
-                    label="Nombre"
-                    placeholder="Nombre del contacto"
+                    label="Dirección"
+                    placeholder="Dirección completa"
                     variant="bordered"
                     labelPlacement="outside"
-                    isRequired
-                    value={newClientData.contactName}
-                    onChange={(e) => setNewClientData((prev) => ({ ...prev, contactName: e.target.value }))}
+                    value={newClientData.address}
+                    onChange={(e) => setNewClientData((prev) => ({ ...prev, address: e.target.value }))}
                   />
-                  <Input
-                    label="Cargo"
-                    placeholder="Gerente, Director, etc."
-                    variant="bordered"
-                    labelPlacement="outside"
-                    value={newClientData.contactRole}
-                    onChange={(e) => setNewClientData((prev) => ({ ...prev, contactRole: e.target.value }))}
-                  />
-                  <Input
-                    label="Email"
-                    placeholder="email@empresa.com"
-                    type="email"
-                    variant="bordered"
-                    labelPlacement="outside"
-                    isRequired
-                    value={newClientData.contactEmail}
-                    onChange={(e) => setNewClientData((prev) => ({ ...prev, contactEmail: e.target.value }))}
-                  />
-                  <Input
-                    label="Teléfono"
-                    placeholder="+507 000-0000"
-                    variant="bordered"
-                    labelPlacement="outside"
-                    value={newClientData.contactPhone}
-                    onChange={(e) => setNewClientData((prev) => ({ ...prev, contactPhone: e.target.value }))}
-                  />
+                  <div className="grid grid-cols-3 gap-4">
+                    <Select
+                      label="Nivel de Precio"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      isRequired
+                      items={PRICE_LEVELS.map((l) => ({ key: l, label: `Nivel ${l}` }))}
+                      selectedKeys={newClientData.priceLevel ? [newClientData.priceLevel] : []}
+                      onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, priceLevel: Array.from(keys)[0] as PriceLevel }))}
+                    >
+                      {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+                    </Select>
+                    <Select
+                      label="Términos de Pago"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      isRequired
+                      selectedKeys={newClientData.paymentTerms ? [newClientData.paymentTerms] : []}
+                      onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, paymentTerms: Array.from(keys)[0] as string }))}
+                    >
+                      <SelectItem key="contado">Contado</SelectItem>
+                      <SelectItem key="credito_15">Crédito 15 días</SelectItem>
+                      <SelectItem key="credito_30">Crédito 30 días</SelectItem>
+                      <SelectItem key="credito_45">Crédito 45 días</SelectItem>
+                      <SelectItem key="credito_60">Crédito 60 días</SelectItem>
+                    </Select>
+                    <Input
+                      label="Límite de Crédito"
+                      placeholder="0.00"
+                      type="number"
+                      variant="bordered"
+                      labelPlacement="outside"
+                      startContent={<span className="text-muted-foreground">$</span>}
+                      value={newClientData.creditLimit}
+                      onChange={(e) => setNewClientData((prev) => ({ ...prev, creditLimit: e.target.value }))}
+                    />
+                  </div>
+
+                  {/* Contact Section */}
+                  <div className="rounded-lg border border-border p-4">
+                    <h4 className="mb-4 text-sm font-medium text-foreground">Contacto Principal</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Input
+                        label="Nombre"
+                        placeholder="Nombre del contacto"
+                        variant="bordered"
+                        labelPlacement="outside"
+                        isRequired
+                        value={newClientData.contactName}
+                        onChange={(e) => setNewClientData((prev) => ({ ...prev, contactName: e.target.value }))}
+                      />
+                      <Input
+                        label="Cargo"
+                        placeholder="Gerente, Director, etc."
+                        variant="bordered"
+                        labelPlacement="outside"
+                        value={newClientData.contactRole}
+                        onChange={(e) => setNewClientData((prev) => ({ ...prev, contactRole: e.target.value }))}
+                      />
+                      <Input
+                        label="Email"
+                        placeholder="email@empresa.com"
+                        type="email"
+                        variant="bordered"
+                        labelPlacement="outside"
+                        isRequired
+                        value={newClientData.contactEmail}
+                        onChange={(e) => setNewClientData((prev) => ({ ...prev, contactEmail: e.target.value }))}
+                      />
+                      <Input
+                        label="Teléfono"
+                        placeholder="+507 000-0000"
+                        variant="bordered"
+                        labelPlacement="outside"
+                        value={newClientData.contactPhone}
+                        onChange={(e) => setNewClientData((prev) => ({ ...prev, contactPhone: e.target.value }))}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-border pt-4">
-            <Button variant="light" onPress={onNewClose} isDisabled={isCreating}>
-              Cancelar
-            </Button>
-            <Button color="primary" onPress={handleCreateClient} isLoading={isCreating}>
-              Crear Cliente
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+
+              {/* Footer */}
+              <div className="flex gap-3 border-t border-border p-4">
+                <Button
+                  variant="light"
+                  className="flex-1"
+                  onPress={() => {
+                    if (!isCreating) {
+                      setIsNewOpen(false);
+                      resetNewClientForm();
+                    }
+                  }}
+                  isDisabled={isCreating}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  color="primary"
+                  className="flex-1"
+                  onPress={handleCreateClient}
+                  isLoading={isCreating}
+                >
+                  Crear Cliente
+                </Button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
