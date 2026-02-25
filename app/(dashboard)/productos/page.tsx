@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MOCK_PRODUCTS, PRODUCT_GROUPS, getProductStats, Product } from '@/lib/mock-data/products';
+import { MOCK_SUPPLIERS } from '@/lib/mock-data/purchase-orders';
 import { cn } from '@/lib/utils/cn';
 
 type ViewMode = 'grid' | 'list';
