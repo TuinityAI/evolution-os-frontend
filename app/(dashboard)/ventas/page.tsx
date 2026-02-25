@@ -141,13 +141,6 @@ export default function VentasPage() {
 
   const hasActiveFilters = searchQuery || statusFilter !== 'all' || docTypeFilter !== 'all' || selectedCustomer;
 
-  // Calculate quote totals
-  const quoteSubtotal = quoteLines.reduce((sum, l) => sum + (l.subtotal || 0), 0);
-  const quoteTotalCost = quoteLines.reduce((sum, l) => sum + (l.totalCost || 0), 0);
-  const quoteMargin = quoteSubtotal - quoteTotalCost;
-  const quoteMarginPercent = quoteSubtotal > 0 ? (quoteMargin / quoteSubtotal) * 100 : 0;
-  const hasLowMarginLines = quoteLines.some((l) => !l.commissionEligible);
-
   return (
     <div className="space-y-5">
       {/* Header */}
