@@ -7,6 +7,7 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
+  DropdownSection,
   Avatar,
 } from '@heroui/react';
 import {
@@ -16,17 +17,26 @@ import {
   LogOut,
   User,
   Settings,
+  Check,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { motion } from 'framer-motion';
-import { useAuth } from '@/lib/contexts/auth-context';
+import { useAuth, MOCK_USERS } from '@/lib/contexts/auth-context';
 import { useSidebar } from '@/lib/contexts/sidebar-context';
+import { ROLE_LABELS } from '@/lib/constants/roles';
 
 export function Header() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, loginAsUser } = useAuth();
   const { sidebarWidth } = useSidebar();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Group users by role for the switcher
+  const usersByRole = MOCK_USERS.reduce((acc, u) => {
+    if (!acc[u.role]) acc[u.role] = [];
+    acc[u.role].push(u);
+    return acc;
+  }, {} as Record<string, typeof MOCK_USERS>);
 
   const handleLogout = () => {
     logout();
@@ -65,11 +75,64 @@ export function Header() {
 
       {/* Right Section */}
       <div className="flex items-center gap-1">
-        {/* View as button */}
-        <button className="flex h-8 items-center gap-1.5 rounded-lg bg-[#2a2a2a] px-3 text-sm text-gray-300 transition-colors hover:bg-[#333]">
-          <Eye className="h-4 w-4" />
-          <span className="hidden sm:inline">Ver como</span>
-        </button>
+        {/* View as dropdown - User Switcher for Demo */}
+        <Dropdown placement="bottom-end">
+          <DropdownTrigger>
+            <button className="flex h-8 items-center gap-1.5 rounded-lg bg-[#2a2a2a] px-3 text-sm text-gray-300 transition-colors hover:bg-[#333]">
+              <Eye className="h-4 w-4" />
+              <span className="hidden sm:inline">
+                {user ? ROLE_LABELS[user.role] : 'Ver como'}
+              </span>
+            </button>
+          </DropdownTrigger>
+          <DropdownMenu
+            aria-label="Cambiar usuario"
+            classNames={{
+              base: 'bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] shadow-lg min-w-[220px]',
+            }}
+            onAction={(key) => {
+              const selectedUser = MOCK_USERS.find((u) => u.id === key);
+              if (selectedUser) {
+                loginAsUser(selectedUser);
+                // Refresh the current page to apply new permissions
+                router.refresh();
+              }
+            }}
+          >
+            {Object.entries(usersByRole).map(([role, users]) => (
+              <DropdownSection
+                key={role}
+                title={ROLE_LABELS[role as keyof typeof ROLE_LABELS]}
+                classNames={{
+                  heading: 'text-xs font-semibold text-gray-500 dark:text-gray-400 px-2',
+                }}
+              >
+                {users.map((u) => (
+                  <DropdownItem
+                    key={u.id}
+                    startContent={
+                      <Avatar
+                        name={u.name}
+                        size="sm"
+                        classNames={{
+                          base: 'h-6 w-6 bg-brand-600 text-white text-[10px]',
+                        }}
+                      />
+                    }
+                    endContent={
+                      user?.id === u.id && (
+                        <Check className="h-4 w-4 text-brand-600" />
+                      )
+                    }
+                    className={user?.id === u.id ? 'bg-brand-50 dark:bg-brand-900/20' : ''}
+                  >
+                    {u.name}
+                  </DropdownItem>
+                ))}
+              </DropdownSection>
+            ))}
+          </DropdownMenu>
+        </Dropdown>
 
         {/* Theme Toggle */}
         <ThemeToggle />
