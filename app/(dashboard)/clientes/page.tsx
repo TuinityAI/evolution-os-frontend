@@ -757,154 +757,193 @@ export default function ClientesPage() {
               <div className="max-h-[60vh] overflow-y-auto p-4">
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="Nombre / Razón Social"
-                      placeholder="EMPRESA S.A."
-                      variant="bordered"
-                      labelPlacement="outside"
-                      isRequired
-                      value={newClientData.name}
-                      onChange={(e) => setNewClientData((prev) => ({ ...prev, name: e.target.value }))}
-                    />
-                    <Input
-                      label="Nombre Comercial"
-                      placeholder="Nombre de fantasía"
-                      variant="bordered"
-                      labelPlacement="outside"
-                      value={newClientData.tradeName}
-                      onChange={(e) => setNewClientData((prev) => ({ ...prev, tradeName: e.target.value }))}
-                    />
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-foreground">
+                        Nombre / Razón Social <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        placeholder="EMPRESA S.A."
+                        variant="bordered"
+                        value={newClientData.name}
+                        onChange={(e) => setNewClientData((prev) => ({ ...prev, name: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-foreground">
+                        Nombre Comercial
+                      </label>
+                      <Input
+                        placeholder="Nombre de fantasía"
+                        variant="bordered"
+                        value={newClientData.tradeName}
+                        onChange={(e) => setNewClientData((prev) => ({ ...prev, tradeName: e.target.value }))}
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="RUC / Tax ID"
-                      placeholder="000-000000-0-000000"
-                      variant="bordered"
-                      labelPlacement="outside"
-                      isRequired
-                      value={newClientData.taxId}
-                      onChange={(e) => setNewClientData((prev) => ({ ...prev, taxId: e.target.value }))}
-                    />
-                    <Select
-                      label="Tipo de Documento"
-                      variant="bordered"
-                      labelPlacement="outside"
-                      selectedKeys={newClientData.taxIdType ? [newClientData.taxIdType] : []}
-                      onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, taxIdType: Array.from(keys)[0] as string }))}
-                    >
-                      <SelectItem key="RUC">RUC</SelectItem>
-                      <SelectItem key="NIT">NIT</SelectItem>
-                      <SelectItem key="EIN">EIN</SelectItem>
-                      <SelectItem key="VAT">VAT</SelectItem>
-                      <SelectItem key="Cedula">Cédula</SelectItem>
-                    </Select>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-foreground">
+                        RUC / Tax ID <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        placeholder="000-000000-0-000000"
+                        variant="bordered"
+                        value={newClientData.taxId}
+                        onChange={(e) => setNewClientData((prev) => ({ ...prev, taxId: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-foreground">
+                        Tipo de Documento
+                      </label>
+                      <Select
+                        placeholder="Seleccionar..."
+                        variant="bordered"
+                        selectedKeys={newClientData.taxIdType ? [newClientData.taxIdType] : []}
+                        onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, taxIdType: Array.from(keys)[0] as string }))}
+                      >
+                        <SelectItem key="RUC">RUC</SelectItem>
+                        <SelectItem key="NIT">NIT</SelectItem>
+                        <SelectItem key="EIN">EIN</SelectItem>
+                        <SelectItem key="VAT">VAT</SelectItem>
+                        <SelectItem key="Cedula">Cédula</SelectItem>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <Select
-                      label="País"
-                      variant="bordered"
-                      labelPlacement="outside"
-                      isRequired
-                      items={countries.map((c) => ({ key: c, label: c }))}
-                      selectedKeys={newClientData.country ? [newClientData.country] : []}
-                      onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, country: Array.from(keys)[0] as string }))}
-                    >
-                      {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
-                    </Select>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-foreground">
+                        País <span className="text-red-500">*</span>
+                      </label>
+                      <Select
+                        placeholder="Seleccionar país..."
+                        variant="bordered"
+                        items={countries.map((c) => ({ key: c, label: c }))}
+                        selectedKeys={newClientData.country ? [newClientData.country] : []}
+                        onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, country: Array.from(keys)[0] as string }))}
+                      >
+                        {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-foreground">
+                        Ciudad
+                      </label>
+                      <Input
+                        placeholder="Ciudad"
+                        variant="bordered"
+                        value={newClientData.city}
+                        onChange={(e) => setNewClientData((prev) => ({ ...prev, city: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-foreground">
+                      Dirección
+                    </label>
                     <Input
-                      label="Ciudad"
-                      placeholder="Ciudad"
+                      placeholder="Dirección completa"
                       variant="bordered"
-                      labelPlacement="outside"
-                      value={newClientData.city}
-                      onChange={(e) => setNewClientData((prev) => ({ ...prev, city: e.target.value }))}
+                      value={newClientData.address}
+                      onChange={(e) => setNewClientData((prev) => ({ ...prev, address: e.target.value }))}
                     />
                   </div>
-                  <Input
-                    label="Dirección"
-                    placeholder="Dirección completa"
-                    variant="bordered"
-                    labelPlacement="outside"
-                    value={newClientData.address}
-                    onChange={(e) => setNewClientData((prev) => ({ ...prev, address: e.target.value }))}
-                  />
                   <div className="grid grid-cols-3 gap-4">
-                    <Select
-                      label="Nivel de Precio"
-                      variant="bordered"
-                      labelPlacement="outside"
-                      isRequired
-                      items={PRICE_LEVELS.map((l) => ({ key: l, label: `Nivel ${l}` }))}
-                      selectedKeys={newClientData.priceLevel ? [newClientData.priceLevel] : []}
-                      onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, priceLevel: Array.from(keys)[0] as PriceLevel }))}
-                    >
-                      {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
-                    </Select>
-                    <Select
-                      label="Términos de Pago"
-                      variant="bordered"
-                      labelPlacement="outside"
-                      isRequired
-                      selectedKeys={newClientData.paymentTerms ? [newClientData.paymentTerms] : []}
-                      onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, paymentTerms: Array.from(keys)[0] as string }))}
-                    >
-                      <SelectItem key="contado">Contado</SelectItem>
-                      <SelectItem key="credito_15">Crédito 15 días</SelectItem>
-                      <SelectItem key="credito_30">Crédito 30 días</SelectItem>
-                      <SelectItem key="credito_45">Crédito 45 días</SelectItem>
-                      <SelectItem key="credito_60">Crédito 60 días</SelectItem>
-                    </Select>
-                    <Input
-                      label="Límite de Crédito"
-                      placeholder="0.00"
-                      type="number"
-                      variant="bordered"
-                      labelPlacement="outside"
-                      startContent={<span className="text-muted-foreground">$</span>}
-                      value={newClientData.creditLimit}
-                      onChange={(e) => setNewClientData((prev) => ({ ...prev, creditLimit: e.target.value }))}
-                    />
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-foreground">
+                        Nivel de Precio <span className="text-red-500">*</span>
+                      </label>
+                      <Select
+                        placeholder="Seleccionar..."
+                        variant="bordered"
+                        items={PRICE_LEVELS.map((l) => ({ key: l, label: `Nivel ${l}` }))}
+                        selectedKeys={newClientData.priceLevel ? [newClientData.priceLevel] : []}
+                        onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, priceLevel: Array.from(keys)[0] as PriceLevel }))}
+                      >
+                        {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-foreground">
+                        Términos de Pago <span className="text-red-500">*</span>
+                      </label>
+                      <Select
+                        placeholder="Seleccionar..."
+                        variant="bordered"
+                        selectedKeys={newClientData.paymentTerms ? [newClientData.paymentTerms] : []}
+                        onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, paymentTerms: Array.from(keys)[0] as string }))}
+                      >
+                        <SelectItem key="contado">Contado</SelectItem>
+                        <SelectItem key="credito_15">Crédito 15 días</SelectItem>
+                        <SelectItem key="credito_30">Crédito 30 días</SelectItem>
+                        <SelectItem key="credito_45">Crédito 45 días</SelectItem>
+                        <SelectItem key="credito_60">Crédito 60 días</SelectItem>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-foreground">
+                        Límite de Crédito
+                      </label>
+                      <Input
+                        placeholder="0.00"
+                        type="number"
+                        variant="bordered"
+                        startContent={<span className="text-muted-foreground">$</span>}
+                        value={newClientData.creditLimit}
+                        onChange={(e) => setNewClientData((prev) => ({ ...prev, creditLimit: e.target.value }))}
+                      />
+                    </div>
                   </div>
 
                   {/* Contact Section */}
                   <div className="rounded-lg border border-border p-4">
                     <h4 className="mb-4 text-sm font-medium text-foreground">Contacto Principal</h4>
                     <div className="grid grid-cols-2 gap-4">
-                      <Input
-                        label="Nombre"
-                        placeholder="Nombre del contacto"
-                        variant="bordered"
-                        labelPlacement="outside"
-                        isRequired
-                        value={newClientData.contactName}
-                        onChange={(e) => setNewClientData((prev) => ({ ...prev, contactName: e.target.value }))}
-                      />
-                      <Input
-                        label="Cargo"
-                        placeholder="Gerente, Director, etc."
-                        variant="bordered"
-                        labelPlacement="outside"
-                        value={newClientData.contactRole}
-                        onChange={(e) => setNewClientData((prev) => ({ ...prev, contactRole: e.target.value }))}
-                      />
-                      <Input
-                        label="Email"
-                        placeholder="email@empresa.com"
-                        type="email"
-                        variant="bordered"
-                        labelPlacement="outside"
-                        isRequired
-                        value={newClientData.contactEmail}
-                        onChange={(e) => setNewClientData((prev) => ({ ...prev, contactEmail: e.target.value }))}
-                      />
-                      <Input
-                        label="Teléfono"
-                        placeholder="+507 000-0000"
-                        variant="bordered"
-                        labelPlacement="outside"
-                        value={newClientData.contactPhone}
-                        onChange={(e) => setNewClientData((prev) => ({ ...prev, contactPhone: e.target.value }))}
-                      />
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-foreground">
+                          Nombre <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          placeholder="Nombre del contacto"
+                          variant="bordered"
+                          value={newClientData.contactName}
+                          onChange={(e) => setNewClientData((prev) => ({ ...prev, contactName: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-foreground">
+                          Cargo
+                        </label>
+                        <Input
+                          placeholder="Gerente, Director, etc."
+                          variant="bordered"
+                          value={newClientData.contactRole}
+                          onChange={(e) => setNewClientData((prev) => ({ ...prev, contactRole: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-foreground">
+                          Email <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          placeholder="email@empresa.com"
+                          type="email"
+                          variant="bordered"
+                          value={newClientData.contactEmail}
+                          onChange={(e) => setNewClientData((prev) => ({ ...prev, contactEmail: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-foreground">
+                          Teléfono
+                        </label>
+                        <Input
+                          placeholder="+507 000-0000"
+                          variant="bordered"
+                          value={newClientData.contactPhone}
+                          onChange={(e) => setNewClientData((prev) => ({ ...prev, contactPhone: e.target.value }))}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
