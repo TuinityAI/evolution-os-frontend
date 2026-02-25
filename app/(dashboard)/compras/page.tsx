@@ -19,13 +19,10 @@ import {
   SelectItem,
   Textarea,
   useDisclosure,
-  Tabs,
-  Tab,
 } from '@heroui/react';
 import {
   Search,
   Plus,
-  Upload,
   Download,
   MoreVertical,
   ShoppingCart,
@@ -37,12 +34,8 @@ import {
   Edit,
   Trash2,
   X,
-  FileSpreadsheet,
   Package,
   ClipboardList,
-  Calendar,
-  Building2,
-  Hash,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -653,7 +646,7 @@ export default function ComprasPage() {
       </Modal>
 
       {/* Create Order Modal */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="4xl" scrollBehavior="inside">
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="2xl">
         <ModalContent className="bg-white dark:bg-[#141414]">
           <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
             <div className="flex items-center gap-3">
@@ -666,237 +659,169 @@ export default function ComprasPage() {
               </div>
             </div>
           </ModalHeader>
-          <ModalBody className="py-6">
-            <Tabs aria-label="Secciones" color="primary" variant="underlined">
-              <Tab key="general" title="Información General">
-                <div className="mt-4 space-y-6">
-                  {/* Supplier and Bodega */}
-                  <div className="grid grid-cols-2 gap-4">
+          <ModalBody className="py-4">
+            <div className="space-y-4">
+              {/* Supplier and Bodega */}
+              <div className="grid grid-cols-2 gap-4">
+                <Select
+                  label="Proveedor"
+                  placeholder="Seleccionar"
+                  selectedKeys={orderFormData.supplierId ? [orderFormData.supplierId] : []}
+                  onChange={(e) => handleFormChange('supplierId', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  isRequired
+                  classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
+                >
+                  {MOCK_SUPPLIERS.map((supplier) => (
+                    <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
+                  ))}
+                </Select>
+                <Select
+                  label="Bodega destino"
+                  placeholder="Seleccionar"
+                  selectedKeys={orderFormData.bodegaId ? [orderFormData.bodegaId] : []}
+                  onChange={(e) => handleFormChange('bodegaId', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  isRequired
+                  classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
+                >
+                  {MOCK_BODEGAS.map((bodega) => (
+                    <SelectItem key={bodega.id}>{bodega.name}</SelectItem>
+                  ))}
+                </Select>
+              </div>
+
+              {/* Invoice and Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="No. Factura proveedor"
+                  placeholder="INV-2024-0001"
+                  value={orderFormData.supplierInvoice}
+                  onChange={(e) => handleFormChange('supplierInvoice', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                />
+                <Input
+                  label="Llegada estimada"
+                  type="date"
+                  value={orderFormData.expectedArrivalDate}
+                  onChange={(e) => handleFormChange('expectedArrivalDate', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                />
+              </div>
+
+              {/* Notes */}
+              <Textarea
+                label="Notas"
+                placeholder="Instrucciones especiales..."
+                value={orderFormData.notes}
+                onChange={(e) => handleFormChange('notes', e.target.value)}
+                variant="bordered"
+                size="sm"
+                minRows={2}
+                classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+              />
+
+              {/* Divider */}
+              <div className="border-t border-gray-200 dark:border-[#2a2a2a] pt-4">
+                <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Productos</h3>
+
+                {/* Add Product Row */}
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
                     <Select
-                      label="Proveedor *"
-                      placeholder="Seleccionar proveedor"
-                      selectedKeys={orderFormData.supplierId ? [orderFormData.supplierId] : []}
-                      onChange={(e) => handleFormChange('supplierId', e.target.value)}
+                      placeholder="Seleccionar producto..."
+                      selectedKeys={newLineProduct ? [newLineProduct] : []}
+                      onChange={(e) => setNewLineProduct(e.target.value)}
                       variant="bordered"
-                      labelPlacement="outside"
-                      startContent={<Building2 className="h-4 w-4 text-gray-400" />}
+                      size="sm"
+                      classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
                     >
-                      {MOCK_SUPPLIERS.map((supplier) => (
-                        <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
-                      ))}
-                    </Select>
-                    <Select
-                      label="Bodega destino *"
-                      placeholder="Seleccionar bodega"
-                      selectedKeys={orderFormData.bodegaId ? [orderFormData.bodegaId] : []}
-                      onChange={(e) => handleFormChange('bodegaId', e.target.value)}
-                      variant="bordered"
-                      labelPlacement="outside"
-                      startContent={<Package className="h-4 w-4 text-gray-400" />}
-                    >
-                      {MOCK_BODEGAS.map((bodega) => (
-                        <SelectItem key={bodega.id}>{bodega.name}</SelectItem>
+                      {MOCK_PRODUCTS.slice(0, 20).map((product) => (
+                        <SelectItem key={product.id} textValue={product.description}>
+                          <div className="flex flex-col">
+                            <span className="text-sm">{product.description}</span>
+                            <span className="text-xs text-gray-500">{product.reference}</span>
+                          </div>
+                        </SelectItem>
                       ))}
                     </Select>
                   </div>
-
-                  {/* Invoice and Date */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="w-20">
                     <Input
-                      label="No. Factura del proveedor"
-                      placeholder="Ej: INV-2024-0001"
-                      value={orderFormData.supplierInvoice}
-                      onChange={(e) => handleFormChange('supplierInvoice', e.target.value)}
+                      placeholder="Cant."
+                      type="number"
+                      value={newLineQty}
+                      onChange={(e) => setNewLineQty(e.target.value)}
                       variant="bordered"
-                      labelPlacement="outside"
-                      startContent={<Hash className="h-4 w-4 text-gray-400" />}
-                    />
-                    <Input
-                      label="Fecha llegada estimada"
-                      type="date"
-                      value={orderFormData.expectedArrivalDate}
-                      onChange={(e) => handleFormChange('expectedArrivalDate', e.target.value)}
-                      variant="bordered"
-                      labelPlacement="outside"
-                      startContent={<Calendar className="h-4 w-4 text-gray-400" />}
+                      size="sm"
+                      classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
                     />
                   </div>
-
-                  {/* Notes */}
-                  <Textarea
-                    label="Notas / Comentarios"
-                    placeholder="Instrucciones especiales, observaciones..."
-                    value={orderFormData.notes}
-                    onChange={(e) => handleFormChange('notes', e.target.value)}
-                    variant="bordered"
-                    labelPlacement="outside"
-                    minRows={2}
-                  />
+                  {canViewCosts && (
+                    <div className="w-24">
+                      <Input
+                        placeholder="Costo"
+                        type="number"
+                        value={newLineCost}
+                        onChange={(e) => setNewLineCost(e.target.value)}
+                        variant="bordered"
+                        size="sm"
+                        startContent={<span className="text-xs text-gray-400">$</span>}
+                        classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                      />
+                    </div>
+                  )}
+                  <Button color="primary" size="sm" onPress={handleAddLine} isIconOnly className="bg-brand-600">
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
-              </Tab>
 
-              <Tab key="products" title="Productos">
-                <div className="mt-4 space-y-6">
-                  {/* Add Product Section */}
-                  <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-4">
-                    <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Agregar producto</h3>
-                    <div className="flex items-end gap-3">
-                      <div className="flex-1">
-                        <Select
-                          label="Producto"
-                          placeholder="Buscar producto..."
-                          selectedKeys={newLineProduct ? [newLineProduct] : []}
-                          onChange={(e) => setNewLineProduct(e.target.value)}
-                          variant="bordered"
-                          labelPlacement="outside"
-                        >
-                          {MOCK_PRODUCTS.map((product) => (
-                            <SelectItem key={product.id} textValue={product.description}>
-                              <div className="flex flex-col">
-                                <span className="text-sm">{product.description}</span>
-                                <span className="text-xs text-gray-500">{product.reference}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </Select>
-                      </div>
-                      <div className="w-28">
-                        <Input
-                          label="Cantidad"
-                          type="number"
-                          placeholder="0"
-                          value={newLineQty}
-                          onChange={(e) => setNewLineQty(e.target.value)}
-                          variant="bordered"
-                          labelPlacement="outside"
-                        />
-                      </div>
-                      {canViewCosts && (
-                        <div className="w-32">
-                          <Input
-                            label="Costo FOB"
-                            type="number"
-                            placeholder="0.00"
-                            value={newLineCost}
-                            onChange={(e) => setNewLineCost(e.target.value)}
-                            variant="bordered"
-                            labelPlacement="outside"
-                            startContent={<span className="text-xs text-gray-400">$</span>}
-                          />
+                {/* Lines List */}
+                {orderLines.length > 0 ? (
+                  <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">
+                    {orderLines.map((line) => (
+                      <div key={line.id} className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-sm text-gray-900 dark:text-white">{line.productDescription}</p>
+                          <p className="text-xs text-gray-500">
+                            {line.quantity} unidades {canViewCosts && `• ${formatCurrency(line.totalFOB)}`}
+                          </p>
                         </div>
-                      )}
-                      <Button color="primary" onPress={handleAddLine} className="bg-brand-600">
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                        <button
+                          onClick={() => handleRemoveLine(line.id)}
+                          className="ml-2 flex h-7 w-7 items-center justify-center rounded text-gray-400 hover:bg-red-50 hover:text-red-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-lg border border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] py-6 text-center">
+                    <Package className="mx-auto mb-2 h-6 w-6 text-gray-400" />
+                    <p className="text-xs text-gray-500">No hay productos agregados</p>
+                  </div>
+                )}
+
+                {/* Total */}
+                {orderLines.length > 0 && canViewCosts && (
+                  <div className="mt-3 flex justify-end">
+                    <div className="rounded-lg bg-gray-100 dark:bg-[#1a1a1a] px-4 py-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Total FOB: </span>
+                      <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
+                        {formatCurrency(orderLines.reduce((sum, l) => sum + l.totalFOB, 0))}
+                      </span>
                     </div>
                   </div>
-
-                  {/* Import from Excel Button */}
-                  <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-6">
-                    <button
-                      onClick={() => toast.info('Importar desde Excel', { description: 'Funcionalidad próximamente.' })}
-                      className="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400 transition-colors hover:text-gray-700 dark:hover:text-white"
-                    >
-                      <FileSpreadsheet className="h-8 w-8" />
-                      <span className="text-sm font-medium">Importar desde Excel</span>
-                      <span className="text-xs text-gray-400 dark:text-[#666666]">Arrastra un archivo o haz clic para seleccionar</span>
-                    </button>
-                  </div>
-
-                  {/* Lines Table */}
-                  {orderLines.length > 0 && (
-                    <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-[#2a2a2a]">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500 dark:text-[#888888]">
-                              Producto
-                            </th>
-                            <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500 dark:text-[#888888]">
-                              Cantidad
-                            </th>
-                            {canViewCosts && (
-                              <>
-                                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500 dark:text-[#888888]">
-                                  Costo FOB
-                                </th>
-                                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500 dark:text-[#888888]">
-                                  Total
-                                </th>
-                              </>
-                            )}
-                            <th className="px-4 py-2 text-center text-xs font-medium uppercase text-gray-500 dark:text-[#888888]">
-                              Acción
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
-                          {orderLines.map((line) => (
-                            <tr key={line.id}>
-                              <td className="px-4 py-2">
-                                <div>
-                                  <p className="text-sm text-gray-900 dark:text-white">{line.productDescription}</p>
-                                  <p className="text-xs text-gray-500 dark:text-[#888888]">{line.productReference}</p>
-                                </div>
-                              </td>
-                              <td className="px-4 py-2 text-right">
-                                <span className="text-sm text-gray-900 dark:text-white">{line.quantity}</span>
-                              </td>
-                              {canViewCosts && (
-                                <>
-                                  <td className="px-4 py-2 text-right">
-                                    <span className="font-mono text-sm text-gray-900 dark:text-white">
-                                      {formatCurrency(line.unitCostFOB)}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-2 text-right">
-                                    <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-                                      {formatCurrency(line.totalFOB)}
-                                    </span>
-                                  </td>
-                                </>
-                              )}
-                              <td className="px-4 py-2 text-center">
-                                <button
-                                  onClick={() => handleRemoveLine(line.id)}
-                                  className="text-red-500 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        {canViewCosts && (
-                          <tfoot>
-                            <tr className="border-t border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
-                              <td colSpan={3} className="px-4 py-2 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Total FOB:
-                              </td>
-                              <td className="px-4 py-2 text-right">
-                                <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
-                                  {formatCurrency(orderLines.reduce((sum, l) => sum + l.totalFOB, 0))}
-                                </span>
-                              </td>
-                              <td></td>
-                            </tr>
-                          </tfoot>
-                        )}
-                      </table>
-                    </div>
-                  )}
-
-                  {/* Empty state for lines */}
-                  {orderLines.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] py-8 text-center">
-                      <Package className="mx-auto mb-2 h-8 w-8 text-gray-400 dark:text-[#666666]" />
-                      <p className="text-sm text-gray-500 dark:text-[#888888]">No hay productos agregados</p>
-                      <p className="text-xs text-gray-400 dark:text-[#666666]">Agrega productos manualmente o importa desde Excel</p>
-                    </div>
-                  )}
-                </div>
-              </Tab>
-            </Tabs>
+                )}
+              </div>
+            </div>
           </ModalBody>
           <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
             <Button variant="light" onPress={onCreateClose}>

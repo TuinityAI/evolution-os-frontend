@@ -18,11 +18,8 @@ import {
   Input,
   Select,
   SelectItem,
-  Textarea,
   Switch,
   useDisclosure,
-  Tabs,
-  Tab,
 } from '@heroui/react';
 import {
   Search,
@@ -818,7 +815,7 @@ export default function ProductosPage() {
       </Modal>
 
       {/* Create Product Modal */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="3xl" scrollBehavior="inside">
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="2xl">
         <ModalContent className="bg-white dark:bg-[#141414]">
           <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
             <div className="flex items-center gap-3">
@@ -831,206 +828,204 @@ export default function ProductosPage() {
               </div>
             </div>
           </ModalHeader>
-          <ModalBody className="py-6">
-            <Tabs aria-label="Secciones" color="primary" variant="underlined">
-              <Tab key="general" title="Información General">
-                <div className="mt-4 space-y-6">
-                  {/* Image Upload */}
-                  <div className="flex items-start gap-6">
-                    <div className="flex h-32 w-32 shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] transition-colors hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950">
-                      <ImagePlus className="mb-2 h-8 w-8 text-gray-400 dark:text-[#666666]" />
-                      <span className="text-xs text-gray-500 dark:text-[#888888]">Subir imagen</span>
-                    </div>
-                    <div className="flex-1 space-y-4">
-                      <Input
-                        label="Descripción del producto *"
-                        placeholder="Ej: WHISKY JOHNNIE WALKER BLACK 12YRS 750ML"
-                        value={formData.description}
-                        onChange={(e) => handleFormChange('description', e.target.value)}
-                        variant="bordered"
-                        labelPlacement="outside"
-                      />
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input
-                          label="Marca *"
-                          placeholder="Ej: JOHNNIE WALKER"
-                          value={formData.brand}
-                          onChange={(e) => handleFormChange('brand', e.target.value)}
-                          variant="bordered"
-                          labelPlacement="outside"
-                        />
-                        <Select
-                          label="Categoría *"
-                          placeholder="Seleccionar categoría"
-                          selectedKeys={formData.group ? [formData.group] : []}
-                          onChange={(e) => handleFormChange('group', e.target.value)}
-                          variant="bordered"
-                          labelPlacement="outside"
-                        >
-                          {PRODUCT_GROUPS.map((group) => (
-                            <SelectItem key={group.id}>{group.label}</SelectItem>
-                          ))}
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Identification */}
-                  <div>
-                    <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Identificación</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                      <Input
-                        label="Código de barras"
-                        placeholder="7501050439022"
-                        value={formData.barcode}
-                        onChange={(e) => handleFormChange('barcode', e.target.value)}
-                        variant="bordered"
-                        labelPlacement="outside"
-                      />
-                      <Input
-                        label="Referencia interna"
-                        placeholder="JW-BLK-750"
-                        value={formData.reference}
-                        onChange={(e) => handleFormChange('reference', e.target.value)}
-                        variant="bordered"
-                        labelPlacement="outside"
-                      />
-                      <Input
-                        label="Código arancelario"
-                        placeholder="2208.30.00"
-                        value={formData.tariffCode}
-                        onChange={(e) => handleFormChange('tariffCode', e.target.value)}
-                        variant="bordered"
-                        labelPlacement="outside"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Supplier & Unit */}
-                  <div>
-                    <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor y unidad</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                      <Select
-                        label="Proveedor *"
-                        placeholder="Seleccionar proveedor"
-                        selectedKeys={formData.supplier ? [formData.supplier] : []}
-                        onChange={(e) => handleFormChange('supplier', e.target.value)}
-                        variant="bordered"
-                        labelPlacement="outside"
-                      >
-                        {MOCK_SUPPLIERS.map((supplier) => (
-                          <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
-                        ))}
-                      </Select>
-                      <Select
-                        label="Unidad de medida"
-                        selectedKeys={[formData.unit]}
-                        onChange={(e) => handleFormChange('unit', e.target.value)}
-                        variant="bordered"
-                        labelPlacement="outside"
-                      >
-                        <SelectItem key="CAJA">Caja</SelectItem>
-                        <SelectItem key="UNIDAD">Unidad</SelectItem>
-                        <SelectItem key="BOTELLA">Botella</SelectItem>
-                        <SelectItem key="PAQUETE">Paquete</SelectItem>
-                      </Select>
-                      <Input
-                        label="Cantidad mínima"
-                        type="number"
-                        placeholder="10"
-                        value={formData.minimumQty}
-                        onChange={(e) => handleFormChange('minimumQty', e.target.value)}
-                        variant="bordered"
-                        labelPlacement="outside"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Status */}
-                  <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">Estado del producto</p>
-                      <p className="text-xs text-gray-500 dark:text-[#888888]">Los productos inactivos no aparecen en ventas</p>
-                    </div>
-                    <Switch
-                      isSelected={formData.status}
-                      onValueChange={(value) => handleFormChange('status', value)}
-                      color="success"
+          <ModalBody className="py-4">
+            <div className="space-y-4">
+              {/* Main Info */}
+              <div className="flex gap-4">
+                <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] transition-colors hover:border-brand-400 cursor-pointer">
+                  <ImagePlus className="h-6 w-6 text-gray-400" />
+                  <span className="text-[10px] text-gray-500">Imagen</span>
+                </div>
+                <div className="flex-1 space-y-3">
+                  <Input
+                    label="Descripción"
+                    placeholder="WHISKY JOHNNIE WALKER BLACK 12YRS 750ML"
+                    value={formData.description}
+                    onChange={(e) => handleFormChange('description', e.target.value)}
+                    variant="bordered"
+                    size="sm"
+                    isRequired
+                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      label="Marca"
+                      placeholder="JOHNNIE WALKER"
+                      value={formData.brand}
+                      onChange={(e) => handleFormChange('brand', e.target.value)}
+                      variant="bordered"
+                      size="sm"
+                      isRequired
+                      classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                    />
+                    <Select
+                      label="Categoría"
+                      placeholder="Seleccionar"
+                      selectedKeys={formData.group ? [formData.group] : []}
+                      onChange={(e) => handleFormChange('group', e.target.value)}
+                      variant="bordered"
+                      size="sm"
+                      isRequired
+                      classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
                     >
-                      {formData.status ? 'Activo' : 'Inactivo'}
-                    </Switch>
+                      {PRODUCT_GROUPS.map((group) => (
+                        <SelectItem key={group.id}>{group.label}</SelectItem>
+                      ))}
+                    </Select>
                   </div>
                 </div>
-              </Tab>
+              </div>
 
-              <Tab key="prices" title="Precios">
-                <div className="mt-4 space-y-6">
-                  <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 p-4">
-                    <p className="text-sm text-amber-800 dark:text-amber-300">
-                      Los precios se asignan según el nivel del cliente. El Precio A es el más bajo (mayoristas) y el Precio E el más alto (público).
-                    </p>
-                  </div>
+              {/* Identification */}
+              <div className="grid grid-cols-3 gap-3">
+                <Input
+                  label="Código de barras"
+                  placeholder="7501050439022"
+                  value={formData.barcode}
+                  onChange={(e) => handleFormChange('barcode', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                />
+                <Input
+                  label="Referencia"
+                  placeholder="JW-BLK-750"
+                  value={formData.reference}
+                  onChange={(e) => handleFormChange('reference', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                />
+                <Input
+                  label="Cod. arancelario"
+                  placeholder="2208.30.00"
+                  value={formData.tariffCode}
+                  onChange={(e) => handleFormChange('tariffCode', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                />
+              </div>
 
-                  <div className="grid grid-cols-5 gap-4">
-                    <Input
-                      label="Precio A"
-                      type="number"
-                      placeholder="0.00"
-                      startContent={<span className="text-gray-400">$</span>}
-                      value={formData.priceA}
-                      onChange={(e) => handleFormChange('priceA', e.target.value)}
-                      variant="bordered"
-                      labelPlacement="outside"
-                      description="Mayorista"
-                    />
-                    <Input
-                      label="Precio B"
-                      type="number"
-                      placeholder="0.00"
-                      startContent={<span className="text-gray-400">$</span>}
-                      value={formData.priceB}
-                      onChange={(e) => handleFormChange('priceB', e.target.value)}
-                      variant="bordered"
-                      labelPlacement="outside"
-                      description="Distribuidor"
-                    />
-                    <Input
-                      label="Precio C"
-                      type="number"
-                      placeholder="0.00"
-                      startContent={<span className="text-gray-400">$</span>}
-                      value={formData.priceC}
-                      onChange={(e) => handleFormChange('priceC', e.target.value)}
-                      variant="bordered"
-                      labelPlacement="outside"
-                      description="Detallista"
-                    />
-                    <Input
-                      label="Precio D"
-                      type="number"
-                      placeholder="0.00"
-                      startContent={<span className="text-gray-400">$</span>}
-                      value={formData.priceD}
-                      onChange={(e) => handleFormChange('priceD', e.target.value)}
-                      variant="bordered"
-                      labelPlacement="outside"
-                      description="Especial"
-                    />
-                    <Input
-                      label="Precio E"
-                      type="number"
-                      placeholder="0.00"
-                      startContent={<span className="text-gray-400">$</span>}
-                      value={formData.priceE}
-                      onChange={(e) => handleFormChange('priceE', e.target.value)}
-                      variant="bordered"
-                      labelPlacement="outside"
-                      description="Público"
-                    />
-                  </div>
+              {/* Supplier & Unit */}
+              <div className="grid grid-cols-3 gap-3">
+                <Select
+                  label="Proveedor"
+                  placeholder="Seleccionar"
+                  selectedKeys={formData.supplier ? [formData.supplier] : []}
+                  onChange={(e) => handleFormChange('supplier', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  isRequired
+                  classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
+                >
+                  {MOCK_SUPPLIERS.map((supplier) => (
+                    <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
+                  ))}
+                </Select>
+                <Select
+                  label="Unidad"
+                  selectedKeys={[formData.unit]}
+                  onChange={(e) => handleFormChange('unit', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
+                >
+                  <SelectItem key="CAJA">Caja</SelectItem>
+                  <SelectItem key="UNIDAD">Unidad</SelectItem>
+                  <SelectItem key="BOTELLA">Botella</SelectItem>
+                  <SelectItem key="PAQUETE">Paquete</SelectItem>
+                </Select>
+                <Input
+                  label="Cantidad mínima"
+                  type="number"
+                  placeholder="10"
+                  value={formData.minimumQty}
+                  onChange={(e) => handleFormChange('minimumQty', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                />
+              </div>
+
+              {/* Prices Section */}
+              <div className="border-t border-gray-200 dark:border-[#2a2a2a] pt-4">
+                <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Precios por nivel de cliente</h3>
+                <div className="grid grid-cols-5 gap-2">
+                  <Input
+                    label="A (Mayor)"
+                    type="number"
+                    placeholder="0.00"
+                    startContent={<span className="text-xs text-gray-400">$</span>}
+                    value={formData.priceA}
+                    onChange={(e) => handleFormChange('priceA', e.target.value)}
+                    variant="bordered"
+                    size="sm"
+                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                  />
+                  <Input
+                    label="B (Distr)"
+                    type="number"
+                    placeholder="0.00"
+                    startContent={<span className="text-xs text-gray-400">$</span>}
+                    value={formData.priceB}
+                    onChange={(e) => handleFormChange('priceB', e.target.value)}
+                    variant="bordered"
+                    size="sm"
+                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                  />
+                  <Input
+                    label="C (Detal)"
+                    type="number"
+                    placeholder="0.00"
+                    startContent={<span className="text-xs text-gray-400">$</span>}
+                    value={formData.priceC}
+                    onChange={(e) => handleFormChange('priceC', e.target.value)}
+                    variant="bordered"
+                    size="sm"
+                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                  />
+                  <Input
+                    label="D (Espec)"
+                    type="number"
+                    placeholder="0.00"
+                    startContent={<span className="text-xs text-gray-400">$</span>}
+                    value={formData.priceD}
+                    onChange={(e) => handleFormChange('priceD', e.target.value)}
+                    variant="bordered"
+                    size="sm"
+                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                  />
+                  <Input
+                    label="E (Públ)"
+                    type="number"
+                    placeholder="0.00"
+                    startContent={<span className="text-xs text-gray-400">$</span>}
+                    value={formData.priceE}
+                    onChange={(e) => handleFormChange('priceE', e.target.value)}
+                    variant="bordered"
+                    size="sm"
+                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                  />
                 </div>
-              </Tab>
-            </Tabs>
+              </div>
+
+              {/* Status */}
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">Estado del producto</p>
+                  <p className="text-xs text-gray-500 dark:text-[#888888]">Productos inactivos no aparecen en ventas</p>
+                </div>
+                <Switch
+                  isSelected={formData.status}
+                  onValueChange={(value) => handleFormChange('status', value)}
+                  color="success"
+                  size="sm"
+                >
+                  {formData.status ? 'Activo' : 'Inactivo'}
+                </Switch>
+              </div>
+            </div>
           </ModalBody>
           <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
             <Button variant="light" onPress={onCreateClose}>Cancelar</Button>

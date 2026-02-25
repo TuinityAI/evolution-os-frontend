@@ -19,8 +19,6 @@ import {
   SelectItem,
   Textarea,
   useDisclosure,
-  Tabs,
-  Tab,
 } from '@heroui/react';
 import {
   Search,
@@ -764,434 +762,227 @@ export default function VentasPage() {
       </Modal>
 
       {/* Create Quote Modal */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="3xl" scrollBehavior="inside">
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3 border-b border-border pb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500/10">
-              <ClipboardList className="h-5 w-5 text-brand-500" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Nueva Cotización</h2>
-              <p className="text-sm text-muted-foreground">Completa la información de la cotización</p>
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="2xl">
+        <ModalContent className="bg-white dark:bg-[#141414]">
+          <ModalHeader className="border-b border-border">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500/10">
+                <ClipboardList className="h-5 w-5 text-brand-500" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Nueva Cotización</h2>
+                <p className="text-sm text-muted-foreground">Completa la información de la cotización</p>
+              </div>
             </div>
           </ModalHeader>
-          <ModalBody className="py-6">
-            <Tabs aria-label="Secciones" color="primary" variant="underlined">
-              {/* Tab 1: Cliente */}
-              <Tab key="cliente" title="Cliente">
-                <div className="mt-4 space-y-6">
-                  <Select
-                    label="Seleccionar Cliente *"
-                    placeholder="Buscar cliente..."
-                    selectedKeys={quoteFormData.customerId ? [quoteFormData.customerId] : []}
-                    onChange={(e) => handleFormChange('customerId', e.target.value)}
-                    variant="bordered"
-                    labelPlacement="outside"
-                    startContent={<Building2 className="h-4 w-4 text-muted-foreground" />}
-                  >
-                    {MOCK_CLIENTS.filter((c) => c.status === 'active').map((client) => (
-                      <SelectItem key={client.id} textValue={client.name}>
-                        <div className="flex flex-col">
-                          <span className="text-sm">{client.name}</span>
-                          <span className="text-xs text-muted-foreground">{client.country} • Nivel {client.priceLevel}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </Select>
-
-                  {/* Selected client info */}
-                  {selectedClient && (
-                    <div className="rounded-lg border border-border bg-muted/50 p-4">
-                      <h4 className="mb-3 text-sm font-medium text-foreground">Información del Cliente</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">RUC/NIT:</span>
-                          <span className="font-mono font-medium text-foreground">{selectedClient.taxId}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Nivel de Precio:</span>
-                          <span className={cn(
-                            'rounded-full px-2 py-0.5 text-xs font-medium',
-                            selectedClient.priceLevel === 'A' && 'bg-emerald-500/10 text-emerald-500',
-                            selectedClient.priceLevel === 'B' && 'bg-blue-500/10 text-blue-500',
-                            selectedClient.priceLevel === 'C' && 'bg-purple-500/10 text-purple-500',
-                            selectedClient.priceLevel === 'D' && 'bg-amber-500/10 text-amber-500',
-                            selectedClient.priceLevel === 'E' && 'bg-muted text-muted-foreground'
-                          )}>
-                            Nivel {selectedClient.priceLevel}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Crédito Disponible:</span>
-                          <span className={cn(
-                            'font-mono font-medium',
-                            selectedClient.creditAvailable > 0 ? 'text-emerald-500' : 'text-red-500'
-                          )}>
-                            {formatCurrency(selectedClient.creditAvailable)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Términos:</span>
-                          <span className="font-medium text-foreground">
-                            {selectedClient.paymentTerms === 'contado' ? 'Contado' :
-                              selectedClient.paymentTerms.replace('credito_', 'Crédito ') + ' días'}
-                          </span>
-                        </div>
-                      </div>
-                      {selectedClient.creditAvailable <= 0 && (
-                        <div className="mt-3 flex items-center gap-2 rounded-md bg-amber-500/10 p-2 text-sm text-amber-500">
-                          <AlertTriangle className="h-4 w-4" />
-                          <span>Este cliente no tiene crédito disponible</span>
-                        </div>
-                      )}
+          <ModalBody className="py-4">
+            <div className="space-y-4">
+              {/* Cliente Section */}
+              <Select
+                label="Cliente"
+                placeholder="Seleccionar cliente..."
+                selectedKeys={quoteFormData.customerId ? [quoteFormData.customerId] : []}
+                onChange={(e) => handleFormChange('customerId', e.target.value)}
+                variant="bordered"
+                size="sm"
+                isRequired
+                classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
+              >
+                {MOCK_CLIENTS.filter((c) => c.status === 'active').slice(0, 15).map((client) => (
+                  <SelectItem key={client.id} textValue={client.name}>
+                    <div className="flex flex-col">
+                      <span className="text-sm">{client.name}</span>
+                      <span className="text-xs text-muted-foreground">{client.country} • Nivel {client.priceLevel}</span>
                     </div>
-                  )}
+                  </SelectItem>
+                ))}
+              </Select>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="Válido hasta"
-                      type="date"
-                      value={quoteFormData.validUntil}
-                      onChange={(e) => handleFormChange('validUntil', e.target.value)}
-                      variant="bordered"
-                      labelPlacement="outside"
-                    />
-                    <Input
-                      label="Fecha entrega solicitada"
-                      type="date"
-                      value={quoteFormData.requestedDeliveryDate}
-                      onChange={(e) => handleFormChange('requestedDeliveryDate', e.target.value)}
-                      variant="bordered"
-                      labelPlacement="outside"
-                    />
-                  </div>
-
-                  <Textarea
-                    label="Notas para el cliente"
-                    placeholder="Notas visibles en la cotización..."
-                    value={quoteFormData.notes}
-                    onChange={(e) => handleFormChange('notes', e.target.value)}
-                    variant="bordered"
-                    labelPlacement="outside"
-                    minRows={2}
-                  />
-                </div>
-              </Tab>
-
-              {/* Tab 2: Productos */}
-              <Tab key="productos" title="Productos" isDisabled={!selectedClient}>
-                <div className="mt-4 space-y-6">
-                  {/* Add Product Section */}
-                  <div className="rounded-lg border border-border bg-muted/50 p-4">
-                    <h3 className="mb-3 text-sm font-medium text-foreground">Agregar producto</h3>
-                    <div className="flex flex-wrap items-end gap-3">
-                      <div className="min-w-[250px] flex-1">
-                        <Select
-                          label="Producto"
-                          placeholder="Buscar producto..."
-                          selectedKeys={newLineProduct ? [newLineProduct] : []}
-                          onChange={(e) => handleProductSelect(e.target.value)}
-                          variant="bordered"
-                          labelPlacement="outside"
-                        >
-                          {MOCK_PRODUCTS.map((product) => (
-                            <SelectItem key={product.id} textValue={product.description}>
-                              <div className="flex flex-col">
-                                <span className="text-sm">{product.description}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {product.reference} • Nivel {selectedClient?.priceLevel}: {formatCurrency(product.prices[selectedClient?.priceLevel || 'C'])}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </Select>
-                      </div>
-                      <div className="w-24">
-                        <Input
-                          label="Cantidad"
-                          type="number"
-                          placeholder="0"
-                          value={newLineQty}
-                          onChange={(e) => setNewLineQty(e.target.value)}
-                          variant="bordered"
-                          labelPlacement="outside"
-                        />
-                      </div>
-                      <div className="w-28">
-                        <Input
-                          label="Precio"
-                          type="number"
-                          placeholder="0.00"
-                          value={newLinePrice}
-                          onChange={(e) => setNewLinePrice(e.target.value)}
-                          variant="bordered"
-                          labelPlacement="outside"
-                          startContent={<span className="text-xs text-muted-foreground">$</span>}
-                          isReadOnly={!canViewMargins}
-                        />
-                      </div>
-                      <div className="w-20">
-                        <Input
-                          label="Desc %"
-                          type="number"
-                          placeholder="0"
-                          value={newLineDiscount}
-                          onChange={(e) => setNewLineDiscount(e.target.value)}
-                          variant="bordered"
-                          labelPlacement="outside"
-                        />
-                      </div>
-                      {/* Commission indicator */}
-                      {newLineProduct && newLinePrice && selectedClient && (
-                        <div className="flex items-center gap-2 pb-1">
-                          {(() => {
-                            const cost = getProductCost(newLineProduct);
-                            const price = parseFloat(newLinePrice);
-                            const isEligible = calculateCommissionEligible(price, cost);
-                            return (
-                              <span
-                                className={cn(
-                                  'flex h-6 w-6 items-center justify-center rounded-full',
-                                  isEligible ? 'bg-emerald-500/10' : 'bg-red-500/10'
-                                )}
-                                title={isEligible ? 'Comisiona' : 'No comisiona (margen < 10%)'}
-                              >
-                                <span
-                                  className={cn(
-                                    'h-3 w-3 rounded-full',
-                                    isEligible ? 'bg-emerald-500' : 'bg-red-500'
-                                  )}
-                                />
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      )}
-                      <Button color="primary" onPress={handleAddLine}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Lines Table */}
-                  {quoteLines.length > 0 && (
-                    <div className="overflow-hidden rounded-lg border border-border">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-border bg-muted/50">
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-muted-foreground">
-                              Producto
-                            </th>
-                            <th className="px-4 py-2 text-right text-xs font-medium uppercase text-muted-foreground">
-                              Cant.
-                            </th>
-                            <th className="px-4 py-2 text-right text-xs font-medium uppercase text-muted-foreground">
-                              Precio
-                            </th>
-                            <th className="px-4 py-2 text-right text-xs font-medium uppercase text-muted-foreground">
-                              Desc.
-                            </th>
-                            <th className="px-4 py-2 text-right text-xs font-medium uppercase text-muted-foreground">
-                              Subtotal
-                            </th>
-                            {canViewMargins && (
-                              <th className="px-4 py-2 text-right text-xs font-medium uppercase text-muted-foreground">
-                                Margen
-                              </th>
-                            )}
-                            <th className="px-4 py-2 text-center text-xs font-medium uppercase text-muted-foreground">
-                              {isVendedor ? '' : ''}
-                            </th>
-                            <th className="px-4 py-2 text-center text-xs font-medium uppercase text-muted-foreground">
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {quoteLines.map((line) => (
-                            <tr key={line.id}>
-                              <td className="px-4 py-2">
-                                <div>
-                                  <p className="text-sm text-foreground">{line.productDescription}</p>
-                                  <p className="text-xs text-muted-foreground">{line.productReference}</p>
-                                </div>
-                              </td>
-                              <td className="px-4 py-2 text-right">
-                                <span className="text-sm text-foreground">{line.quantity}</span>
-                              </td>
-                              <td className="px-4 py-2 text-right">
-                                <span className="font-mono text-sm text-foreground">
-                                  {formatCurrency(line.unitPrice || 0)}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2 text-right">
-                                <span className="text-sm text-muted-foreground">
-                                  {line.discount}%
-                                </span>
-                              </td>
-                              <td className="px-4 py-2 text-right">
-                                <span className="font-mono text-sm font-medium text-foreground">
-                                  {formatCurrency(line.subtotal || 0)}
-                                </span>
-                              </td>
-                              {canViewMargins && (
-                                <td className="px-4 py-2 text-right">
-                                  <span className={cn(
-                                    'font-mono text-sm',
-                                    (line.marginPercent || 0) >= 10 ? 'text-emerald-500' : 'text-red-500'
-                                  )}>
-                                    {line.marginPercent?.toFixed(1)}%
-                                  </span>
-                                </td>
-                              )}
-                              <td className="px-4 py-2 text-center">
-                                {isVendedor && (
-                                  <span
-                                    className={cn(
-                                      'inline-flex h-4 w-4 rounded-full',
-                                      line.commissionEligible ? 'bg-emerald-500' : 'bg-red-500'
-                                    )}
-                                    title={line.commissionEligible ? 'Comisiona' : 'No comisiona'}
-                                  />
-                                )}
-                              </td>
-                              <td className="px-4 py-2 text-center">
-                                <button
-                                  onClick={() => handleRemoveLine(line.id || '')}
-                                  className="text-red-500 hover:text-red-600"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="border-t border-border bg-muted/50">
-                            <td colSpan={4} className="px-4 py-2 text-right text-sm font-medium text-foreground">
-                              Subtotal:
-                            </td>
-                            <td className="px-4 py-2 text-right">
-                              <span className="font-mono text-sm font-bold text-foreground">
-                                {formatCurrency(quoteSubtotal)}
-                              </span>
-                            </td>
-                            {canViewMargins && (
-                              <td className="px-4 py-2 text-right">
-                                <span className={cn(
-                                  'font-mono text-sm font-bold',
-                                  quoteMarginPercent >= 10 ? 'text-emerald-500' : 'text-red-500'
-                                )}>
-                                  {quoteMarginPercent.toFixed(1)}%
-                                </span>
-                              </td>
-                            )}
-                            <td colSpan={2}></td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                  )}
-
-                  {/* Empty state for lines */}
-                  {quoteLines.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-border bg-muted/30 py-8 text-center">
-                      <Package className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">No hay productos agregados</p>
-                      <p className="text-xs text-muted-foreground">Selecciona productos del catálogo</p>
-                    </div>
-                  )}
-
-                  {/* Warning for low margin lines */}
-                  {hasLowMarginLines && (
-                    <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-500">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>
-                        Esta cotización tiene líneas con margen menor al 10%.
-                        {canApproveOrders ? ' No requerirá aprobación adicional.' : ' Requerirá aprobación de gerencia.'}
+              {/* Selected client info */}
+              {selectedClient && (
+                <div className="rounded-lg border border-border bg-muted/30 p-3">
+                  <div className="grid grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Nivel: </span>
+                      <span className={cn(
+                        'font-medium',
+                        selectedClient.priceLevel === 'A' && 'text-emerald-500',
+                        selectedClient.priceLevel === 'B' && 'text-blue-500',
+                        selectedClient.priceLevel === 'C' && 'text-purple-500'
+                      )}>
+                        {selectedClient.priceLevel}
                       </span>
                     </div>
-                  )}
-                </div>
-              </Tab>
-
-              {/* Tab 3: Resumen */}
-              <Tab key="resumen" title="Resumen" isDisabled={!selectedClient || quoteLines.length === 0}>
-                <div className="mt-4 space-y-6">
-                  {/* Summary Card */}
-                  <div className="rounded-lg border border-border bg-card p-6">
-                    <h3 className="mb-4 text-lg font-medium text-foreground">Resumen de Cotización</h3>
-
-                    <div className="mb-6 grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Cliente:</span>
-                        <p className="font-medium text-foreground">{selectedClient?.name}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Nivel de Precio:</span>
-                        <p className="font-medium text-foreground">Nivel {selectedClient?.priceLevel}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Términos de Pago:</span>
-                        <p className="font-medium text-foreground">
-                          {selectedClient?.paymentTerms === 'contado' ? 'Contado' :
-                            selectedClient?.paymentTerms.replace('credito_', 'Crédito ') + ' días'}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Productos:</span>
-                        <p className="font-medium text-foreground">{quoteLines.length} líneas</p>
-                      </div>
+                    <div>
+                      <span className="text-muted-foreground">Crédito: </span>
+                      <span className={cn('font-mono font-medium', selectedClient.creditAvailable > 0 ? 'text-emerald-500' : 'text-red-500')}>
+                        {formatCurrency(selectedClient.creditAvailable)}
+                      </span>
                     </div>
-
-                    <div className="border-t border-border pt-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Subtotal</span>
-                        <span className="font-mono font-medium text-foreground">{formatCurrency(quoteSubtotal)}</span>
-                      </div>
-                      <div className="mt-2 flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">ITBMS (0%)</span>
-                        <span className="font-mono text-foreground">$0.00</span>
-                      </div>
-                      <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-                        <span className="text-lg font-semibold text-foreground">Total</span>
-                        <span className="font-mono text-xl font-bold text-foreground">{formatCurrency(quoteSubtotal)}</span>
-                      </div>
+                    <div>
+                      <span className="text-muted-foreground">Términos: </span>
+                      <span className="font-medium text-foreground">
+                        {selectedClient.paymentTerms === 'contado' ? 'Contado' : selectedClient.paymentTerms.replace('credito_', '') + 'd'}
+                      </span>
                     </div>
-
-                    {canViewMargins && (
-                      <div className="mt-4 rounded-lg bg-muted/50 p-4">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Costo Total</span>
-                          <span className="font-mono text-foreground">{formatCurrency(quoteTotalCost)}</span>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Margen Bruto</span>
-                          <span className={cn(
-                            'font-mono font-medium',
-                            quoteMarginPercent >= 10 ? 'text-emerald-500' : 'text-red-500'
-                          )}>
-                            {formatCurrency(quoteMargin)} ({quoteMarginPercent.toFixed(1)}%)
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {hasLowMarginLines && !canApproveOrders && (
-                      <div className="mt-4 flex items-center gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-500">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span>Esta cotización requerirá aprobación de gerencia al convertirse en pedido.</span>
-                      </div>
-                    )}
                   </div>
                 </div>
-              </Tab>
-            </Tabs>
+              )}
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Válido hasta"
+                  type="date"
+                  value={quoteFormData.validUntil}
+                  onChange={(e) => handleFormChange('validUntil', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                />
+                <Input
+                  label="Entrega solicitada"
+                  type="date"
+                  value={quoteFormData.requestedDeliveryDate}
+                  onChange={(e) => handleFormChange('requestedDeliveryDate', e.target.value)}
+                  variant="bordered"
+                  size="sm"
+                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                />
+              </div>
+
+              {/* Products Section */}
+              <div className="border-t border-border pt-4">
+                <h3 className="mb-3 text-sm font-medium text-foreground">Productos</h3>
+
+                {/* Add Product Row */}
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <Select
+                      placeholder="Seleccionar producto..."
+                      selectedKeys={newLineProduct ? [newLineProduct] : []}
+                      onChange={(e) => handleProductSelect(e.target.value)}
+                      variant="bordered"
+                      size="sm"
+                      isDisabled={!selectedClient}
+                      classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
+                    >
+                      {MOCK_PRODUCTS.slice(0, 20).map((product) => (
+                        <SelectItem key={product.id} textValue={product.description}>
+                          <div className="flex flex-col">
+                            <span className="text-sm">{product.description}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {product.reference} • ${product.prices[selectedClient?.priceLevel || 'C']}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="w-16">
+                    <Input
+                      placeholder="Cant"
+                      type="number"
+                      value={newLineQty}
+                      onChange={(e) => setNewLineQty(e.target.value)}
+                      variant="bordered"
+                      size="sm"
+                      isDisabled={!selectedClient}
+                      classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                    />
+                  </div>
+                  <div className="w-20">
+                    <Input
+                      placeholder="Precio"
+                      type="number"
+                      value={newLinePrice}
+                      onChange={(e) => setNewLinePrice(e.target.value)}
+                      variant="bordered"
+                      size="sm"
+                      isDisabled={!selectedClient}
+                      startContent={<span className="text-xs text-muted-foreground">$</span>}
+                      isReadOnly={!canViewMargins}
+                      classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+                    />
+                  </div>
+                  <Button color="primary" size="sm" onPress={handleAddLine} isIconOnly isDisabled={!selectedClient} className="bg-brand-600">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Lines List */}
+                {quoteLines.length > 0 ? (
+                  <div className="mt-3 max-h-40 space-y-2 overflow-y-auto">
+                    {quoteLines.map((line) => (
+                      <div key={line.id} className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-sm text-foreground">{line.productDescription}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {line.quantity} × {formatCurrency(line.unitPrice || 0)} = {formatCurrency(line.subtotal || 0)}
+                            {canViewMargins && (
+                              <span className={cn('ml-2', (line.marginPercent || 0) >= 10 ? 'text-emerald-500' : 'text-red-500')}>
+                                ({line.marginPercent?.toFixed(0)}%)
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveLine(line.id || '')}
+                          className="ml-2 flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-red-500/10 hover:text-red-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-lg border border-dashed border-border bg-muted/30 py-6 text-center">
+                    <Package className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">
+                      {selectedClient ? 'Agrega productos a la cotización' : 'Selecciona un cliente primero'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Totals */}
+                {quoteLines.length > 0 && (
+                  <div className="mt-3 flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                    <span className="text-sm text-muted-foreground">{quoteLines.length} productos</span>
+                    <div className="text-right">
+                      <span className="text-sm text-muted-foreground">Total: </span>
+                      <span className="font-mono text-lg font-bold text-foreground">{formatCurrency(quoteSubtotal)}</span>
+                      {canViewMargins && (
+                        <span className={cn('ml-2 text-sm', quoteMarginPercent >= 10 ? 'text-emerald-500' : 'text-red-500')}>
+                          ({quoteMarginPercent.toFixed(0)}%)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Warning for low margin */}
+                {hasLowMarginLines && (
+                  <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-500/10 p-2 text-xs text-amber-500">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>Margen menor al 10%. {canApproveOrders ? 'Sin aprobación adicional.' : 'Requiere aprobación.'}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Notes */}
+              <Textarea
+                label="Notas"
+                placeholder="Notas para el cliente..."
+                value={quoteFormData.notes}
+                onChange={(e) => handleFormChange('notes', e.target.value)}
+                variant="bordered"
+                size="sm"
+                minRows={2}
+                classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
+              />
+            </div>
           </ModalBody>
-          <ModalFooter className="border-t border-border pt-4">
+          <ModalFooter className="border-t border-border">
             <Button variant="light" onPress={onCreateClose}>
               Cancelar
             </Button>
@@ -1199,6 +990,7 @@ export default function VentasPage() {
               color="primary"
               onPress={handleCreateQuote}
               isDisabled={!selectedClient || quoteLines.length === 0}
+              className="bg-brand-600"
             >
               Crear Cotización
             </Button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { HeroUIProvider } from '@heroui/react';
-import { ThemeProvider } from 'next-themes';
+import { ThemeProvider, useTheme } from 'next-themes';
 import { AuthProvider } from '@/lib/contexts/auth-context';
 import { Toaster } from 'sonner';
 import type { ReactNode } from 'react';
@@ -10,16 +10,28 @@ interface ProvidersProps {
   children: ReactNode;
 }
 
+function HeroUIWrapper({ children }: { children: ReactNode }) {
+  const { theme } = useTheme();
+  return (
+    <HeroUIProvider
+      defaultTheme={theme === 'dark' ? 'dark' : 'light'}
+    >
+      {children}
+    </HeroUIProvider>
+  );
+}
+
 export function Providers({ children }: ProvidersProps) {
   return (
-    <HeroUIProvider>
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+      <HeroUIWrapper>
         <AuthProvider>
           {children}
           <Toaster
             position="top-right"
             richColors
             closeButton
+            theme="system"
             toastOptions={{
               style: {
                 fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
@@ -27,7 +39,7 @@ export function Providers({ children }: ProvidersProps) {
             }}
           />
         </AuthProvider>
-      </ThemeProvider>
-    </HeroUIProvider>
+      </HeroUIWrapper>
+    </ThemeProvider>
   );
 }
