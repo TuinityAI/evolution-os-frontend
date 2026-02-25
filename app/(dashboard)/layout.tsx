@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { ChatWidget } from '@/components/chat';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { SidebarProvider, useSidebar } from '@/lib/contexts/sidebar-context';
 import { Spinner } from '@heroui/react';
@@ -70,6 +71,9 @@ function DashboardContent({ children }: DashboardLayoutProps) {
           </motion.div>
         </AnimatePresence>
       </motion.main>
+
+      {/* Chat Widget */}
+      <ChatWidget />
     </div>
   );
 }
