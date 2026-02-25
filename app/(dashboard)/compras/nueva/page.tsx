@@ -56,9 +56,9 @@ export default function NuevaCompraPage() {
       productId: product.id,
       productReference: product.reference,
       productDescription: product.description,
-      quantityOrdered: qty,
+      quantity: qty,
       quantityReceived: 0,
-      costFOB: cost,
+      unitCostFOB: cost,
       totalFOB: qty * cost,
     };
 
@@ -289,12 +289,12 @@ export default function NuevaCompraPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">{line.quantityOrdered}</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">{line.quantity}</span>
                           </td>
                           {canViewCosts && (
                             <>
                               <td className="px-4 py-3 text-right">
-                                <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{formatCurrency(line.costFOB)}</span>
+                                <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{formatCurrency(line.unitCostFOB)}</span>
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">{formatCurrency(line.totalFOB)}</span>
