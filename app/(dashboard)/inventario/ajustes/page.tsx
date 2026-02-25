@@ -1,0 +1,426 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Tabs,
+  Tab,
+} from '@heroui/react';
+import {
+  Plus,
+  FileText,
+  Search,
+  MoreVertical,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/lib/contexts/auth-context';
+import { cn } from '@/lib/utils/cn';
+import { MOCK_ADJUSTMENTS } from '@/lib/mock-data/inventory';
+import {
+  ADJUSTMENT_STATUS_LABELS,
+  ADJUSTMENT_REASONS,
+  type AdjustmentStatus,
+  type InventoryAdjustment,
+} from '@/lib/types/inventory';
+
+type TabKey = 'all' | 'pendiente' | 'aprobado' | 'rechazado' | 'aplicado';
+
+export default function AjustesPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { checkPermission } = useAuth();
+  const canCreateAdjustments = checkPermission('canCreateAdjustments');
+  const canApproveAdjustments = checkPermission('canApproveAdjustments');
+  const canViewCosts = checkPermission('canViewCosts');
+
+  // Get initial tab from URL
+  const initialTab = (searchParams.get('status') as TabKey) || 'all';
+  const [selectedTab, setSelectedTab] = useState<TabKey>(initialTab);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter adjustments
+  const filteredAdjustments = useMemo(() => {
+    return MOCK_ADJUSTMENTS.filter((adj) => {
+      // Tab filter
+      if (selectedTab !== 'all' && adj.status !== selectedTab) return false;
+
+      // Search filter
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch =
+          adj.id.toLowerCase().includes(searchLower) ||
+          adj.warehouseName.toLowerCase().includes(searchLower) ||
+          adj.createdByName.toLowerCase().includes(searchLower) ||
+          ADJUSTMENT_REASONS[adj.reason].toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      return true;
+    });
+  }, [selectedTab, searchQuery]);
+
+  // Get status badge
+  const getStatusBadge = (status: AdjustmentStatus) => {
+    switch (status) {
+      case 'pendiente':
+        return {
+          label: ADJUSTMENT_STATUS_LABELS[status],
+          icon: Clock,
+          bgColor: 'bg-amber-100',
+          textColor: 'text-amber-700',
+          iconColor: 'text-amber-600',
+        };
+      case 'aprobado':
+        return {
+          label: ADJUSTMENT_STATUS_LABELS[status],
+          icon: CheckCircle,
+          bgColor: 'bg-emerald-100',
+          textColor: 'text-emerald-700',
+          iconColor: 'text-emerald-600',
+        };
+      case 'rechazado':
+        return {
+          label: ADJUSTMENT_STATUS_LABELS[status],
+          icon: XCircle,
+          bgColor: 'bg-red-100',
+          textColor: 'text-red-700',
+          iconColor: 'text-red-600',
+        };
+      case 'aplicado':
+        return {
+          label: ADJUSTMENT_STATUS_LABELS[status],
+          icon: CheckCircle,
+          bgColor: 'bg-blue-100',
+          textColor: 'text-blue-700',
+          iconColor: 'text-blue-600',
+        };
+    }
+  };
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-PA', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // Format currency
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(value);
+  };
+
+  // Handlers
+  const handleViewAdjustment = (adj: InventoryAdjustment) => {
+    router.push(`/inventario/ajustes/${adj.id}`);
+  };
+
+  const handleNewAdjustment = () => {
+    router.push('/inventario/ajustes/nuevo');
+  };
+
+  const handleApprove = (adj: InventoryAdjustment) => {
+    toast.success('Ajuste aprobado', {
+      description: `El ajuste ${adj.id} ha sido aprobado.`,
+    });
+  };
+
+  const handleReject = (adj: InventoryAdjustment) => {
+    toast.error('Ajuste rechazado', {
+      description: `El ajuste ${adj.id} ha sido rechazado.`,
+    });
+  };
+
+  // Count by status
+  const counts = useMemo(() => ({
+    all: MOCK_ADJUSTMENTS.length,
+    pendiente: MOCK_ADJUSTMENTS.filter((a) => a.status === 'pendiente').length,
+    aprobado: MOCK_ADJUSTMENTS.filter((a) => a.status === 'aprobado').length,
+    rechazado: MOCK_ADJUSTMENTS.filter((a) => a.status === 'rechazado').length,
+    aplicado: MOCK_ADJUSTMENTS.filter((a) => a.status === 'aplicado').length,
+  }), []);
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push('/inventario')}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100">
+              <FileText className="h-5 w-5 text-brand-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">Ajustes de Inventario</h1>
+              <p className="text-sm text-gray-500">Gestión de ajustes positivos y negativos</p>
+            </div>
+          </div>
+        </div>
+        {canCreateAdjustments && (
+          <button
+            onClick={handleNewAdjustment}
+            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-800"
+          >
+            <Plus className="h-4 w-4" />
+            Nuevo Ajuste
+          </button>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <Tabs
+        selectedKey={selectedTab}
+        onSelectionChange={(key) => setSelectedTab(key as TabKey)}
+        color="primary"
+        variant="underlined"
+        classNames={{
+          tabList: 'gap-6 border-b border-gray-200',
+          cursor: 'bg-brand-600',
+          tab: 'px-0 h-10',
+          tabContent: 'group-data-[selected=true]:text-brand-600',
+        }}
+      >
+        <Tab
+          key="all"
+          title={
+            <div className="flex items-center gap-2">
+              <span>Todos</span>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                {counts.all}
+              </span>
+            </div>
+          }
+        />
+        <Tab
+          key="pendiente"
+          title={
+            <div className="flex items-center gap-2">
+              <span>Pendientes</span>
+              {counts.pendiente > 0 && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                  {counts.pendiente}
+                </span>
+              )}
+            </div>
+          }
+        />
+        <Tab
+          key="aprobado"
+          title={
+            <div className="flex items-center gap-2">
+              <span>Aprobados</span>
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                {counts.aprobado}
+              </span>
+            </div>
+          }
+        />
+        <Tab
+          key="rechazado"
+          title={
+            <div className="flex items-center gap-2">
+              <span>Rechazados</span>
+              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                {counts.rechazado}
+              </span>
+            </div>
+          }
+        />
+        <Tab
+          key="aplicado"
+          title={
+            <div className="flex items-center gap-2">
+              <span>Aplicados</span>
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                {counts.aplicado}
+              </span>
+            </div>
+          }
+        />
+      </Tabs>
+
+      {/* Search */}
+      <div className="relative w-full sm:w-64">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Buscar ajuste..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-9 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        />
+      </div>
+
+      {/* Adjustments Table */}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ID</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Fecha</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Bodega</th>
+              <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Tipo</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Motivo</th>
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Items</th>
+              {canViewCosts && (
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Valor</th>
+              )}
+              <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Estado</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Creado por</th>
+              <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {filteredAdjustments.map((adj, index) => {
+              const statusBadge = getStatusBadge(adj.status);
+
+              return (
+                <motion.tr
+                  key={adj.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: index * 0.02 }}
+                  className="group transition-colors hover:bg-gray-50"
+                >
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleViewAdjustment(adj)}
+                      className="font-mono text-sm font-medium text-brand-600 hover:text-brand-700"
+                    >
+                      {adj.id}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                      <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                      {formatDate(adj.createdAt)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-gray-900">{adj.warehouseName}</span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={cn(
+                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                      adj.type === 'positivo'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-red-100 text-red-700'
+                    )}>
+                      {adj.type === 'positivo' ? '+' : '-'} {adj.type.charAt(0).toUpperCase() + adj.type.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-gray-600">{ADJUSTMENT_REASONS[adj.reason]}</span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span className="text-sm font-medium text-gray-900">{adj.totalItems}</span>
+                  </td>
+                  {canViewCosts && (
+                    <td className="px-4 py-3 text-right">
+                      <span className="font-mono text-sm text-gray-700">{formatCurrency(adj.totalValue)}</span>
+                    </td>
+                  )}
+                  <td className="px-4 py-3 text-center">
+                    <span className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                      statusBadge.bgColor,
+                      statusBadge.textColor
+                    )}>
+                      <statusBadge.icon className={cn('h-3.5 w-3.5', statusBadge.iconColor)} />
+                      {statusBadge.label}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-gray-600">{adj.createdByName}</span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <Dropdown placement="bottom-end">
+                      <DropdownTrigger>
+                        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </DropdownTrigger>
+                      <DropdownMenu
+                        aria-label="Acciones"
+                        classNames={{ base: 'bg-white border border-gray-200 shadow-lg' }}
+                        items={[
+                          { key: 'view', label: 'Ver detalle', icon: Eye, action: () => handleViewAdjustment(adj), show: true, className: '', color: undefined as 'danger' | undefined },
+                          { key: 'approve', label: 'Aprobar', icon: CheckCircle, action: () => handleApprove(adj), show: canApproveAdjustments && adj.status === 'pendiente', className: 'text-emerald-600', color: undefined as 'danger' | undefined },
+                          { key: 'reject', label: 'Rechazar', icon: XCircle, action: () => handleReject(adj), show: canApproveAdjustments && adj.status === 'pendiente', className: 'text-danger', color: 'danger' as 'danger' | undefined },
+                        ].filter((menuItem) => menuItem.show)}
+                      >
+                        {(menuItem) => (
+                          <DropdownItem
+                            key={menuItem.key}
+                            startContent={<menuItem.icon className="h-4 w-4" />}
+                            onPress={menuItem.action}
+                            className={menuItem.className}
+                            color={menuItem.color}
+                          >
+                            {menuItem.label}
+                          </DropdownItem>
+                        )}
+                      </DropdownMenu>
+                    </Dropdown>
+                  </td>
+                </motion.tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Empty State */}
+      {filteredAdjustments.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16">
+          <FileText className="mb-4 h-12 w-12 text-gray-400" />
+          <h3 className="mb-1 text-lg font-medium text-gray-900">No hay ajustes</h3>
+          <p className="mb-4 text-sm text-gray-500">
+            {selectedTab === 'all'
+              ? 'No se encontraron ajustes con los filtros actuales'
+              : `No hay ajustes ${ADJUSTMENT_STATUS_LABELS[selectedTab as AdjustmentStatus].toLowerCase()}`}
+          </p>
+          {canCreateAdjustments && (
+            <button
+              onClick={handleNewAdjustment}
+              className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
+            >
+              <Plus className="h-4 w-4" />
+              Crear Ajuste
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Results count */}
+      {filteredAdjustments.length > 0 && (
+        <div className="text-center text-sm text-gray-500">
+          Mostrando {filteredAdjustments.length} ajuste{filteredAdjustments.length !== 1 ? 's' : ''}
+        </div>
+      )}
+    </div>
+  );
+}

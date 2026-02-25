@@ -1,0 +1,283 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Warehouse,
+  Briefcase,
+  Store,
+  Ship,
+  Users,
+  BarChart3,
+  Settings,
+  ChevronRight,
+  LogOut,
+  Menu,
+} from 'lucide-react';
+import { Tooltip } from '@heroui/react';
+import { useAuth } from '@/lib/contexts/auth-context';
+import { useSidebar } from '@/lib/contexts/sidebar-context';
+import { cn } from '@/lib/utils/cn';
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+  permission?: string;
+  badge?: number;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  {
+    label: 'Dashboard',
+    href: '/dashboard',
+    icon: <LayoutDashboard className="h-5 w-5" />,
+  },
+  {
+    label: 'Productos',
+    href: '/productos',
+    icon: <Package className="h-5 w-5" />,
+  },
+  {
+    label: 'Compras',
+    href: '/compras',
+    icon: <ShoppingCart className="h-5 w-5" />,
+    permission: 'canAccessCompras',
+    badge: 5,
+  },
+  {
+    label: 'Inventario',
+    href: '/inventario',
+    icon: <Warehouse className="h-5 w-5" />,
+    permission: 'canAccessInventory',
+  },
+  {
+    label: 'Ventas B2B',
+    href: '/ventas',
+    icon: <Briefcase className="h-5 w-5" />,
+  },
+  {
+    label: 'Punto de Venta',
+    href: '/ventas/pos',
+    icon: <Store className="h-5 w-5" />,
+    permission: 'canAccessPOS',
+  },
+  {
+    label: 'Tráfico',
+    href: '/trafico',
+    icon: <Ship className="h-5 w-5" />,
+    permission: 'canAccessTrafico',
+  },
+  {
+    label: 'Clientes',
+    href: '/clientes',
+    icon: <Users className="h-5 w-5" />,
+  },
+  {
+    label: 'Reportes',
+    href: '/reportes',
+    icon: <BarChart3 className="h-5 w-5" />,
+    permission: 'canViewReports',
+  },
+];
+
+export function Sidebar() {
+  const pathname = usePathname();
+  const { logout, checkPermission } = useAuth();
+  const { isCollapsed, setIsCollapsed, sidebarWidth } = useSidebar();
+
+  const isActive = (href: string) => {
+    if (href === '/dashboard') {
+      return pathname === '/dashboard';
+    }
+    return pathname.startsWith(href);
+  };
+
+  const filteredNavItems = NAV_ITEMS.filter(
+    (item) => !item.permission || checkPermission(item.permission as any)
+  );
+
+  return (
+    <motion.aside
+      initial={false}
+      animate={{ width: sidebarWidth }}
+      transition={{ duration: 0.2, ease: 'easeInOut' }}
+      className="fixed left-0 top-0 z-40 flex h-screen flex-col bg-white dark:bg-[#0a0a0a]"
+    >
+      {/* Header - Same color and height as navbar */}
+      <div
+        className="flex h-12 items-center justify-between px-4"
+        style={{ backgroundColor: '#1a1a1a' }}
+      >
+        <AnimatePresence mode="wait">
+          {!isCollapsed && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-2.5"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
+                <svg
+                  viewBox="0 0 40 40"
+                  className="h-4 w-4 text-white"
+                  fill="currentColor"
+                >
+                  <path d="M20 4L4 12v16l16 8 16-8V12L20 4zm0 4l12 6-12 6-12-6 12-6zm-12 10l12 6 12-6v8l-12 6-12-6v-8z" />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold text-white">
+                EvolutionOS
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {isCollapsed && (
+          <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
+            <svg
+              viewBox="0 0 40 40"
+              className="h-4 w-4 text-white"
+              fill="currentColor"
+            >
+              <path d="M20 4L4 12v16l16 8 16-8V12L20 4zm0 4l12 6-12 6-12-6 12-6zm-12 10l12 6 12-6v8l-12 6-12-6v-8z" />
+            </svg>
+          </div>
+        )}
+
+        {!isCollapsed && (
+          <button
+            onClick={() => setIsCollapsed(true)}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-[#2a2a2a] hover:text-white"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto border-r border-gray-200 dark:border-[#2a2a2a] px-3 py-2">
+        <ul className="space-y-0.5">
+          {filteredNavItems.map((item) => {
+            const active = isActive(item.href);
+            const linkContent = (
+              <Link
+                href={item.href}
+                className={cn(
+                  'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                  active
+                    ? 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-900 dark:text-white'
+                    : 'text-gray-600 dark:text-[#888888] hover:bg-gray-50 dark:hover:bg-[#1a1a1a] hover:text-gray-900 dark:hover:text-white'
+                )}
+              >
+                <span
+                  className={cn(
+                    'shrink-0 transition-colors',
+                    active ? 'text-brand-600 dark:text-[#00D1B2]' : 'text-gray-400 dark:text-[#666666] group-hover:text-gray-600 dark:group-hover:text-white'
+                  )}
+                >
+                  {item.icon}
+                </span>
+                <AnimatePresence mode="wait">
+                  {!isCollapsed && (
+                    <motion.span
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: 'auto' }}
+                      exit={{ opacity: 0, width: 0 }}
+                      className="flex-1 whitespace-nowrap"
+                    >
+                      {item.label}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+                {!isCollapsed && item.badge && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-medium text-white">
+                    {item.badge}
+                  </span>
+                )}
+                {!isCollapsed && (
+                  <ChevronRight className={cn(
+                    'h-4 w-4 text-gray-300 dark:text-[#444444] opacity-0 transition-all group-hover:opacity-100',
+                    active && 'opacity-100 text-gray-400 dark:text-[#666666]'
+                  )} />
+                )}
+              </Link>
+            );
+
+            return (
+              <li key={item.href} className="relative">
+                {isCollapsed ? (
+                  <Tooltip
+                    content={item.label}
+                    placement="right"
+                    classNames={{
+                      content: 'bg-gray-900 text-white text-sm px-3 py-1.5',
+                    }}
+                  >
+                    {linkContent}
+                  </Tooltip>
+                ) : (
+                  linkContent
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      {/* Bottom Section - Pill (horizontal when expanded, vertical when collapsed) */}
+      <div className={cn(
+        "flex border-r border-gray-200 dark:border-[#2a2a2a] px-3 py-4",
+        isCollapsed ? "flex-col items-center" : "items-center justify-center"
+      )}>
+        {/* Pill with Settings & Logout */}
+        <div className={cn(
+          "flex items-center gap-0.5 rounded-full border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#141414] p-1",
+          isCollapsed && "flex-col"
+        )}>
+          <Tooltip content="Configuración" placement={isCollapsed ? "right" : "top"}>
+            <Link
+              href="/configuracion"
+              className={cn(
+                'flex h-8 w-8 items-center justify-center rounded-full transition-colors',
+                isActive('/configuracion')
+                  ? 'bg-white dark:bg-[#1a1a1a] text-brand-600 dark:text-[#00D1B2] shadow-sm'
+                  : 'text-gray-400 dark:text-[#666666] hover:bg-white dark:hover:bg-[#1a1a1a] hover:text-gray-600 dark:hover:text-white hover:shadow-sm'
+              )}
+            >
+              <Settings className="h-4 w-4" />
+            </Link>
+          </Tooltip>
+
+          <div className={cn(
+            "bg-gray-200 dark:bg-[#2a2a2a]",
+            isCollapsed ? "h-px w-5" : "h-5 w-px"
+          )} />
+
+          <Tooltip content="Cerrar sesión" placement={isCollapsed ? "right" : "top"}>
+            <button
+              onClick={logout}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 dark:text-[#666666] transition-colors hover:bg-white dark:hover:bg-[#1a1a1a] hover:text-gray-600 dark:hover:text-white hover:shadow-sm"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </Tooltip>
+        </div>
+
+        {/* Expand button when collapsed */}
+        {isCollapsed && (
+          <button
+            onClick={() => setIsCollapsed(false)}
+            className="mt-3 flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 dark:border-[#2a2a2a] text-gray-400 dark:text-[#666666] transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a] hover:text-gray-600 dark:hover:text-white"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+    </motion.aside>
+  );
+}

@@ -1,0 +1,980 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+  Input,
+  Select,
+  SelectItem,
+  Textarea,
+  useDisclosure,
+  Tabs,
+  Tab,
+} from '@heroui/react';
+import {
+  Search,
+  Plus,
+  Upload,
+  Download,
+  MoreVertical,
+  ShoppingCart,
+  Truck,
+  PackageCheck,
+  DollarSign,
+  ChevronDown,
+  Eye,
+  Edit,
+  Trash2,
+  X,
+  FileSpreadsheet,
+  Package,
+  ClipboardList,
+  Calendar,
+  Building2,
+  Hash,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  MOCK_PURCHASE_ORDERS,
+  MOCK_SUPPLIERS,
+  MOCK_BODEGAS,
+  getPurchaseOrderStats,
+  formatCurrency,
+  formatDate,
+  getNextOrderNumber,
+} from '@/lib/mock-data/purchase-orders';
+import { MOCK_PRODUCTS } from '@/lib/mock-data/products';
+import type { PurchaseOrder, PurchaseOrderStatus, PurchaseOrderLine } from '@/lib/types/purchase-order';
+import { cn } from '@/lib/utils/cn';
+import { useAuth } from '@/lib/contexts/auth-context';
+
+type StatusFilter = PurchaseOrderStatus | 'all';
+
+// Status badge colors
+const STATUS_CONFIG: Record<PurchaseOrderStatus, { bg: string; text: string; dot: string; label: string }> = {
+  pendiente: { bg: 'bg-gray-100', text: 'text-gray-700', dot: 'bg-gray-500', label: 'Pendiente' },
+  en_transito: { bg: 'bg-sky-50', text: 'text-sky-700', dot: 'bg-sky-500', label: 'En Tránsito' },
+  en_recepcion: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500', label: 'En Recepción' },
+  completada: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Completada' },
+  cancelada: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500', label: 'Cancelada' },
+};
+
+// Initial form state for new order
+const initialOrderForm = {
+  supplierId: '',
+  bodegaId: '',
+  supplierInvoice: '',
+  expectedArrivalDate: '',
+  notes: '',
+};
+
+export default function ComprasPage() {
+  const router = useRouter();
+  const { checkPermission } = useAuth();
+  const canViewCosts = checkPermission('canViewCosts');
+
+  // State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
+  const [selectedBodega, setSelectedBodega] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
+  const [orderFormData, setOrderFormData] = useState(initialOrderForm);
+  const [orderLines, setOrderLines] = useState<PurchaseOrderLine[]>([]);
+  const [newLineProduct, setNewLineProduct] = useState('');
+  const [newLineQty, setNewLineQty] = useState('');
+  const [newLineCost, setNewLineCost] = useState('');
+
+  // Modal states
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
+  const { isOpen: isReceiveOpen, onOpen: onReceiveOpen, onClose: onReceiveClose } = useDisclosure();
+
+  // Stats
+  const stats = getPurchaseOrderStats();
+
+  // Filter orders
+  const filteredOrders = useMemo(() => {
+    return MOCK_PURCHASE_ORDERS.filter((order) => {
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch =
+        !searchQuery ||
+        order.orderNumber.toLowerCase().includes(searchLower) ||
+        order.supplierName.toLowerCase().includes(searchLower) ||
+        (order.supplierInvoice?.toLowerCase().includes(searchLower) ?? false);
+
+      const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+      const matchesSupplier = !selectedSupplier || order.supplierId === selectedSupplier;
+      const matchesBodega = !selectedBodega || order.bodegaId === selectedBodega;
+
+      return matchesSearch && matchesStatus && matchesSupplier && matchesBodega;
+    });
+  }, [searchQuery, statusFilter, selectedSupplier, selectedBodega]);
+
+  // Handlers
+  const handleFormChange = (field: string, value: string) => {
+    setOrderFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddLine = () => {
+    if (!newLineProduct || !newLineQty || !newLineCost) {
+      toast.error('Datos incompletos', {
+        description: 'Selecciona un producto y completa cantidad y costo.',
+      });
+      return;
+    }
+
+    const product = MOCK_PRODUCTS.find((p) => p.id === newLineProduct);
+    if (!product) return;
+
+    const qty = parseFloat(newLineQty);
+    const cost = parseFloat(newLineCost);
+
+    const newLine: PurchaseOrderLine = {
+      id: `LINE-NEW-${Date.now()}`,
+      productId: product.id,
+      productReference: product.reference,
+      productDescription: product.description,
+      quantity: qty,
+      quantityReceived: 0,
+      unitCostFOB: cost,
+      totalFOB: qty * cost,
+    };
+
+    setOrderLines((prev) => [...prev, newLine]);
+    setNewLineProduct('');
+    setNewLineQty('');
+    setNewLineCost('');
+    toast.success('Producto agregado');
+  };
+
+  const handleRemoveLine = (lineId: string) => {
+    setOrderLines((prev) => prev.filter((l) => l.id !== lineId));
+  };
+
+  const handleCreateOrder = () => {
+    if (!orderFormData.supplierId || !orderFormData.bodegaId) {
+      toast.error('Campos requeridos', {
+        description: 'Selecciona proveedor y bodega.',
+      });
+      return;
+    }
+
+    if (orderLines.length === 0) {
+      toast.error('Sin productos', {
+        description: 'Agrega al menos un producto a la orden.',
+      });
+      return;
+    }
+
+    const orderNumber = getNextOrderNumber();
+    toast.success('Orden creada', {
+      description: `La orden ${orderNumber} ha sido creada exitosamente.`,
+    });
+
+    setOrderFormData(initialOrderForm);
+    setOrderLines([]);
+    onCreateClose();
+  };
+
+  const handleViewOrder = (order: PurchaseOrder) => {
+    router.push(`/compras/${order.id}`);
+  };
+
+  const handleDeleteOrder = (order: PurchaseOrder) => {
+    setSelectedOrder(order);
+    onDeleteOpen();
+  };
+
+  const confirmDelete = () => {
+    if (selectedOrder) {
+      toast.success('Orden eliminada', {
+        description: `La orden ${selectedOrder.orderNumber} ha sido eliminada.`,
+      });
+      onDeleteClose();
+      setSelectedOrder(null);
+    }
+  };
+
+  const handleReceiveOrder = (order: PurchaseOrder) => {
+    setSelectedOrder(order);
+    onReceiveOpen();
+  };
+
+  const handleExportOrders = () => {
+    toast.success('Exportando órdenes', {
+      description: 'El archivo Excel se descargará en breve.',
+    });
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setSelectedSupplier(null);
+    setSelectedBodega(null);
+  };
+
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || selectedSupplier || selectedBodega;
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Compras</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportOrders}
+            className="flex h-9 items-center gap-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-white"
+          >
+            <Download className="h-4 w-4" />
+            Exportar
+          </button>
+          <button
+            onClick={onCreateOpen}
+            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-800"
+          >
+            <Plus className="h-4 w-4" />
+            Nueva Orden
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          {
+            label: 'Órdenes Activas',
+            value: stats.activeOrders,
+            icon: ShoppingCart,
+            color: 'blue',
+            filter: 'all' as StatusFilter,
+          },
+          {
+            label: 'En Tránsito',
+            value: stats.inTransit,
+            icon: Truck,
+            color: 'sky',
+            filter: 'en_transito' as StatusFilter,
+          },
+          {
+            label: 'Recibidas (Mes)',
+            value: stats.receivedThisMonth,
+            icon: PackageCheck,
+            color: 'emerald',
+            filter: 'completada' as StatusFilter,
+          },
+          {
+            label: 'Valor en Tránsito',
+            value: formatCurrency(stats.valueInTransit),
+            icon: DollarSign,
+            color: 'violet',
+            filter: 'en_transito' as StatusFilter,
+            isMonetary: true,
+          },
+        ].map((stat, index) => (
+          <motion.button
+            key={stat.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            onClick={() => setStatusFilter(statusFilter === stat.filter ? 'all' : stat.filter)}
+            className={cn(
+              'rounded-xl border bg-white dark:bg-[#141414] p-3 text-left transition-all hover:shadow-md',
+              statusFilter === stat.filter
+                ? 'border-brand-500 ring-1 ring-brand-500'
+                : 'border-gray-200 dark:border-[#2a2a2a] hover:border-gray-300 dark:hover:border-[#3a3a3a]'
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  'flex h-10 w-10 items-center justify-center rounded-lg',
+                  stat.color === 'blue' && 'bg-blue-50 dark:bg-blue-950',
+                  stat.color === 'sky' && 'bg-sky-50 dark:bg-sky-950',
+                  stat.color === 'emerald' && 'bg-emerald-50 dark:bg-emerald-950',
+                  stat.color === 'violet' && 'bg-violet-50 dark:bg-violet-950'
+                )}
+              >
+                <stat.icon
+                  className={cn(
+                    'h-5 w-5',
+                    stat.color === 'blue' && 'text-blue-600',
+                    stat.color === 'sky' && 'text-sky-600',
+                    stat.color === 'emerald' && 'text-emerald-600',
+                    stat.color === 'violet' && 'text-violet-600'
+                  )}
+                />
+              </div>
+              <div>
+                <p className={cn('font-semibold text-gray-900 dark:text-white', stat.isMonetary ? 'text-lg' : 'text-xl')}>
+                  {stat.value}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-[#888888]">{stat.label}</p>
+              </div>
+            </div>
+          </motion.button>
+        ))}
+      </div>
+
+      {/* Search and Filters Bar */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar orden..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-9 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] pl-9 pr-4 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status Filter */}
+          <Dropdown>
+            <DropdownTrigger>
+              <button
+                className={cn(
+                  'flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors',
+                  statusFilter !== 'all'
+                    ? 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300'
+                    : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
+                )}
+              >
+                {statusFilter !== 'all' ? STATUS_CONFIG[statusFilter].label : 'Estado'}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            </DropdownTrigger>
+            <DropdownMenu
+              selectionMode="single"
+              selectedKeys={statusFilter !== 'all' ? [statusFilter] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as string;
+                setStatusFilter(selected === statusFilter ? 'all' : (selected as StatusFilter));
+              }}
+              classNames={{ base: 'bg-white border border-gray-200 shadow-lg' }}
+            >
+              <DropdownItem key="pendiente">Pendiente</DropdownItem>
+              <DropdownItem key="en_transito">En Tránsito</DropdownItem>
+              <DropdownItem key="en_recepcion">En Recepción</DropdownItem>
+              <DropdownItem key="completada">Completada</DropdownItem>
+              <DropdownItem key="cancelada">Cancelada</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+
+          {/* Supplier Filter */}
+          <Dropdown>
+            <DropdownTrigger>
+              <button
+                className={cn(
+                  'flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors',
+                  selectedSupplier
+                    ? 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300'
+                    : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
+                )}
+              >
+                {selectedSupplier
+                  ? MOCK_SUPPLIERS.find((s) => s.id === selectedSupplier)?.name.slice(0, 15) + '...'
+                  : 'Proveedor'}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            </DropdownTrigger>
+            <DropdownMenu
+              selectionMode="single"
+              selectedKeys={selectedSupplier ? [selectedSupplier] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as string;
+                setSelectedSupplier(selected === selectedSupplier ? null : selected);
+              }}
+              classNames={{ base: 'bg-white border border-gray-200 shadow-lg' }}
+            >
+              {MOCK_SUPPLIERS.map((supplier) => (
+                <DropdownItem key={supplier.id}>{supplier.name}</DropdownItem>
+              ))}
+            </DropdownMenu>
+          </Dropdown>
+
+          {/* Bodega Filter */}
+          <Dropdown>
+            <DropdownTrigger>
+              <button
+                className={cn(
+                  'flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors',
+                  selectedBodega
+                    ? 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300'
+                    : 'bg-gray-100 dark:bg-[#1a1a1a] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2a2a2a]'
+                )}
+              >
+                {selectedBodega
+                  ? MOCK_BODEGAS.find((b) => b.id === selectedBodega)?.name
+                  : 'Bodega'}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            </DropdownTrigger>
+            <DropdownMenu
+              selectionMode="single"
+              selectedKeys={selectedBodega ? [selectedBodega] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as string;
+                setSelectedBodega(selected === selectedBodega ? null : selected);
+              }}
+              classNames={{ base: 'bg-white border border-gray-200 shadow-lg' }}
+            >
+              {MOCK_BODEGAS.map((bodega) => (
+                <DropdownItem key={bodega.id}>{bodega.name}</DropdownItem>
+              ))}
+            </DropdownMenu>
+          </Dropdown>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex h-9 items-center gap-1 px-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white"
+            >
+              <X className="h-3.5 w-3.5" />
+              Limpiar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Orders Table */}
+      <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414]">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  No. Orden
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  Fecha
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  Proveedor
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  No. Factura
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  Productos
+                </th>
+                {canViewCosts && (
+                  <>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                      Total FOB
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                      %Gastos
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                      Total CIF
+                    </th>
+                  </>
+                )}
+                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  Estado
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  Llegada
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
+              {filteredOrders.map((order, index) => {
+                const statusConfig = STATUS_CONFIG[order.status];
+
+                return (
+                  <motion.tr
+                    key={order.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: index * 0.02 }}
+                    className="group transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
+                  >
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleViewOrder(order)}
+                        className="font-mono text-sm font-medium text-brand-600 dark:text-[#00D1B2] hover:text-brand-700 dark:hover:text-[#00E5C3] hover:underline"
+                      >
+                        {order.orderNumber}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{formatDate(order.createdAt)}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="max-w-[200px] truncate text-sm text-gray-900 dark:text-white">{order.supplierName}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{order.supplierInvoice || '-'}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-gray-100 dark:bg-[#2a2a2a] px-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+                        {order.lines.length}
+                      </span>
+                    </td>
+                    {canViewCosts && (
+                      <>
+                        <td className="px-4 py-3 text-right">
+                          <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
+                            {formatCurrency(order.totalFOB)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            {order.expensePercentage ? `${order.expensePercentage}%` : '-'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
+                            {order.totalCIF ? formatCurrency(order.totalCIF) : '-'}
+                          </span>
+                        </td>
+                      </>
+                    )}
+                    <td className="px-4 py-3 text-center">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                          statusConfig.bg,
+                          statusConfig.text
+                        )}
+                      >
+                        <span className={cn('h-1.5 w-1.5 rounded-full', statusConfig.dot)} />
+                        {statusConfig.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {order.expectedArrivalDate ? formatDate(order.expectedArrivalDate) : '-'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <Dropdown placement="bottom-end">
+                        <DropdownTrigger>
+                          <button className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 dark:text-[#666666] transition-colors hover:bg-gray-100 dark:hover:bg-[#2a2a2a] hover:text-gray-600 dark:hover:text-white">
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </DropdownTrigger>
+                        <DropdownMenu
+                          aria-label="Acciones"
+                          classNames={{ base: 'bg-white border border-gray-200 shadow-lg' }}
+                          items={[
+                            { key: 'view', label: 'Ver detalle', icon: Eye, action: () => handleViewOrder(order), show: true },
+                            { key: 'receive', label: 'Recibir mercancía', icon: PackageCheck, action: () => handleReceiveOrder(order), show: order.status === 'en_transito' || order.status === 'en_recepcion' },
+                            { key: 'edit', label: 'Editar', icon: Edit, action: () => handleViewOrder(order), show: order.status === 'pendiente' },
+                            { key: 'delete', label: 'Cancelar orden', icon: Trash2, action: () => handleDeleteOrder(order), show: order.status !== 'completada' && order.status !== 'cancelada', danger: true },
+                          ].filter(item => item.show)}
+                        >
+                          {(item) => (
+                            <DropdownItem
+                              key={item.key}
+                              startContent={<item.icon className="h-4 w-4" />}
+                              className={item.danger ? 'text-danger' : ''}
+                              color={item.danger ? 'danger' : 'default'}
+                              onPress={item.action}
+                            >
+                              {item.label}
+                            </DropdownItem>
+                          )}
+                        </DropdownMenu>
+                      </Dropdown>
+                    </td>
+                  </motion.tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Empty State */}
+      {filteredOrders.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#141414] py-16">
+          <ShoppingCart className="mb-4 h-12 w-12 text-gray-400 dark:text-[#666666]" />
+          <h3 className="mb-1 text-lg font-medium text-gray-900 dark:text-white">No se encontraron órdenes</h3>
+          <p className="text-sm text-gray-500 dark:text-[#888888]">Intenta ajustar los filtros o crea una nueva orden</p>
+        </div>
+      )}
+
+      {/* Results count */}
+      {filteredOrders.length > 0 && (
+        <div className="text-center text-sm text-gray-500 dark:text-[#888888]">
+          Mostrando {filteredOrders.length} de {MOCK_PURCHASE_ORDERS.length} órdenes
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} size="sm">
+        <ModalContent className="bg-white dark:bg-[#141414]">
+          <ModalHeader className="dark:text-white">Cancelar orden</ModalHeader>
+          <ModalBody>
+            <p className="text-gray-600 dark:text-gray-400">
+              ¿Estás seguro de cancelar la orden{' '}
+              <span className="font-medium text-gray-900 dark:text-white">"{selectedOrder?.orderNumber}"</span>? Esta acción
+              no se puede deshacer.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={onDeleteClose}>
+              Volver
+            </Button>
+            <Button color="danger" onPress={confirmDelete}>
+              Cancelar Orden
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Create Order Modal */}
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="4xl" scrollBehavior="inside">
+        <ModalContent className="bg-white dark:bg-[#141414]">
+          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100 dark:bg-brand-900">
+                <ClipboardList className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Nueva Orden de Compra</h2>
+                <p className="text-sm text-gray-500 dark:text-[#888888]">Completa la información de la orden</p>
+              </div>
+            </div>
+          </ModalHeader>
+          <ModalBody className="py-6">
+            <Tabs aria-label="Secciones" color="primary" variant="underlined">
+              <Tab key="general" title="Información General">
+                <div className="mt-4 space-y-6">
+                  {/* Supplier and Bodega */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <Select
+                      label="Proveedor *"
+                      placeholder="Seleccionar proveedor"
+                      selectedKeys={orderFormData.supplierId ? [orderFormData.supplierId] : []}
+                      onChange={(e) => handleFormChange('supplierId', e.target.value)}
+                      variant="bordered"
+                      classNames={{ trigger: 'bg-white' }}
+                      startContent={<Building2 className="h-4 w-4 text-gray-400" />}
+                    >
+                      {MOCK_SUPPLIERS.map((supplier) => (
+                        <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
+                      ))}
+                    </Select>
+                    <Select
+                      label="Bodega destino *"
+                      placeholder="Seleccionar bodega"
+                      selectedKeys={orderFormData.bodegaId ? [orderFormData.bodegaId] : []}
+                      onChange={(e) => handleFormChange('bodegaId', e.target.value)}
+                      variant="bordered"
+                      classNames={{ trigger: 'bg-white' }}
+                      startContent={<Package className="h-4 w-4 text-gray-400" />}
+                    >
+                      {MOCK_BODEGAS.map((bodega) => (
+                        <SelectItem key={bodega.id}>{bodega.name}</SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+
+                  {/* Invoice and Date */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="No. Factura del proveedor"
+                      placeholder="Ej: INV-2024-0001"
+                      value={orderFormData.supplierInvoice}
+                      onChange={(e) => handleFormChange('supplierInvoice', e.target.value)}
+                      variant="bordered"
+                      classNames={{ inputWrapper: 'bg-white' }}
+                      startContent={<Hash className="h-4 w-4 text-gray-400" />}
+                    />
+                    <Input
+                      label="Fecha llegada estimada"
+                      type="date"
+                      value={orderFormData.expectedArrivalDate}
+                      onChange={(e) => handleFormChange('expectedArrivalDate', e.target.value)}
+                      variant="bordered"
+                      classNames={{ inputWrapper: 'bg-white' }}
+                      startContent={<Calendar className="h-4 w-4 text-gray-400" />}
+                    />
+                  </div>
+
+                  {/* Notes */}
+                  <Textarea
+                    label="Notas / Comentarios"
+                    placeholder="Instrucciones especiales, observaciones..."
+                    value={orderFormData.notes}
+                    onChange={(e) => handleFormChange('notes', e.target.value)}
+                    variant="bordered"
+                    classNames={{ inputWrapper: 'bg-white' }}
+                    minRows={2}
+                  />
+                </div>
+              </Tab>
+
+              <Tab key="products" title="Productos">
+                <div className="mt-4 space-y-6">
+                  {/* Add Product Section */}
+                  <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-4">
+                    <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Agregar producto</h3>
+                    <div className="flex items-end gap-3">
+                      <div className="flex-1">
+                        <Select
+                          label="Producto"
+                          placeholder="Buscar producto..."
+                          selectedKeys={newLineProduct ? [newLineProduct] : []}
+                          onChange={(e) => setNewLineProduct(e.target.value)}
+                          variant="bordered"
+                          classNames={{ trigger: 'bg-white' }}
+                        >
+                          {MOCK_PRODUCTS.map((product) => (
+                            <SelectItem key={product.id} textValue={product.description}>
+                              <div className="flex flex-col">
+                                <span className="text-sm">{product.description}</span>
+                                <span className="text-xs text-gray-500">{product.reference}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </Select>
+                      </div>
+                      <div className="w-28">
+                        <Input
+                          label="Cantidad"
+                          type="number"
+                          placeholder="0"
+                          value={newLineQty}
+                          onChange={(e) => setNewLineQty(e.target.value)}
+                          variant="bordered"
+                          classNames={{ inputWrapper: 'bg-white' }}
+                        />
+                      </div>
+                      {canViewCosts && (
+                        <div className="w-32">
+                          <Input
+                            label="Costo FOB"
+                            type="number"
+                            placeholder="0.00"
+                            value={newLineCost}
+                            onChange={(e) => setNewLineCost(e.target.value)}
+                            variant="bordered"
+                            classNames={{ inputWrapper: 'bg-white' }}
+                            startContent={<span className="text-xs text-gray-400">$</span>}
+                          />
+                        </div>
+                      )}
+                      <Button color="primary" onPress={handleAddLine} className="bg-brand-600">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Import from Excel Button */}
+                  <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-6">
+                    <button
+                      onClick={() => toast.info('Importar desde Excel', { description: 'Funcionalidad próximamente.' })}
+                      className="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400 transition-colors hover:text-gray-700 dark:hover:text-white"
+                    >
+                      <FileSpreadsheet className="h-8 w-8" />
+                      <span className="text-sm font-medium">Importar desde Excel</span>
+                      <span className="text-xs text-gray-400 dark:text-[#666666]">Arrastra un archivo o haz clic para seleccionar</span>
+                    </button>
+                  </div>
+
+                  {/* Lines Table */}
+                  {orderLines.length > 0 && (
+                    <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-[#2a2a2a]">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500 dark:text-[#888888]">
+                              Producto
+                            </th>
+                            <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500 dark:text-[#888888]">
+                              Cantidad
+                            </th>
+                            {canViewCosts && (
+                              <>
+                                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500 dark:text-[#888888]">
+                                  Costo FOB
+                                </th>
+                                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500 dark:text-[#888888]">
+                                  Total
+                                </th>
+                              </>
+                            )}
+                            <th className="px-4 py-2 text-center text-xs font-medium uppercase text-gray-500 dark:text-[#888888]">
+                              Acción
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
+                          {orderLines.map((line) => (
+                            <tr key={line.id}>
+                              <td className="px-4 py-2">
+                                <div>
+                                  <p className="text-sm text-gray-900 dark:text-white">{line.productDescription}</p>
+                                  <p className="text-xs text-gray-500 dark:text-[#888888]">{line.productReference}</p>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                <span className="text-sm text-gray-900 dark:text-white">{line.quantity}</span>
+                              </td>
+                              {canViewCosts && (
+                                <>
+                                  <td className="px-4 py-2 text-right">
+                                    <span className="font-mono text-sm text-gray-900 dark:text-white">
+                                      {formatCurrency(line.unitCostFOB)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2 text-right">
+                                    <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
+                                      {formatCurrency(line.totalFOB)}
+                                    </span>
+                                  </td>
+                                </>
+                              )}
+                              <td className="px-4 py-2 text-center">
+                                <button
+                                  onClick={() => handleRemoveLine(line.id)}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        {canViewCosts && (
+                          <tfoot>
+                            <tr className="border-t border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
+                              <td colSpan={3} className="px-4 py-2 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Total FOB:
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
+                                  {formatCurrency(orderLines.reduce((sum, l) => sum + l.totalFOB, 0))}
+                                </span>
+                              </td>
+                              <td></td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Empty state for lines */}
+                  {orderLines.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] py-8 text-center">
+                      <Package className="mx-auto mb-2 h-8 w-8 text-gray-400 dark:text-[#666666]" />
+                      <p className="text-sm text-gray-500 dark:text-[#888888]">No hay productos agregados</p>
+                      <p className="text-xs text-gray-400 dark:text-[#666666]">Agrega productos manualmente o importa desde Excel</p>
+                    </div>
+                  )}
+                </div>
+              </Tab>
+            </Tabs>
+          </ModalBody>
+          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
+            <Button variant="light" onPress={onCreateClose}>
+              Cancelar
+            </Button>
+            <Button color="primary" onPress={handleCreateOrder} className="bg-brand-600">
+              Crear Orden
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Receive Merchandise Modal - Simplified for now */}
+      <Modal isOpen={isReceiveOpen} onClose={onReceiveClose} size="2xl">
+        <ModalContent className="bg-white dark:bg-[#141414]">
+          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
+                <PackageCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recibir Mercancía</h2>
+                <p className="text-sm text-gray-500 dark:text-[#888888]">Orden {selectedOrder?.orderNumber}</p>
+              </div>
+            </div>
+          </ModalHeader>
+          <ModalBody className="py-6">
+            {selectedOrder && (
+              <div className="space-y-4">
+                <div className="rounded-lg bg-sky-50 dark:bg-sky-950 p-4">
+                  <p className="text-sm text-sky-800 dark:text-sky-300">
+                    Esta funcionalidad permitirá confirmar las cantidades recibidas, registrar los gastos de
+                    internación y actualizar automáticamente el inventario y los costos promedio ponderados.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500 dark:text-[#888888]">Proveedor:</span>
+                    <span className="ml-2 font-medium text-gray-900 dark:text-white">{selectedOrder.supplierName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-[#888888]">Factura:</span>
+                    <span className="ml-2 font-mono font-medium text-gray-900 dark:text-white">
+                      {selectedOrder.supplierInvoice || '-'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-[#888888]">Bodega:</span>
+                    <span className="ml-2 font-medium text-gray-900 dark:text-white">{selectedOrder.bodegaName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-[#888888]">Productos:</span>
+                    <span className="ml-2 font-medium text-gray-900 dark:text-white">{selectedOrder.lines.length} líneas</span>
+                  </div>
+                </div>
+
+                {canViewCosts && (
+                  <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Total FOB:</span>
+                      <span className="font-mono font-medium text-gray-900 dark:text-white">
+                        {formatCurrency(selectedOrder.totalFOB)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </ModalBody>
+          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
+            <Button variant="light" onPress={onReceiveClose}>
+              Cancelar
+            </Button>
+            <Button
+              color="success"
+              onPress={() => {
+                toast.success('Mercancía recibida', {
+                  description: `La orden ${selectedOrder?.orderNumber} ha sido procesada.`,
+                });
+                onReceiveClose();
+              }}
+            >
+              Confirmar Recepción
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </div>
+  );
+}

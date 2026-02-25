@@ -1,0 +1,1035 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Avatar,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+  Input,
+  Select,
+  SelectItem,
+  Textarea,
+  Switch,
+  useDisclosure,
+  Tabs,
+  Tab,
+} from '@heroui/react';
+import {
+  Search,
+  Plus,
+  Upload,
+  Download,
+  LayoutGrid,
+  List,
+  MoreVertical,
+  Package,
+  AlertTriangle,
+  TrendingUp,
+  Truck,
+  ChevronDown,
+  SlidersHorizontal,
+  Eye,
+  Edit,
+  Copy,
+  ToggleLeft,
+  Trash2,
+  X,
+  ImagePlus,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { MOCK_PRODUCTS, PRODUCT_GROUPS, getProductStats, Product } from '@/lib/mock-data/products';
+import { cn } from '@/lib/utils/cn';
+
+type ViewMode = 'grid' | 'list';
+type StockFilter = 'all' | 'inStock' | 'lowStock' | 'outOfStock' | 'arriving';
+
+// Mock suppliers
+const MOCK_SUPPLIERS = [
+  { id: '1', name: 'GLOBAL BRANDS, S.A.' },
+  { id: '2', name: 'TRIPLE DOUBLE LIMITED' },
+  { id: '3', name: 'DIAGEO PANAMA' },
+  { id: '4', name: 'PERNOD RICARD' },
+];
+
+// Product images mapping
+const PRODUCT_IMAGES: Record<string, string> = {
+  'WHISKY': 'https://images.unsplash.com/photo-1527281400683-1aae777175f8?w=300&h=300&fit=crop',
+  'RON': 'https://images.unsplash.com/photo-1598018553943-93a44e4e7af8?w=300&h=300&fit=crop',
+  'VODKA': 'https://images.unsplash.com/photo-1607622750671-6cd9a99eabd1?w=300&h=300&fit=crop',
+  'TEQUILA': 'https://images.unsplash.com/photo-1516535794938-6063878f08cc?w=300&h=300&fit=crop',
+  'GINEBRA': 'https://images.unsplash.com/photo-1608885898957-a559228e8749?w=300&h=300&fit=crop',
+  'VINO': 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=300&h=300&fit=crop',
+  'LICOR': 'https://images.unsplash.com/photo-1569529465841-dfecdab7503b?w=300&h=300&fit=crop',
+  'SNACKS': 'https://images.unsplash.com/photo-1621447504864-d8686e12698c?w=300&h=300&fit=crop',
+  'CERVEZA': 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=300&h=300&fit=crop',
+};
+
+// Initial form state
+const initialFormState = {
+  description: '',
+  brand: '',
+  group: '',
+  barcode: '',
+  reference: '',
+  supplier: '',
+  unit: 'CAJA',
+  minimumQty: '10',
+  tariffCode: '',
+  priceA: '',
+  priceB: '',
+  priceC: '',
+  priceD: '',
+  priceE: '',
+  status: true,
+};
+
+export default function ProductosPage() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [stockFilter, setStockFilter] = useState<StockFilter>('all');
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [formData, setFormData] = useState(initialFormState);
+
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
+  const { isOpen: isFilterOpen, onOpen: onFilterOpen, onClose: onFilterClose } = useDisclosure();
+
+  // Advanced filters state
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  const [stockRange, setStockRange] = useState({ min: '', max: '' });
+  const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
+  const [showOnlyActive, setShowOnlyActive] = useState(false);
+
+  const stats = getProductStats();
+
+  // Filter products
+  const filteredProducts = useMemo(() => {
+    return MOCK_PRODUCTS.filter((product) => {
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch =
+        !searchQuery ||
+        product.description.toLowerCase().includes(searchLower) ||
+        product.brand.toLowerCase().includes(searchLower) ||
+        product.reference.toLowerCase().includes(searchLower);
+
+      let matchesStockFilter = true;
+      if (stockFilter === 'inStock') {
+        matchesStockFilter = product.stock.available > product.minimumQty;
+      } else if (stockFilter === 'lowStock') {
+        matchesStockFilter = product.stock.available > 0 && product.stock.available <= product.minimumQty;
+      } else if (stockFilter === 'outOfStock') {
+        matchesStockFilter = product.stock.available === 0;
+      } else if (stockFilter === 'arriving') {
+        matchesStockFilter = product.stock.arriving > 0;
+      }
+
+      const matchesGroup = !selectedGroup || product.group === selectedGroup;
+      const matchesBrand = !selectedBrand || product.brand === selectedBrand;
+
+      // Advanced filters
+      const matchesPriceMin = !priceRange.min || product.prices.A >= parseFloat(priceRange.min);
+      const matchesPriceMax = !priceRange.max || product.prices.A <= parseFloat(priceRange.max);
+      const matchesStockMin = !stockRange.min || product.stock.available >= parseFloat(stockRange.min);
+      const matchesStockMax = !stockRange.max || product.stock.available <= parseFloat(stockRange.max);
+      const matchesSupplier = !selectedSupplier || MOCK_SUPPLIERS.find(s => s.id === selectedSupplier)?.name === product.supplier;
+      const matchesActiveOnly = !showOnlyActive || product.status === 'active';
+
+      return matchesSearch && matchesStockFilter && matchesGroup && matchesBrand &&
+             matchesPriceMin && matchesPriceMax && matchesStockMin && matchesStockMax &&
+             matchesSupplier && matchesActiveOnly;
+    });
+  }, [searchQuery, stockFilter, selectedGroup, selectedBrand, priceRange, stockRange, selectedSupplier, showOnlyActive]);
+
+  const uniqueBrands = useMemo(() => {
+    return [...new Set(MOCK_PRODUCTS.map((p) => p.brand))].sort();
+  }, []);
+
+  const getStockStatus = (product: Product) => {
+    if (product.stock.available === 0) {
+      return { label: 'Sin Stock', color: 'bg-red-500' };
+    }
+    if (product.stock.available <= product.minimumQty) {
+      return { label: 'Stock Bajo', color: 'bg-amber-500' };
+    }
+    return { label: 'En Stock', color: 'bg-emerald-500' };
+  };
+
+  // Form handlers
+  const handleFormChange = (field: string, value: string | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCreateProduct = () => {
+    // Validation
+    if (!formData.description || !formData.brand || !formData.group || !formData.supplier) {
+      toast.error('Campos requeridos', {
+        description: 'Por favor completa todos los campos obligatorios.',
+      });
+      return;
+    }
+
+    toast.success('Producto creado', {
+      description: `"${formData.description}" ha sido agregado al catálogo.`,
+    });
+    setFormData(initialFormState);
+    onCreateClose();
+  };
+
+  // Product actions
+  const handleViewProduct = (product: Product) => {
+    router.push(`/productos/${product.id}`);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    router.push(`/productos/${product.id}/editar`);
+  };
+
+  const handleDuplicateProduct = (product: Product) => {
+    toast.success(`Producto duplicado`, {
+      description: `"${product.description}" ha sido copiado como borrador.`,
+    });
+  };
+
+  const handleToggleStatus = (product: Product) => {
+    const newStatus = product.status === 'active' ? 'inactivo' : 'activo';
+    toast.success(`Producto ${newStatus}`, {
+      description: `"${product.description}" ahora está ${newStatus}.`,
+    });
+  };
+
+  const handleDeleteProduct = (product: Product) => {
+    setSelectedProduct(product);
+    onDeleteOpen();
+  };
+
+  const confirmDelete = () => {
+    if (selectedProduct) {
+      toast.success('Producto eliminado', {
+        description: `"${selectedProduct.description}" ha sido eliminado.`,
+      });
+      onDeleteClose();
+      setSelectedProduct(null);
+    }
+  };
+
+  const handleExportProducts = () => {
+    toast.success('Exportando productos', {
+      description: 'El archivo Excel se descargará en breve.',
+    });
+  };
+
+  const handleImportProducts = () => {
+    toast.info('Importar productos', {
+      description: 'Selecciona un archivo Excel para importar.',
+    });
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Productos</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleImportProducts}
+            className="flex h-9 items-center gap-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-white"
+          >
+            <Upload className="h-4 w-4" />
+            Importar
+          </button>
+          <button
+            onClick={handleExportProducts}
+            className="flex h-9 items-center gap-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-white"
+          >
+            <Download className="h-4 w-4" />
+            Exportar
+          </button>
+          <button
+            onClick={onCreateOpen}
+            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-800"
+          >
+            <Plus className="h-4 w-4" />
+            Nuevo Producto
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {[
+          { label: 'Total Productos', value: stats.total, icon: Package, color: 'blue', filter: 'all' as StockFilter },
+          { label: 'Con Stock', value: stats.total - stats.outOfStock - stats.lowStock, icon: TrendingUp, color: 'emerald', filter: 'inStock' as StockFilter },
+          { label: 'Bajo Mínimo', value: stats.lowStock, icon: AlertTriangle, color: 'amber', filter: 'lowStock' as StockFilter },
+          { label: 'Sin Stock', value: stats.outOfStock, icon: Package, color: 'red', filter: 'outOfStock' as StockFilter },
+          { label: 'Por Llegar', value: stats.arriving, icon: Truck, color: 'sky', filter: 'arriving' as StockFilter },
+        ].map((stat, index) => (
+          <motion.button
+            key={stat.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            onClick={() => setStockFilter(stockFilter === stat.filter ? 'all' : stat.filter)}
+            className={cn(
+              "rounded-xl border bg-white dark:bg-[#141414] p-3 text-left transition-all hover:shadow-md",
+              stockFilter === stat.filter
+                ? "border-brand-500 ring-1 ring-brand-500"
+                : "border-gray-200 dark:border-[#2a2a2a] hover:border-gray-300 dark:hover:border-[#3a3a3a]"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                'flex h-10 w-10 items-center justify-center rounded-lg',
+                stat.color === 'blue' && 'bg-blue-50 dark:bg-blue-950',
+                stat.color === 'emerald' && 'bg-emerald-50 dark:bg-emerald-950',
+                stat.color === 'amber' && 'bg-amber-50 dark:bg-amber-950',
+                stat.color === 'red' && 'bg-red-50 dark:bg-red-950',
+                stat.color === 'sky' && 'bg-sky-50 dark:bg-sky-950'
+              )}>
+                <stat.icon className={cn(
+                  'h-5 w-5',
+                  stat.color === 'blue' && 'text-blue-600',
+                  stat.color === 'emerald' && 'text-emerald-600',
+                  stat.color === 'amber' && 'text-amber-600',
+                  stat.color === 'red' && 'text-red-600',
+                  stat.color === 'sky' && 'text-sky-600'
+                )} />
+              </div>
+              <div>
+                <p className="text-xl font-semibold text-gray-900 dark:text-white">{stat.value}</p>
+                <p className="text-xs text-gray-500 dark:text-[#888888]">{stat.label}</p>
+              </div>
+            </div>
+          </motion.button>
+        ))}
+      </div>
+
+      {/* Search and Filters Bar */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar producto..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-9 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] pl-9 pr-4 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Dropdown>
+            <DropdownTrigger>
+              <button className={cn(
+                "flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors",
+                selectedGroup ? "bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300" : "bg-gray-100 dark:bg-[#1a1a1a] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
+              )}>
+                {selectedGroup || 'Categoría'}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            </DropdownTrigger>
+            <DropdownMenu
+              selectionMode="single"
+              selectedKeys={selectedGroup ? [selectedGroup] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as string;
+                setSelectedGroup(selected === selectedGroup ? null : selected);
+              }}
+              classNames={{ base: 'bg-white border border-gray-200 shadow-lg' }}
+            >
+              {PRODUCT_GROUPS.map((group) => (
+                <DropdownItem key={group.id}>{group.label}</DropdownItem>
+              ))}
+            </DropdownMenu>
+          </Dropdown>
+
+          <Dropdown>
+            <DropdownTrigger>
+              <button className={cn(
+                "flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors",
+                selectedBrand ? "bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300" : "bg-gray-100 dark:bg-[#1a1a1a] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
+              )}>
+                {selectedBrand || 'Marca'}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            </DropdownTrigger>
+            <DropdownMenu
+              selectionMode="single"
+              selectedKeys={selectedBrand ? [selectedBrand] : []}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as string;
+                setSelectedBrand(selected === selectedBrand ? null : selected);
+              }}
+              className="max-h-64 overflow-auto"
+              classNames={{ base: 'bg-white border border-gray-200 shadow-lg' }}
+            >
+              {uniqueBrands.map((brand) => (
+                <DropdownItem key={brand}>{brand}</DropdownItem>
+              ))}
+            </DropdownMenu>
+          </Dropdown>
+
+          <Dropdown>
+            <DropdownTrigger>
+              <button className="flex h-9 items-center gap-2 rounded-lg bg-gray-100 dark:bg-[#1a1a1a] px-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2a2a2a]">
+                Popular
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            </DropdownTrigger>
+            <DropdownMenu classNames={{ base: 'bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] shadow-lg' }}>
+              <DropdownItem key="popular">Más Popular</DropdownItem>
+              <DropdownItem key="newest">Más Reciente</DropdownItem>
+              <DropdownItem key="price-asc">Precio: Menor a Mayor</DropdownItem>
+              <DropdownItem key="price-desc">Precio: Mayor a Menor</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+
+          {(selectedGroup || selectedBrand || stockFilter !== 'all' || priceRange.min || priceRange.max || stockRange.min || stockRange.max || selectedSupplier || showOnlyActive) && (
+            <button
+              onClick={() => {
+                setSelectedGroup(null);
+                setSelectedBrand(null);
+                setStockFilter('all');
+                setPriceRange({ min: '', max: '' });
+                setStockRange({ min: '', max: '' });
+                setSelectedSupplier(null);
+                setShowOnlyActive(false);
+              }}
+              className="flex h-9 items-center gap-1 px-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white"
+            >
+              <X className="h-3.5 w-3.5" />
+              Limpiar
+            </button>
+          )}
+
+          <div className="flex items-center rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] p-0.5">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={cn(
+                'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
+                viewMode === 'grid' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white'
+              )}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={cn(
+                'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
+                viewMode === 'list' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white'
+              )}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
+
+          <button
+            onClick={onFilterOpen}
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-lg border bg-white dark:bg-[#141414] transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]",
+              (priceRange.min || priceRange.max || stockRange.min || stockRange.max || selectedSupplier || showOnlyActive)
+                ? "border-brand-500 text-brand-600"
+                : "border-gray-200 dark:border-[#2a2a2a] text-gray-500 dark:text-gray-400"
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Products Grid View - Vertical cards with image header */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredProducts.map((product, index) => {
+            const stockStatus = getStockStatus(product);
+            const imageUrl = PRODUCT_IMAGES[product.group] || PRODUCT_IMAGES['WHISKY'];
+
+            return (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.02 }}
+                className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] transition-all hover:border-gray-300 dark:hover:border-[#3a3a3a] hover:shadow-md"
+              >
+                {/* Menu Button */}
+                <Dropdown placement="bottom-end">
+                  <DropdownTrigger>
+                    <button className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-gray-400 shadow-sm backdrop-blur-sm transition-all hover:text-gray-600">
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                  </DropdownTrigger>
+                  <DropdownMenu
+                    aria-label="Acciones"
+                    classNames={{ base: 'bg-white border border-gray-200 shadow-lg' }}
+                  >
+                    <DropdownItem key="view" startContent={<Eye className="h-4 w-4" />} onPress={() => handleViewProduct(product)}>
+                      Ver ficha
+                    </DropdownItem>
+                    <DropdownItem key="edit" startContent={<Edit className="h-4 w-4" />} onPress={() => handleEditProduct(product)}>
+                      Editar
+                    </DropdownItem>
+                    <DropdownItem key="duplicate" startContent={<Copy className="h-4 w-4" />} onPress={() => handleDuplicateProduct(product)}>
+                      Duplicar
+                    </DropdownItem>
+                    <DropdownItem key="toggle" startContent={<ToggleLeft className="h-4 w-4" />} onPress={() => handleToggleStatus(product)}>
+                      {product.status === 'active' ? 'Desactivar' : 'Activar'}
+                    </DropdownItem>
+                    <DropdownItem key="delete" startContent={<Trash2 className="h-4 w-4" />} className="text-danger" color="danger" onPress={() => handleDeleteProduct(product)}>
+                      Eliminar
+                    </DropdownItem>
+                  </DropdownMenu>
+                </Dropdown>
+
+                {/* Stock indicator */}
+                <span className={cn('absolute left-2 top-2 z-10 h-2.5 w-2.5 rounded-full', stockStatus.color)} />
+
+                {/* Product Image - Header */}
+                <button onClick={() => handleViewProduct(product)} className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100 dark:bg-[#1a1a1a]">
+                  <img src={imageUrl} alt={product.description} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                </button>
+
+                {/* Product Info */}
+                <div className="flex flex-1 flex-col p-4">
+                  {/* Price Row */}
+                  <div className="mb-2 flex items-baseline gap-2">
+                    <span className="text-xl font-bold text-gray-900 dark:text-white">${product.prices.A}</span>
+                    <span className="text-sm text-gray-400 dark:text-[#666666] line-through">${Math.round(product.prices.A * 1.2)}</span>
+                  </div>
+
+                  {/* Name */}
+                  <button onClick={() => handleViewProduct(product)} className="mb-3 text-left text-sm font-medium text-gray-900 dark:text-white leading-snug hover:text-brand-600 dark:hover:text-[#00D1B2]">
+                    {product.description}
+                  </button>
+
+                  {/* Category & Brand */}
+                  <p className="text-xs text-gray-500 dark:text-[#888888]">
+                    Categoría: <span className="text-gray-700 dark:text-gray-300">{product.group}</span>
+                  </p>
+                  <p className="mb-4 text-xs text-gray-500 dark:text-[#888888]">
+                    Marca: <span className="text-gray-700 dark:text-gray-300">{product.brand}</span>
+                  </p>
+
+                  {/* Footer */}
+                  <div className="mt-auto flex items-center justify-between border-t border-gray-100 dark:border-[#2a2a2a] pt-3">
+                    <div className="flex items-center gap-2">
+                      <Avatar name={product.supplier} size="sm" classNames={{ base: 'h-6 w-6 text-[10px] bg-gray-100 dark:bg-[#2a2a2a] text-gray-600 dark:text-gray-300' }} />
+                      <span className="max-w-28 truncate text-xs text-gray-500 dark:text-[#888888]">{product.supplier.split(',')[0]}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-gray-500 dark:text-[#888888]">Qty: </span>
+                      <span className={cn('text-sm font-semibold', product.stock.available === 0 ? 'text-red-600' : product.stock.available <= product.minimumQty ? 'text-amber-600' : 'text-gray-900 dark:text-white')}>
+                        {product.stock.available}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Products List View - Table format */}
+      {viewMode === 'list' && (
+        <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414]">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Producto</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Referencia</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Categoría</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Marca</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Stock</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Precio</th>
+                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Estado</th>
+                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
+              {filteredProducts.map((product, index) => {
+                const stockStatus = getStockStatus(product);
+                const imageUrl = PRODUCT_IMAGES[product.group] || PRODUCT_IMAGES['WHISKY'];
+
+                return (
+                  <motion.tr
+                    key={product.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: index * 0.02 }}
+                    className="group transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-[#1a1a1a]">
+                          <img src={imageUrl} alt={product.description} className="h-full w-full object-cover" />
+                        </div>
+                        <button
+                          onClick={() => handleViewProduct(product)}
+                          className="max-w-xs truncate text-sm font-medium text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-[#00D1B2]"
+                        >
+                          {product.description}
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{product.reference}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{product.group}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{product.brand}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={cn(
+                        'text-sm font-semibold',
+                        product.stock.available === 0 ? 'text-red-600' :
+                        product.stock.available <= product.minimumQty ? 'text-amber-600' : 'text-gray-900 dark:text-white'
+                      )}>
+                        {product.stock.available}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">${product.prices.A}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                        product.status === 'active'
+                          ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400'
+                          : 'bg-gray-100 dark:bg-[#2a2a2a] text-gray-600 dark:text-gray-400'
+                      )}>
+                        <span className={cn('h-1.5 w-1.5 rounded-full', stockStatus.color)} />
+                        {product.status === 'active' ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <Dropdown placement="bottom-end">
+                        <DropdownTrigger>
+                          <button className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 dark:text-[#666666] transition-colors hover:bg-gray-100 dark:hover:bg-[#2a2a2a] hover:text-gray-600 dark:hover:text-white">
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </DropdownTrigger>
+                        <DropdownMenu
+                          aria-label="Acciones"
+                          classNames={{ base: 'bg-white border border-gray-200 shadow-lg' }}
+                        >
+                          <DropdownItem key="view" startContent={<Eye className="h-4 w-4" />} onPress={() => handleViewProduct(product)}>
+                            Ver ficha
+                          </DropdownItem>
+                          <DropdownItem key="edit" startContent={<Edit className="h-4 w-4" />} onPress={() => handleEditProduct(product)}>
+                            Editar
+                          </DropdownItem>
+                          <DropdownItem key="duplicate" startContent={<Copy className="h-4 w-4" />} onPress={() => handleDuplicateProduct(product)}>
+                            Duplicar
+                          </DropdownItem>
+                          <DropdownItem key="toggle" startContent={<ToggleLeft className="h-4 w-4" />} onPress={() => handleToggleStatus(product)}>
+                            {product.status === 'active' ? 'Desactivar' : 'Activar'}
+                          </DropdownItem>
+                          <DropdownItem key="delete" startContent={<Trash2 className="h-4 w-4" />} className="text-danger" color="danger" onPress={() => handleDeleteProduct(product)}>
+                            Eliminar
+                          </DropdownItem>
+                        </DropdownMenu>
+                      </Dropdown>
+                    </td>
+                  </motion.tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {filteredProducts.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#141414] py-16">
+          <Package className="mb-4 h-12 w-12 text-gray-400 dark:text-[#666666]" />
+          <h3 className="mb-1 text-lg font-medium text-gray-900 dark:text-white">No se encontraron productos</h3>
+          <p className="text-sm text-gray-500 dark:text-[#888888]">Intenta ajustar los filtros o el término de búsqueda</p>
+        </div>
+      )}
+
+      {/* Results count */}
+      <div className="text-center text-sm text-gray-500 dark:text-[#888888]">
+        Mostrando {filteredProducts.length} de {stats.total} productos
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} size="sm">
+        <ModalContent className="bg-white dark:bg-[#141414]">
+          <ModalHeader className="dark:text-white">Eliminar producto</ModalHeader>
+          <ModalBody>
+            <p className="text-gray-600 dark:text-gray-400">
+              ¿Estás seguro de eliminar <span className="font-medium text-gray-900 dark:text-white">"{selectedProduct?.description}"</span>? Esta acción no se puede deshacer.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={onDeleteClose}>Cancelar</Button>
+            <Button color="danger" onPress={confirmDelete}>Eliminar</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Filter Modal */}
+      <Modal isOpen={isFilterOpen} onClose={onFilterClose} size="md">
+        <ModalContent className="bg-white dark:bg-[#141414]">
+          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#2a2a2a]">
+                <SlidersHorizontal className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filtros Avanzados</h2>
+                <p className="text-sm text-gray-500 dark:text-[#888888]">Refina tu búsqueda de productos</p>
+              </div>
+            </div>
+          </ModalHeader>
+          <ModalBody className="py-6">
+            <div className="space-y-6">
+              {/* Price Range */}
+              <div>
+                <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Rango de Precio</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Mínimo"
+                    type="number"
+                    placeholder="0"
+                    startContent={<span className="text-gray-400">$</span>}
+                    value={priceRange.min}
+                    onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                    variant="bordered"
+                    classNames={{ inputWrapper: 'bg-white' }}
+                  />
+                  <Input
+                    label="Máximo"
+                    type="number"
+                    placeholder="1000"
+                    startContent={<span className="text-gray-400">$</span>}
+                    value={priceRange.max}
+                    onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                    variant="bordered"
+                    classNames={{ inputWrapper: 'bg-white' }}
+                  />
+                </div>
+              </div>
+
+              {/* Stock Range */}
+              <div>
+                <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Rango de Stock</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Mínimo"
+                    type="number"
+                    placeholder="0"
+                    value={stockRange.min}
+                    onChange={(e) => setStockRange(prev => ({ ...prev, min: e.target.value }))}
+                    variant="bordered"
+                    classNames={{ inputWrapper: 'bg-white' }}
+                  />
+                  <Input
+                    label="Máximo"
+                    type="number"
+                    placeholder="1000"
+                    value={stockRange.max}
+                    onChange={(e) => setStockRange(prev => ({ ...prev, max: e.target.value }))}
+                    variant="bordered"
+                    classNames={{ inputWrapper: 'bg-white' }}
+                  />
+                </div>
+              </div>
+
+              {/* Supplier */}
+              <div>
+                <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor</h3>
+                <Select
+                  placeholder="Todos los proveedores"
+                  selectedKeys={selectedSupplier ? [selectedSupplier] : []}
+                  onChange={(e) => setSelectedSupplier(e.target.value || null)}
+                  variant="bordered"
+                  classNames={{ trigger: 'bg-white' }}
+                >
+                  {MOCK_SUPPLIERS.map((supplier) => (
+                    <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
+                  ))}
+                </Select>
+              </div>
+
+              {/* Active Only Toggle */}
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">Solo productos activos</p>
+                  <p className="text-xs text-gray-500 dark:text-[#888888]">Ocultar productos inactivos</p>
+                </div>
+                <Switch
+                  isSelected={showOnlyActive}
+                  onValueChange={setShowOnlyActive}
+                  color="primary"
+                />
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
+            <Button
+              variant="light"
+              onPress={() => {
+                setPriceRange({ min: '', max: '' });
+                setStockRange({ min: '', max: '' });
+                setSelectedSupplier(null);
+                setShowOnlyActive(false);
+              }}
+            >
+              Limpiar filtros
+            </Button>
+            <Button
+              color="primary"
+              onPress={() => {
+                toast.success('Filtros aplicados');
+                onFilterClose();
+              }}
+              className="bg-brand-600"
+            >
+              Aplicar filtros
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Create Product Modal */}
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="3xl" scrollBehavior="inside">
+        <ModalContent className="bg-white dark:bg-[#141414]">
+          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100 dark:bg-brand-900">
+                <Package className="h-5 w-5 text-brand-600 dark:text-brand-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Nuevo Producto</h2>
+                <p className="text-sm text-gray-500 dark:text-[#888888]">Completa la información del producto</p>
+              </div>
+            </div>
+          </ModalHeader>
+          <ModalBody className="py-6">
+            <Tabs aria-label="Secciones" color="primary" variant="underlined">
+              <Tab key="general" title="Información General">
+                <div className="mt-4 space-y-6">
+                  {/* Image Upload */}
+                  <div className="flex items-start gap-6">
+                    <div className="flex h-32 w-32 shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] transition-colors hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950">
+                      <ImagePlus className="mb-2 h-8 w-8 text-gray-400 dark:text-[#666666]" />
+                      <span className="text-xs text-gray-500 dark:text-[#888888]">Subir imagen</span>
+                    </div>
+                    <div className="flex-1 space-y-4">
+                      <Input
+                        label="Descripción del producto *"
+                        placeholder="Ej: WHISKY JOHNNIE WALKER BLACK 12YRS 750ML"
+                        value={formData.description}
+                        onChange={(e) => handleFormChange('description', e.target.value)}
+                        variant="bordered"
+                        classNames={{ inputWrapper: 'bg-white' }}
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input
+                          label="Marca *"
+                          placeholder="Ej: JOHNNIE WALKER"
+                          value={formData.brand}
+                          onChange={(e) => handleFormChange('brand', e.target.value)}
+                          variant="bordered"
+                          classNames={{ inputWrapper: 'bg-white' }}
+                        />
+                        <Select
+                          label="Categoría *"
+                          placeholder="Seleccionar categoría"
+                          selectedKeys={formData.group ? [formData.group] : []}
+                          onChange={(e) => handleFormChange('group', e.target.value)}
+                          variant="bordered"
+                          classNames={{ trigger: 'bg-white' }}
+                        >
+                          {PRODUCT_GROUPS.map((group) => (
+                            <SelectItem key={group.id}>{group.label}</SelectItem>
+                          ))}
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Identification */}
+                  <div>
+                    <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Identificación</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <Input
+                        label="Código de barras"
+                        placeholder="7501050439022"
+                        value={formData.barcode}
+                        onChange={(e) => handleFormChange('barcode', e.target.value)}
+                        variant="bordered"
+                        classNames={{ inputWrapper: 'bg-white' }}
+                      />
+                      <Input
+                        label="Referencia interna"
+                        placeholder="JW-BLK-750"
+                        value={formData.reference}
+                        onChange={(e) => handleFormChange('reference', e.target.value)}
+                        variant="bordered"
+                        classNames={{ inputWrapper: 'bg-white' }}
+                      />
+                      <Input
+                        label="Código arancelario"
+                        placeholder="2208.30.00"
+                        value={formData.tariffCode}
+                        onChange={(e) => handleFormChange('tariffCode', e.target.value)}
+                        variant="bordered"
+                        classNames={{ inputWrapper: 'bg-white' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Supplier & Unit */}
+                  <div>
+                    <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Proveedor y unidad</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <Select
+                        label="Proveedor *"
+                        placeholder="Seleccionar proveedor"
+                        selectedKeys={formData.supplier ? [formData.supplier] : []}
+                        onChange={(e) => handleFormChange('supplier', e.target.value)}
+                        variant="bordered"
+                        classNames={{ trigger: 'bg-white' }}
+                      >
+                        {MOCK_SUPPLIERS.map((supplier) => (
+                          <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
+                        ))}
+                      </Select>
+                      <Select
+                        label="Unidad de medida"
+                        selectedKeys={[formData.unit]}
+                        onChange={(e) => handleFormChange('unit', e.target.value)}
+                        variant="bordered"
+                        classNames={{ trigger: 'bg-white' }}
+                      >
+                        <SelectItem key="CAJA">Caja</SelectItem>
+                        <SelectItem key="UNIDAD">Unidad</SelectItem>
+                        <SelectItem key="BOTELLA">Botella</SelectItem>
+                        <SelectItem key="PAQUETE">Paquete</SelectItem>
+                      </Select>
+                      <Input
+                        label="Cantidad mínima"
+                        type="number"
+                        placeholder="10"
+                        value={formData.minimumQty}
+                        onChange={(e) => handleFormChange('minimumQty', e.target.value)}
+                        variant="bordered"
+                        classNames={{ inputWrapper: 'bg-white' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Status */}
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Estado del producto</p>
+                      <p className="text-xs text-gray-500 dark:text-[#888888]">Los productos inactivos no aparecen en ventas</p>
+                    </div>
+                    <Switch
+                      isSelected={formData.status}
+                      onValueChange={(value) => handleFormChange('status', value)}
+                      color="success"
+                    >
+                      {formData.status ? 'Activo' : 'Inactivo'}
+                    </Switch>
+                  </div>
+                </div>
+              </Tab>
+
+              <Tab key="prices" title="Precios">
+                <div className="mt-4 space-y-6">
+                  <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 p-4">
+                    <p className="text-sm text-amber-800 dark:text-amber-300">
+                      Los precios se asignan según el nivel del cliente. El Precio A es el más bajo (mayoristas) y el Precio E el más alto (público).
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-4">
+                    <Input
+                      label="Precio A"
+                      type="number"
+                      placeholder="0.00"
+                      startContent={<span className="text-gray-400">$</span>}
+                      value={formData.priceA}
+                      onChange={(e) => handleFormChange('priceA', e.target.value)}
+                      variant="bordered"
+                      classNames={{ inputWrapper: 'bg-white' }}
+                      description="Mayorista"
+                    />
+                    <Input
+                      label="Precio B"
+                      type="number"
+                      placeholder="0.00"
+                      startContent={<span className="text-gray-400">$</span>}
+                      value={formData.priceB}
+                      onChange={(e) => handleFormChange('priceB', e.target.value)}
+                      variant="bordered"
+                      classNames={{ inputWrapper: 'bg-white' }}
+                      description="Distribuidor"
+                    />
+                    <Input
+                      label="Precio C"
+                      type="number"
+                      placeholder="0.00"
+                      startContent={<span className="text-gray-400">$</span>}
+                      value={formData.priceC}
+                      onChange={(e) => handleFormChange('priceC', e.target.value)}
+                      variant="bordered"
+                      classNames={{ inputWrapper: 'bg-white' }}
+                      description="Detallista"
+                    />
+                    <Input
+                      label="Precio D"
+                      type="number"
+                      placeholder="0.00"
+                      startContent={<span className="text-gray-400">$</span>}
+                      value={formData.priceD}
+                      onChange={(e) => handleFormChange('priceD', e.target.value)}
+                      variant="bordered"
+                      classNames={{ inputWrapper: 'bg-white' }}
+                      description="Especial"
+                    />
+                    <Input
+                      label="Precio E"
+                      type="number"
+                      placeholder="0.00"
+                      startContent={<span className="text-gray-400">$</span>}
+                      value={formData.priceE}
+                      onChange={(e) => handleFormChange('priceE', e.target.value)}
+                      variant="bordered"
+                      classNames={{ inputWrapper: 'bg-white' }}
+                      description="Público"
+                    />
+                  </div>
+                </div>
+              </Tab>
+            </Tabs>
+          </ModalBody>
+          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
+            <Button variant="light" onPress={onCreateClose}>Cancelar</Button>
+            <Button color="primary" onPress={handleCreateProduct} className="bg-brand-600">
+              Crear Producto
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </div>
+  );
+}
