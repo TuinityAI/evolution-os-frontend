@@ -37,6 +37,7 @@ import type { PurchaseOrderStatus } from '@/lib/types/purchase-order';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { useState } from 'react';
+import { printPurchaseOrder } from '@/lib/utils/print-utils';
 
 // Status badge colors
 const STATUS_CONFIG: Record<PurchaseOrderStatus, { bg: string; text: string; dot: string; label: string }> = {
@@ -138,7 +139,35 @@ export default function OrderDetailPage() {
           <Button
             variant="bordered"
             startContent={<Printer className="h-4 w-4" />}
-            onPress={() => toast.info('Imprimir', { description: 'Generando PDF...' })}
+            onPress={() => {
+              printPurchaseOrder(
+                {
+                  orderNumber: order.orderNumber,
+                  supplierName: order.supplierName,
+                  supplierInvoice: order.supplierInvoice,
+                  bodegaName: order.bodegaName,
+                  createdAt: order.createdAt,
+                  expectedArrivalDate: order.expectedArrivalDate,
+                  status: statusConfig.label,
+                  lines: order.lines.map((line) => ({
+                    productReference: line.productReference,
+                    productDescription: line.productDescription,
+                    quantity: line.quantity,
+                    quantityReceived: line.quantityReceived,
+                    unitCostFOB: line.unitCostFOB,
+                    totalFOB: line.totalFOB,
+                  })),
+                  totalFOB: order.totalFOB,
+                  expensePercentage: order.expensePercentage,
+                  totalCIF: order.totalCIF,
+                  notes: order.notes,
+                },
+                canViewCosts
+              );
+              toast.success('Documento generado', {
+                description: `Orden ${order.orderNumber} lista para imprimir.`,
+              });
+            }}
           >
             Imprimir
           </Button>

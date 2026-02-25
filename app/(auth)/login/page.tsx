@@ -8,6 +8,28 @@ import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { WorldMap } from '@/components/ui/world-map';
 
+// Panama coordinates adjusted for dotted-map projection (moved outside component to avoid recreating)
+const panamaCoords = { lat: -8, lng: -79.5 };
+
+// Connection lines from Panama to countries per continent (static - never changes)
+const MAP_DOTS = [
+  // North America
+  { start: panamaCoords, end: { lat: 49.0, lng: -74.0 } }, // New York, USA
+  // South America
+  { start: panamaCoords, end: { lat: -15.0, lng: -47.0 } }, // Brazil
+  { start: panamaCoords, end: { lat: -30.0, lng: -60.0 } }, // Argentina
+  // Europe
+  { start: panamaCoords, end: { lat: 50.0, lng: -3.0 } }, // Spain
+  { start: panamaCoords, end: { lat: 56.0, lng: 10.0 } }, // Northern Europe
+  // Asia
+  { start: panamaCoords, end: { lat: 45.0, lng: 140.0 } }, // Japan
+  { start: panamaCoords, end: { lat: 42.0, lng: 120.0 } }, // China
+  // Africa
+  { start: panamaCoords, end: { lat: -20.0, lng: 25.0 } }, // South Africa
+  // Oceania
+  { start: panamaCoords, end: { lat: -28.0, lng: 150.0 } }, // Australia
+];
+
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -31,55 +53,6 @@ export default function LoginPage() {
     }
     setIsSubmitting(false);
   };
-
-  // Panama coordinates adjusted for dotted-map projection
-  const panamaCoords = { lat: -8, lng: -79.5 };
-
-  // Connection lines from Panama to countries per continent
-  const mapDots = [
-    // North America
-    {
-      start: panamaCoords, // Panama
-      end: { lat: 49.0, lng: -74.0 }, // New York, USA
-    },
-    // South America
-    {
-      start: panamaCoords, // Panama
-      end: { lat: -15.0, lng: -47.0 }, // Brazil
-    },
-    {
-      start: panamaCoords, // Panama
-      end: { lat: -30.0, lng: -60.0 }, // Argentina
-    },
-    // Europe
-    {
-      start: panamaCoords, // Panama
-      end: { lat: 50.0, lng: -3.0 }, // Spain
-    },
-    {
-      start: panamaCoords, // Panama
-      end: { lat: 56.0, lng: 10.0 }, // Northern Europe
-    },
-    // Asia
-    {
-      start: panamaCoords, // Panama
-      end: { lat: 45.0, lng: 140.0 }, // Japan
-    },
-    {
-      start: panamaCoords, // Panama
-      end: { lat: 42.0, lng: 120.0 }, // China
-    },
-    // Africa
-    {
-      start: panamaCoords, // Panama
-      end: { lat: -20.0, lng: 25.0 }, // South Africa
-    },
-    // Oceania
-    {
-      start: panamaCoords, // Panama
-      end: { lat: -28.0, lng: 150.0 }, // Australia
-    },
-  ];
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-white">

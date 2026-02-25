@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useRef, useMemo, memo } from "react";
 import { motion } from "motion/react";
 import DottedMap from "dotted-map";
 
@@ -12,21 +12,23 @@ interface MapProps {
   dotColor?: string;
 }
 
-export function WorldMap({
+function WorldMapComponent({
   dots = [],
   lineColor = "#0ea5e9",
   dotColor = "#9CA3AF",
 }: MapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const map = new DottedMap({ height: 100, grid: "diagonal" });
-
-  const svgMap = map.getSVG({
-    radius: 0.22,
-    color: dotColor,
-    shape: "circle",
-    backgroundColor: "transparent",
-  });
+  // Memoize heavy computations to avoid recalculating on every render
+  const svgMap = useMemo(() => {
+    const map = new DottedMap({ height: 100, grid: "diagonal" });
+    return map.getSVG({
+      radius: 0.22,
+      color: dotColor,
+      shape: "circle",
+      backgroundColor: "transparent",
+    });
+  }, [dotColor]);
 
   const projectPoint = (lat: number, lng: number) => {
     const x = (lng + 180) * (800 / 360);
@@ -159,3 +161,6 @@ export function WorldMap({
     </div>
   );
 }
+
+// Memoize the entire component to prevent re-renders when parent state changes
+export const WorldMap = memo(WorldMapComponent);

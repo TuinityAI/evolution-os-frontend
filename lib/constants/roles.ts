@@ -27,7 +27,7 @@ export const PERMISSIONS: Record<PermissionKey, UserRole[]> = {
   canCreateCountSessions: ['gerencia', 'compras', 'bodega'],
   // Sales (Ventas B2B) module permissions
   canAccessVentas: ['gerencia', 'contabilidad', 'vendedor'],
-  canCreateQuotes: ['gerencia', 'vendedor'],
+  canCreateQuotes: ['gerencia', 'vendedor', 'contabilidad'],
   canConvertToOrder: ['gerencia', 'vendedor'],
   canApproveOrders: ['gerencia'],
   canPackOrders: ['gerencia', 'bodega'],

@@ -198,9 +198,31 @@ h6 { font-size: 0.875rem; line-height: 1.5; }
 /* ═══════════════════════════════════════════════
    FOCUS STATES
    ═══════════════════════════════════════════════ */
+/* Default focus for non-input elements (buttons, links, etc.) */
 :focus-visible {
   outline: 2px solid var(--brand-400);
   outline-offset: 2px;
+}
+
+/* Remove default focus outline for inputs - use box-shadow instead to respect border-radius */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[data-slot="input"]:focus-visible,
+[data-slot="inner-wrapper"]:focus-within,
+[role="combobox"]:focus-visible {
+  outline: none !important;
+}
+
+/* HeroUI Input wrapper focus state - clean border ring that follows rounded corners */
+[data-slot="input-wrapper"]:focus-within,
+[data-slot="base"]:has(input:focus),
+[data-slot="base"]:has(textarea:focus),
+div:has(> input:focus),
+div:has(> textarea:focus) {
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--brand-400) !important;
+  border-color: var(--brand-400) !important;
 }
 
 /* ═══════════════════════════════════════════════
@@ -506,10 +528,21 @@ h6 { font-size: 0.875rem; line-height: 1.5; }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+  }
+  /* Only apply outline to non-form elements */
+  *:not(input):not(textarea):not(select):not([data-slot]) {
+    @apply outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Ensure inputs use box-shadow for focus instead of outline */
+  input, textarea, select {
+    outline: none !important;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: none !important;
   }
 }
 
@@ -660,4 +693,64 @@ li[role="option"]:hover,
 
 .dark [data-slot="innerWrapper"] {
   background-color: #1a1a1a !important;
+}
+
+/* ═══════════════════════════════════════════════
+   HEROUI INPUT FOCUS OVERRIDES
+   Ensures focus ring follows rounded corners
+   ═══════════════════════════════════════════════ */
+
+/* Remove ugly square outline from all HeroUI inputs */
+[data-slot="input-wrapper"],
+[data-slot="input-wrapper"] *,
+[data-slot="inner-wrapper"],
+[data-slot="inner-wrapper"] *,
+[data-slot="main-wrapper"],
+[data-slot="main-wrapper"] * {
+  outline: none !important;
+}
+
+/* HeroUI Input focus - uses border color change instead of outline */
+[data-slot="input-wrapper"]:focus-within {
+  border-color: var(--brand-400) !important;
+  box-shadow: 0 0 0 1px var(--brand-400) !important;
+}
+
+/* Remove focus ring from native inputs inside HeroUI wrappers */
+[data-slot="input-wrapper"] input:focus,
+[data-slot="input-wrapper"] textarea:focus,
+[data-slot="inner-wrapper"] input:focus,
+[data-slot="inner-wrapper"] textarea:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* HeroUI Select focus */
+[data-slot="trigger"]:focus,
+[data-slot="trigger"]:focus-visible {
+  outline: none !important;
+  border-color: var(--brand-400) !important;
+  box-shadow: 0 0 0 1px var(--brand-400) !important;
+}
+
+/* Native HTML inputs (used in login page and some forms) */
+input.rounded-lg:focus,
+input.rounded-xl:focus,
+input.rounded-md:focus,
+textarea.rounded-lg:focus,
+textarea.rounded-xl:focus,
+textarea.rounded-md:focus {
+  outline: none !important;
+}
+
+/* Dark mode adjustments */
+.dark [data-slot="input-wrapper"]:focus-within {
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 1px var(--ring) !important;
+}
+
+.dark [data-slot="trigger"]:focus,
+.dark [data-slot="trigger"]:focus-visible {
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 1px var(--ring) !important;
 }

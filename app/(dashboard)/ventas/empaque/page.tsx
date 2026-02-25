@@ -35,6 +35,7 @@ import {
 import type { SalesOrder } from '@/lib/types/sales-order';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { printPackingList } from '@/lib/utils/print-utils';
 
 export default function EmpaquePage() {
   const router = useRouter();
@@ -101,8 +102,23 @@ export default function EmpaquePage() {
   };
 
   const handlePrint = (order: SalesOrder) => {
-    toast.info('Imprimiendo lista de empaque', {
-      description: `Generando PDF para ${order.orderNumber}...`,
+    printPackingList({
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      customerCountry: order.customerCountry,
+      requestedDeliveryDate: order.requestedDeliveryDate,
+      shippingAddress: order.shippingAddress,
+      status: order.status,
+      lines: order.lines.map((line) => ({
+        productReference: line.productReference,
+        productDescription: line.productDescription,
+        productBrand: line.productBrand,
+        productGroup: line.productGroup,
+        quantity: line.quantity,
+      })),
+    });
+    toast.success('Documento generado', {
+      description: `Lista de empaque ${order.orderNumber} lista para imprimir.`,
     });
   };
 

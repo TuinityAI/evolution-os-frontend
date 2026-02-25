@@ -47,6 +47,7 @@ import { STATUS_CONFIG, DOCUMENT_TYPE_LABELS } from '@/lib/types/sales-order';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { useState } from 'react';
+import { printSalesOrder } from '@/lib/utils/print-utils';
 
 export default function SalesOrderDetailPage() {
   const params = useParams();
@@ -250,7 +251,35 @@ export default function SalesOrderDetailPage() {
           <Button
             variant="bordered"
             startContent={<Printer className="h-4 w-4" />}
-            onPress={() => toast.info('Imprimir', { description: 'Generando PDF...' })}
+            onPress={() => {
+              printSalesOrder(
+                {
+                  orderNumber: order.orderNumber,
+                  customerName: order.customerName,
+                  customerCountry: order.customerCountry,
+                  requestedDeliveryDate: order.requestedDeliveryDate,
+                  shippingAddress: order.shippingAddress,
+                  status: statusConfig.label,
+                  lines: order.lines.map((line) => ({
+                    productReference: line.productReference,
+                    productDescription: line.productDescription,
+                    productBrand: line.productBrand,
+                    productGroup: line.productGroup,
+                    quantity: line.quantity,
+                    unitPrice: line.unitPrice,
+                    total: line.subtotal,
+                  })),
+                  subtotal: order.subtotal,
+                  tax: order.taxAmount,
+                  total: order.total,
+                  notes: order.notes,
+                },
+                true // showPrices
+              );
+              toast.success('Documento generado', {
+                description: `${DOCUMENT_TYPE_LABELS[order.documentType]} ${order.orderNumber} lista para imprimir.`,
+              });
+            }}
           >
             Imprimir
           </Button>

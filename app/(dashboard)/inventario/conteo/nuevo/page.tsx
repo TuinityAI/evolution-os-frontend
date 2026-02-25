@@ -115,7 +115,7 @@ export default function NuevoConteoPage() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] text-gray-500 transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a] hover:text-gray-700"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -124,20 +124,20 @@ export default function NuevoConteoPage() {
             <ClipboardList className="h-5 w-5 text-brand-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Nueva Sesión de Conteo</h1>
-            <p className="text-sm text-gray-500">Selecciona la zona y productos a contar</p>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Nueva Sesión de Conteo</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Selecciona la zona y productos a contar</p>
           </div>
         </div>
       </div>
 
       {/* Form Card */}
-      <div className="rounded-xl border border-gray-200 bg-white">
+      <div className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414]">
         {/* Configuration Section */}
-        <div className="border-b border-gray-200 p-6">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">Configuración</h2>
+        <div className="border-b border-gray-200 dark:border-[#2a2a2a] p-6">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Configuración</h2>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 <Warehouse className="h-4 w-4 text-gray-400" />
                 Bodega
               </label>
@@ -155,7 +155,7 @@ export default function NuevoConteoPage() {
               </Select>
             </div>
             <div>
-              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 <MapPin className="h-4 w-4 text-gray-400" />
                 Zona (opcional)
               </label>
@@ -174,7 +174,7 @@ export default function NuevoConteoPage() {
         <div className="p-6">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-gray-900">Productos a Contar</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Productos a Contar</h2>
               {selectedCount > 0 && (
                 <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-sm font-medium text-brand-700">
                   {selectedCount} seleccionados
@@ -193,10 +193,10 @@ export default function NuevoConteoPage() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-gray-200">
+          <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-[#2a2a2a]">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
+                <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
                   <th className="px-4 py-3 text-left">
                     <Checkbox
                       isSelected={selectAll && selectedCount === filteredProducts.length}
@@ -215,19 +215,19 @@ export default function NuevoConteoPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
                 {filteredProducts.slice(0, 15).map((product) => {
                   const isSelected = selectedProducts.some((sp) => sp.productId === product.productId);
                   return (
                     <tr
                       key={product.productId}
                       className={cn(
-                        'cursor-pointer transition-colors hover:bg-gray-50',
-                        isSelected && 'bg-brand-50'
+                        'cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]',
+                        isSelected && 'bg-brand-50 dark:bg-brand-900/20'
                       )}
                       onClick={() => handleToggleProduct(product.productId)}
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           isSelected={isSelected}
                           onValueChange={() => handleToggleProduct(product.productId)}
@@ -236,19 +236,19 @@ export default function NuevoConteoPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
                             {product.productDescription}
                           </p>
-                          <p className="text-xs text-gray-500">{product.productReference}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{product.productReference}</p>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="font-mono text-sm text-gray-600">
+                        <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
                           {product.barcode || '—'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
                           {product.systemQty}
                         </span>
                       </td>
@@ -260,15 +260,15 @@ export default function NuevoConteoPage() {
           </div>
 
           {filteredProducts.length > 15 && (
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
               Mostrando 15 de {filteredProducts.length} productos. Usa la búsqueda para filtrar.
             </p>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 p-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center justify-between border-t border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-4">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <Package className="h-4 w-4" />
             <span>
               {selectedCount} producto{selectedCount !== 1 ? 's' : ''} seleccionado
