@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Dropdown,
@@ -14,10 +14,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Input,
-  Select,
-  SelectItem,
-  Textarea,
   useDisclosure,
 } from '@heroui/react';
 import {
@@ -33,8 +29,6 @@ import {
   Edit,
   Trash2,
   X,
-  Package,
-  ClipboardList,
   Calendar,
   Building2,
   CheckCircle2,
@@ -53,15 +47,9 @@ import {
   getSalesStats,
   formatCurrency,
   formatDate,
-  getNextOrderNumber,
-  getProductPrice,
-  getProductCost,
-  calculateCommissionEligible,
 } from '@/lib/mock-data/sales-orders';
 import { MOCK_CLIENTS, getCreditStatus } from '@/lib/mock-data/clients';
-import { MOCK_PRODUCTS } from '@/lib/mock-data/products';
-import type { SalesOrder, SalesOrderStatus, SalesOrderLine, DocumentType } from '@/lib/types/sales-order';
-import type { Client, PriceLevel } from '@/lib/types/client';
+import type { SalesOrder, SalesOrderStatus, DocumentType } from '@/lib/types/sales-order';
 import { STATUS_CONFIG, DOCUMENT_TYPE_LABELS } from '@/lib/types/sales-order';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
@@ -79,17 +67,8 @@ const PIPELINE_STAGES: { status: SalesOrderStatus; label: string }[] = [
   { status: 'facturado', label: 'Facturado' },
 ];
 
-// Initial form state for new quote
-const initialQuoteForm = {
-  customerId: '',
-  notes: '',
-  validUntil: '',
-  requestedDeliveryDate: '',
-};
-
 export default function VentasPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { checkPermission, user } = useAuth();
   const canViewMargins = checkPermission('canViewMargins');
   const canCreateQuotes = checkPermission('canCreateQuotes');
@@ -102,28 +81,9 @@ export default function VentasPage() {
   const [docTypeFilter, setDocTypeFilter] = useState<DocTypeFilter>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
-  const [quoteFormData, setQuoteFormData] = useState(initialQuoteForm);
-  const [quoteLines, setQuoteLines] = useState<Partial<SalesOrderLine>[]>([]);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-
-  // New line state
-  const [newLineProduct, setNewLineProduct] = useState('');
-  const [newLineQty, setNewLineQty] = useState('');
-  const [newLinePrice, setNewLinePrice] = useState('');
-  const [newLineDiscount, setNewLineDiscount] = useState('0');
 
   // Modal states
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
-  const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
-
-  // Auto-open modal from query parameter
-  useEffect(() => {
-    if (searchParams.get('action') === 'new' && canCreateQuotes) {
-      onCreateOpen();
-      // Clear the query parameter
-      router.replace('/ventas', { scroll: false });
-    }
-  }, [searchParams, canCreateQuotes, onCreateOpen, router]);
 
   // Stats
   const stats = getSalesStats();
@@ -147,100 +107,6 @@ export default function VentasPage() {
   }, [searchQuery, statusFilter, docTypeFilter, selectedCustomer]);
 
   // Handlers
-  const handleFormChange = (field: string, value: string) => {
-    setQuoteFormData((prev) => ({ ...prev, [field]: value }));
-
-    // When customer changes, update selected client
-    if (field === 'customerId') {
-      const client = MOCK_CLIENTS.find((c) => c.id === value);
-      setSelectedClient(client || null);
-      setQuoteLines([]); // Reset lines when customer changes
-    }
-  };
-
-  const handleProductSelect = (productId: string) => {
-    setNewLineProduct(productId);
-    if (selectedClient && productId) {
-      const price = getProductPrice(productId, selectedClient.priceLevel);
-      setNewLinePrice(price.toString());
-    }
-  };
-
-  const handleAddLine = () => {
-    if (!newLineProduct || !newLineQty || !selectedClient) {
-      toast.error('Datos incompletos', {
-        description: 'Selecciona un producto y completa la cantidad.',
-      });
-      return;
-    }
-
-    const product = MOCK_PRODUCTS.find((p) => p.id === newLineProduct);
-    if (!product) return;
-
-    const qty = parseFloat(newLineQty);
-    const price = parseFloat(newLinePrice) || getProductPrice(product.id, selectedClient.priceLevel);
-    const discount = parseFloat(newLineDiscount) || 0;
-    const subtotal = qty * price * (1 - discount / 100);
-    const cost = getProductCost(product.id);
-    const marginPercent = price > 0 ? ((price - cost) / price) * 100 : 0;
-
-    const newLine: Partial<SalesOrderLine> = {
-      id: `LINE-NEW-${Date.now()}`,
-      productId: product.id,
-      productReference: product.reference,
-      productDescription: product.description,
-      productGroup: product.group,
-      productBrand: product.brand,
-      quantity: qty,
-      priceLevel: selectedClient.priceLevel,
-      unitPrice: price,
-      originalPrice: getProductPrice(product.id, selectedClient.priceLevel),
-      discount,
-      subtotal,
-      unitCost: cost,
-      totalCost: cost * qty,
-      marginPercent,
-      commissionEligible: calculateCommissionEligible(price, cost),
-    };
-
-    setQuoteLines((prev) => [...prev, newLine]);
-    setNewLineProduct('');
-    setNewLineQty('');
-    setNewLinePrice('');
-    setNewLineDiscount('0');
-    toast.success('Producto agregado');
-  };
-
-  const handleRemoveLine = (lineId: string) => {
-    setQuoteLines((prev) => prev.filter((l) => l.id !== lineId));
-  };
-
-  const handleCreateQuote = () => {
-    if (!quoteFormData.customerId) {
-      toast.error('Cliente requerido', {
-        description: 'Selecciona un cliente para la cotización.',
-      });
-      return;
-    }
-
-    if (quoteLines.length === 0) {
-      toast.error('Sin productos', {
-        description: 'Agrega al menos un producto a la cotización.',
-      });
-      return;
-    }
-
-    const orderNumber = getNextOrderNumber('cotizacion');
-    toast.success('Cotización creada', {
-      description: `La cotización ${orderNumber} ha sido creada exitosamente.`,
-    });
-
-    setQuoteFormData(initialQuoteForm);
-    setQuoteLines([]);
-    setSelectedClient(null);
-    onCreateClose();
-  };
-
   const handleViewOrder = (order: SalesOrder) => {
     router.push(`/ventas/${order.id}`);
   };
@@ -297,7 +163,7 @@ export default function VentasPage() {
           </button>
           {canCreateQuotes && (
             <button
-              onClick={onCreateOpen}
+              onClick={() => router.push('/ventas/nueva')}
               className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-800"
             >
               <Plus className="h-4 w-4" />
@@ -761,246 +627,6 @@ export default function VentasPage() {
         </ModalContent>
       </Modal>
 
-      {/* Create Quote Modal */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-border">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500/10">
-                <ClipboardList className="h-5 w-5 text-brand-500" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Nueva Cotización</h2>
-                <p className="text-sm text-muted-foreground">Completa la información de la cotización</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-4">
-            <div className="space-y-4">
-              {/* Cliente Section */}
-              <Select
-                label="Cliente"
-                placeholder="Seleccionar cliente..."
-                labelPlacement="outside"
-                selectedKeys={quoteFormData.customerId ? [quoteFormData.customerId] : []}
-                onChange={(e) => handleFormChange('customerId', e.target.value)}
-                variant="bordered"
-                size="sm"
-                isRequired
-                classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
-              >
-                {MOCK_CLIENTS.filter((c) => c.status === 'active').slice(0, 15).map((client) => (
-                  <SelectItem key={client.id} textValue={client.name}>
-                    <div className="flex flex-col">
-                      <span className="text-sm">{client.name}</span>
-                      <span className="text-xs text-muted-foreground">{client.country} • Nivel {client.priceLevel}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </Select>
-
-              {/* Selected client info */}
-              {selectedClient && (
-                <div className="rounded-lg border border-border bg-muted/30 p-3">
-                  <div className="grid grid-cols-3 gap-3 text-xs">
-                    <div>
-                      <span className="text-muted-foreground">Nivel: </span>
-                      <span className={cn(
-                        'font-medium',
-                        selectedClient.priceLevel === 'A' && 'text-emerald-500',
-                        selectedClient.priceLevel === 'B' && 'text-blue-500',
-                        selectedClient.priceLevel === 'C' && 'text-purple-500'
-                      )}>
-                        {selectedClient.priceLevel}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Crédito: </span>
-                      <span className={cn('font-mono font-medium', selectedClient.creditAvailable > 0 ? 'text-emerald-500' : 'text-red-500')}>
-                        {formatCurrency(selectedClient.creditAvailable)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Términos: </span>
-                      <span className="font-medium text-foreground">
-                        {selectedClient.paymentTerms === 'contado' ? 'Contado' : selectedClient.paymentTerms.replace('credito_', '') + 'd'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Dates */}
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label="Válido hasta"
-                  type="date"
-                  labelPlacement="outside"
-                  value={quoteFormData.validUntil}
-                  onChange={(e) => handleFormChange('validUntil', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                />
-                <Input
-                  label="Entrega solicitada"
-                  type="date"
-                  labelPlacement="outside"
-                  value={quoteFormData.requestedDeliveryDate}
-                  onChange={(e) => handleFormChange('requestedDeliveryDate', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                />
-              </div>
-
-              {/* Products Section */}
-              <div className="border-t border-border pt-4">
-                <h3 className="mb-3 text-sm font-medium text-foreground">Productos</h3>
-
-                {/* Add Product Row */}
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <Select
-                      placeholder="Seleccionar producto..."
-                      selectedKeys={newLineProduct ? [newLineProduct] : []}
-                      onChange={(e) => handleProductSelect(e.target.value)}
-                      variant="bordered"
-                      size="sm"
-                      isDisabled={!selectedClient}
-                      classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
-                    >
-                      {MOCK_PRODUCTS.slice(0, 20).map((product) => (
-                        <SelectItem key={product.id} textValue={product.description}>
-                          <div className="flex flex-col">
-                            <span className="text-sm">{product.description}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {product.reference} • ${product.prices[selectedClient?.priceLevel || 'C']}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </div>
-                  <div className="w-16">
-                    <Input
-                      placeholder="Cant"
-                      type="number"
-                      value={newLineQty}
-                      onChange={(e) => setNewLineQty(e.target.value)}
-                      variant="bordered"
-                      size="sm"
-                      isDisabled={!selectedClient}
-                      classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                    />
-                  </div>
-                  <div className="w-20">
-                    <Input
-                      placeholder="Precio"
-                      type="number"
-                      value={newLinePrice}
-                      onChange={(e) => setNewLinePrice(e.target.value)}
-                      variant="bordered"
-                      size="sm"
-                      isDisabled={!selectedClient}
-                      startContent={<span className="text-xs text-muted-foreground">$</span>}
-                      isReadOnly={!canViewMargins}
-                      classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                    />
-                  </div>
-                  <Button color="primary" size="sm" onPress={handleAddLine} isIconOnly isDisabled={!selectedClient} className="bg-brand-600">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Lines List */}
-                {quoteLines.length > 0 ? (
-                  <div className="mt-3 max-h-40 space-y-2 overflow-y-auto">
-                    {quoteLines.map((line) => (
-                      <div key={line.id} className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate text-sm text-foreground">{line.productDescription}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {line.quantity} × {formatCurrency(line.unitPrice || 0)} = {formatCurrency(line.subtotal || 0)}
-                            {canViewMargins && (
-                              <span className={cn('ml-2', (line.marginPercent || 0) >= 10 ? 'text-emerald-500' : 'text-red-500')}>
-                                ({line.marginPercent?.toFixed(0)}%)
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveLine(line.id || '')}
-                          className="ml-2 flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-red-500/10 hover:text-red-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-3 rounded-lg border border-dashed border-border bg-muted/30 py-6 text-center">
-                    <Package className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground">
-                      {selectedClient ? 'Agrega productos a la cotización' : 'Selecciona un cliente primero'}
-                    </p>
-                  </div>
-                )}
-
-                {/* Totals */}
-                {quoteLines.length > 0 && (
-                  <div className="mt-3 flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
-                    <span className="text-sm text-muted-foreground">{quoteLines.length} productos</span>
-                    <div className="text-right">
-                      <span className="text-sm text-muted-foreground">Total: </span>
-                      <span className="font-mono text-lg font-bold text-foreground">{formatCurrency(quoteSubtotal)}</span>
-                      {canViewMargins && (
-                        <span className={cn('ml-2 text-sm', quoteMarginPercent >= 10 ? 'text-emerald-500' : 'text-red-500')}>
-                          ({quoteMarginPercent.toFixed(0)}%)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Warning for low margin */}
-                {hasLowMarginLines && (
-                  <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-500/10 p-2 text-xs text-amber-500">
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                    <span>Margen menor al 10%. {canApproveOrders ? 'Sin aprobación adicional.' : 'Requiere aprobación.'}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Notes */}
-              <Textarea
-                label="Notas"
-                placeholder="Notas para el cliente..."
-                labelPlacement="outside"
-                value={quoteFormData.notes}
-                onChange={(e) => handleFormChange('notes', e.target.value)}
-                variant="bordered"
-                size="sm"
-                minRows={2}
-                classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-              />
-            </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-border">
-            <Button variant="light" onPress={onCreateClose}>
-              Cancelar
-            </Button>
-            <Button
-              color="primary"
-              onPress={handleCreateQuote}
-              isDisabled={!selectedClient || quoteLines.length === 0}
-              className="bg-brand-600"
-            >
-              Crear Cotización
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
     </div>
   );
 }

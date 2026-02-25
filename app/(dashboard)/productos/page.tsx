@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Dropdown,
@@ -41,7 +41,6 @@ import {
   ToggleLeft,
   Trash2,
   X,
-  ImagePlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MOCK_PRODUCTS, PRODUCT_GROUPS, getProductStats, Product } from '@/lib/mock-data/products';
@@ -49,14 +48,6 @@ import { cn } from '@/lib/utils/cn';
 
 type ViewMode = 'grid' | 'list';
 type StockFilter = 'all' | 'inStock' | 'lowStock' | 'outOfStock' | 'arriving';
-
-// Mock suppliers
-const MOCK_SUPPLIERS = [
-  { id: '1', name: 'GLOBAL BRANDS, S.A.' },
-  { id: '2', name: 'TRIPLE DOUBLE LIMITED' },
-  { id: '3', name: 'DIAGEO PANAMA' },
-  { id: '4', name: 'PERNOD RICARD' },
-];
 
 // Product images mapping
 const PRODUCT_IMAGES: Record<string, string> = {
@@ -71,48 +62,17 @@ const PRODUCT_IMAGES: Record<string, string> = {
   'CERVEZA': 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=300&h=300&fit=crop',
 };
 
-// Initial form state
-const initialFormState = {
-  description: '',
-  brand: '',
-  group: '',
-  barcode: '',
-  reference: '',
-  supplier: '',
-  unit: 'CAJA',
-  minimumQty: '10',
-  tariffCode: '',
-  priceA: '',
-  priceB: '',
-  priceC: '',
-  priceD: '',
-  priceE: '',
-  status: true,
-};
-
 export default function ProductosPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [stockFilter, setStockFilter] = useState<StockFilter>('all');
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState(initialFormState);
 
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
-  const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
   const { isOpen: isFilterOpen, onOpen: onFilterOpen, onClose: onFilterClose } = useDisclosure();
-
-  // Auto-open modal from query parameter
-  useEffect(() => {
-    if (searchParams.get('action') === 'new') {
-      onCreateOpen();
-      // Clear the query parameter
-      router.replace('/productos', { scroll: false });
-    }
-  }, [searchParams, onCreateOpen, router]);
 
   // Advanced filters state
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
@@ -172,27 +132,6 @@ export default function ProductosPage() {
       return { label: 'Stock Bajo', color: 'bg-amber-500' };
     }
     return { label: 'En Stock', color: 'bg-emerald-500' };
-  };
-
-  // Form handlers
-  const handleFormChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleCreateProduct = () => {
-    // Validation
-    if (!formData.description || !formData.brand || !formData.group || !formData.supplier) {
-      toast.error('Campos requeridos', {
-        description: 'Por favor completa todos los campos obligatorios.',
-      });
-      return;
-    }
-
-    toast.success('Producto creado', {
-      description: `"${formData.description}" ha sido agregado al catálogo.`,
-    });
-    setFormData(initialFormState);
-    onCreateClose();
   };
 
   // Product actions
@@ -265,7 +204,7 @@ export default function ProductosPage() {
             Exportar
           </button>
           <button
-            onClick={onCreateOpen}
+            onClick={() => router.push('/productos/nuevo')}
             className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-800"
           >
             <Plus className="h-4 w-4" />
@@ -809,242 +748,6 @@ export default function ProductosPage() {
               className="bg-brand-600"
             >
               Aplicar filtros
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Create Product Modal */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100 dark:bg-brand-900">
-                <Package className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Nuevo Producto</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">Completa la información del producto</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-5">
-              {/* Main Info */}
-              <div className="flex gap-4">
-                <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] transition-colors hover:border-brand-400 cursor-pointer">
-                  <ImagePlus className="h-6 w-6 text-gray-400" />
-                  <span className="text-[10px] text-gray-500">Imagen</span>
-                </div>
-                <div className="flex-1 space-y-4">
-                  <Input
-                    label="Descripción"
-                    placeholder="WHISKY JOHNNIE WALKER BLACK 12YRS 750ML"
-                    value={formData.description}
-                    onChange={(e) => handleFormChange('description', e.target.value)}
-                    variant="bordered"
-                    size="sm"
-                    labelPlacement="outside"
-                    isRequired
-                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                  />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      label="Marca"
-                      placeholder="JOHNNIE WALKER"
-                      value={formData.brand}
-                      onChange={(e) => handleFormChange('brand', e.target.value)}
-                      variant="bordered"
-                      size="sm"
-                      labelPlacement="outside"
-                      isRequired
-                      classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                    />
-                    <Select
-                      label="Categoría"
-                      placeholder="Seleccionar"
-                      selectedKeys={formData.group ? [formData.group] : []}
-                      onChange={(e) => handleFormChange('group', e.target.value)}
-                      variant="bordered"
-                      size="sm"
-                      labelPlacement="outside"
-                      isRequired
-                      classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
-                    >
-                      {PRODUCT_GROUPS.map((group) => (
-                        <SelectItem key={group.id}>{group.label}</SelectItem>
-                      ))}
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Identification */}
-              <div className="grid grid-cols-3 gap-3">
-                <Input
-                  label="Código de barras"
-                  placeholder="7501050439022"
-                  value={formData.barcode}
-                  onChange={(e) => handleFormChange('barcode', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  labelPlacement="outside"
-                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                />
-                <Input
-                  label="Referencia"
-                  placeholder="JW-BLK-750"
-                  value={formData.reference}
-                  onChange={(e) => handleFormChange('reference', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  labelPlacement="outside"
-                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                />
-                <Input
-                  label="Cod. arancelario"
-                  placeholder="2208.30.00"
-                  value={formData.tariffCode}
-                  onChange={(e) => handleFormChange('tariffCode', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  labelPlacement="outside"
-                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                />
-              </div>
-
-              {/* Supplier & Unit */}
-              <div className="grid grid-cols-3 gap-3">
-                <Select
-                  label="Proveedor"
-                  placeholder="Seleccionar"
-                  selectedKeys={formData.supplier ? [formData.supplier] : []}
-                  onChange={(e) => handleFormChange('supplier', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  labelPlacement="outside"
-                  isRequired
-                  classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
-                >
-                  {MOCK_SUPPLIERS.map((supplier) => (
-                    <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
-                  ))}
-                </Select>
-                <Select
-                  label="Unidad"
-                  selectedKeys={[formData.unit]}
-                  onChange={(e) => handleFormChange('unit', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  labelPlacement="outside"
-                  classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
-                >
-                  <SelectItem key="CAJA">Caja</SelectItem>
-                  <SelectItem key="UNIDAD">Unidad</SelectItem>
-                  <SelectItem key="BOTELLA">Botella</SelectItem>
-                  <SelectItem key="PAQUETE">Paquete</SelectItem>
-                </Select>
-                <Input
-                  label="Cantidad mínima"
-                  type="number"
-                  placeholder="10"
-                  value={formData.minimumQty}
-                  onChange={(e) => handleFormChange('minimumQty', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  labelPlacement="outside"
-                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                />
-              </div>
-
-              {/* Prices Section */}
-              <div className="border-t border-gray-200 dark:border-[#2a2a2a] pt-4">
-                <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Precios por nivel de cliente</h3>
-                <div className="grid grid-cols-5 gap-2">
-                  <Input
-                    label="A (Mayor)"
-                    type="number"
-                    placeholder="0.00"
-                    startContent={<span className="text-xs text-gray-400">$</span>}
-                    value={formData.priceA}
-                    onChange={(e) => handleFormChange('priceA', e.target.value)}
-                    variant="bordered"
-                    size="sm"
-                    labelPlacement="outside"
-                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                  />
-                  <Input
-                    label="B (Distr)"
-                    type="number"
-                    placeholder="0.00"
-                    startContent={<span className="text-xs text-gray-400">$</span>}
-                    value={formData.priceB}
-                    onChange={(e) => handleFormChange('priceB', e.target.value)}
-                    variant="bordered"
-                    size="sm"
-                    labelPlacement="outside"
-                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                  />
-                  <Input
-                    label="C (Detal)"
-                    type="number"
-                    placeholder="0.00"
-                    startContent={<span className="text-xs text-gray-400">$</span>}
-                    value={formData.priceC}
-                    onChange={(e) => handleFormChange('priceC', e.target.value)}
-                    variant="bordered"
-                    size="sm"
-                    labelPlacement="outside"
-                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                  />
-                  <Input
-                    label="D (Espec)"
-                    type="number"
-                    placeholder="0.00"
-                    startContent={<span className="text-xs text-gray-400">$</span>}
-                    value={formData.priceD}
-                    onChange={(e) => handleFormChange('priceD', e.target.value)}
-                    variant="bordered"
-                    size="sm"
-                    labelPlacement="outside"
-                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                  />
-                  <Input
-                    label="E (Públ)"
-                    type="number"
-                    placeholder="0.00"
-                    startContent={<span className="text-xs text-gray-400">$</span>}
-                    value={formData.priceE}
-                    onChange={(e) => handleFormChange('priceE', e.target.value)}
-                    variant="bordered"
-                    size="sm"
-                    labelPlacement="outside"
-                    classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                  />
-                </div>
-              </div>
-
-              {/* Status */}
-              <div className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Estado del producto</p>
-                  <p className="text-xs text-gray-500 dark:text-[#888888]">Productos inactivos no aparecen en ventas</p>
-                </div>
-                <Switch
-                  isSelected={formData.status}
-                  onValueChange={(value) => handleFormChange('status', value)}
-                  color="success"
-                  size="sm"
-                >
-                  {formData.status ? 'Activo' : 'Inactivo'}
-                </Switch>
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onCreateClose}>Cancelar</Button>
-            <Button color="primary" onPress={handleCreateProduct} className="bg-brand-600">
-              Crear Producto
             </Button>
           </ModalFooter>
         </ModalContent>

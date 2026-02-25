@@ -44,9 +44,8 @@ export function ChatWidget() {
           'flex h-12 w-12 items-center justify-center',
           'rounded-full shadow-lg',
           'transition-colors duration-200',
-          isOpen
-            ? 'bg-[#1a1a1a] text-white border border-[#2a2a2a]'
-            : 'bg-[#00D1B2] text-black hover:bg-[#00D1B2]/90'
+          'bg-[#1a1a1a] text-white border border-[#2a2a2a]',
+          'hover:bg-[#2a2a2a]'
         )}
         aria-label={isOpen ? 'Cerrar chat' : 'Abrir chat de ayuda'}
       >
@@ -59,7 +58,7 @@ export function ChatWidget() {
               exit={{ rotate: 90, opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5" style={{ color: '#FFFFFF' }} />
             </motion.div>
           ) : (
             <motion.div
@@ -69,7 +68,7 @@ export function ChatWidget() {
               exit={{ scale: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <MessageCircle className="h-5 w-5" />
+              <MessageCircle className="h-5 w-5" style={{ color: '#FFFFFF' }} />
             </motion.div>
           )}
         </AnimatePresence>

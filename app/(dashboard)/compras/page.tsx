@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Dropdown,
@@ -14,10 +14,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Input,
-  Select,
-  SelectItem,
-  Textarea,
   useDisclosure,
 } from '@heroui/react';
 import {
@@ -35,7 +31,6 @@ import {
   Trash2,
   X,
   Package,
-  ClipboardList,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -45,10 +40,8 @@ import {
   getPurchaseOrderStats,
   formatCurrency,
   formatDate,
-  getNextOrderNumber,
 } from '@/lib/mock-data/purchase-orders';
-import { MOCK_PRODUCTS } from '@/lib/mock-data/products';
-import type { PurchaseOrder, PurchaseOrderStatus, PurchaseOrderLine } from '@/lib/types/purchase-order';
+import type { PurchaseOrder, PurchaseOrderStatus } from '@/lib/types/purchase-order';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
 
@@ -63,18 +56,8 @@ const STATUS_CONFIG: Record<PurchaseOrderStatus, { bg: string; text: string; dot
   cancelada: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500', label: 'Cancelada' },
 };
 
-// Initial form state for new order
-const initialOrderForm = {
-  supplierId: '',
-  bodegaId: '',
-  supplierInvoice: '',
-  expectedArrivalDate: '',
-  notes: '',
-};
-
 export default function ComprasPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { checkPermission } = useAuth();
   const canViewCosts = checkPermission('canViewCosts');
 
@@ -84,25 +67,10 @@ export default function ComprasPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
   const [selectedBodega, setSelectedBodega] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
-  const [orderFormData, setOrderFormData] = useState(initialOrderForm);
-  const [orderLines, setOrderLines] = useState<PurchaseOrderLine[]>([]);
-  const [newLineProduct, setNewLineProduct] = useState('');
-  const [newLineQty, setNewLineQty] = useState('');
-  const [newLineCost, setNewLineCost] = useState('');
 
   // Modal states
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
-  const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
   const { isOpen: isReceiveOpen, onOpen: onReceiveOpen, onClose: onReceiveClose } = useDisclosure();
-
-  // Auto-open modal from query parameter
-  useEffect(() => {
-    if (searchParams.get('action') === 'new') {
-      onCreateOpen();
-      // Clear the query parameter
-      router.replace('/compras', { scroll: false });
-    }
-  }, [searchParams, onCreateOpen, router]);
 
   // Stats
   const stats = getPurchaseOrderStats();
@@ -126,71 +94,6 @@ export default function ComprasPage() {
   }, [searchQuery, statusFilter, selectedSupplier, selectedBodega]);
 
   // Handlers
-  const handleFormChange = (field: string, value: string) => {
-    setOrderFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleAddLine = () => {
-    if (!newLineProduct || !newLineQty || !newLineCost) {
-      toast.error('Datos incompletos', {
-        description: 'Selecciona un producto y completa cantidad y costo.',
-      });
-      return;
-    }
-
-    const product = MOCK_PRODUCTS.find((p) => p.id === newLineProduct);
-    if (!product) return;
-
-    const qty = parseFloat(newLineQty);
-    const cost = parseFloat(newLineCost);
-
-    const newLine: PurchaseOrderLine = {
-      id: `LINE-NEW-${Date.now()}`,
-      productId: product.id,
-      productReference: product.reference,
-      productDescription: product.description,
-      quantity: qty,
-      quantityReceived: 0,
-      unitCostFOB: cost,
-      totalFOB: qty * cost,
-    };
-
-    setOrderLines((prev) => [...prev, newLine]);
-    setNewLineProduct('');
-    setNewLineQty('');
-    setNewLineCost('');
-    toast.success('Producto agregado');
-  };
-
-  const handleRemoveLine = (lineId: string) => {
-    setOrderLines((prev) => prev.filter((l) => l.id !== lineId));
-  };
-
-  const handleCreateOrder = () => {
-    if (!orderFormData.supplierId || !orderFormData.bodegaId) {
-      toast.error('Campos requeridos', {
-        description: 'Selecciona proveedor y bodega.',
-      });
-      return;
-    }
-
-    if (orderLines.length === 0) {
-      toast.error('Sin productos', {
-        description: 'Agrega al menos un producto a la orden.',
-      });
-      return;
-    }
-
-    const orderNumber = getNextOrderNumber();
-    toast.success('Orden creada', {
-      description: `La orden ${orderNumber} ha sido creada exitosamente.`,
-    });
-
-    setOrderFormData(initialOrderForm);
-    setOrderLines([]);
-    onCreateClose();
-  };
-
   const handleViewOrder = (order: PurchaseOrder) => {
     router.push(`/compras/${order.id}`);
   };
@@ -244,7 +147,7 @@ export default function ComprasPage() {
             Exportar
           </button>
           <button
-            onClick={onCreateOpen}
+            onClick={() => router.push('/compras/nueva')}
             className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-800"
           >
             <Plus className="h-4 w-4" />
@@ -640,208 +543,6 @@ export default function ComprasPage() {
             </Button>
             <Button color="danger" onPress={confirmDelete}>
               Cancelar Orden
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Create Order Modal */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100 dark:bg-brand-900">
-                <ClipboardList className="h-5 w-5 text-brand-600 dark:text-brand-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Nueva Orden de Compra</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">Completa la información de la orden</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-5">
-              {/* Supplier and Bodega */}
-              <div className="grid grid-cols-2 gap-4">
-                <Select
-                  label="Proveedor"
-                  placeholder="Seleccionar"
-                  selectedKeys={orderFormData.supplierId ? [orderFormData.supplierId] : []}
-                  onChange={(e) => handleFormChange('supplierId', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  labelPlacement="outside"
-                  isRequired
-                  classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
-                >
-                  {MOCK_SUPPLIERS.map((supplier) => (
-                    <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
-                  ))}
-                </Select>
-                <Select
-                  label="Bodega destino"
-                  placeholder="Seleccionar"
-                  selectedKeys={orderFormData.bodegaId ? [orderFormData.bodegaId] : []}
-                  onChange={(e) => handleFormChange('bodegaId', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  labelPlacement="outside"
-                  isRequired
-                  classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
-                >
-                  {MOCK_BODEGAS.map((bodega) => (
-                    <SelectItem key={bodega.id}>{bodega.name}</SelectItem>
-                  ))}
-                </Select>
-              </div>
-
-              {/* Invoice and Date */}
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="No. Factura proveedor"
-                  placeholder="INV-2024-0001"
-                  value={orderFormData.supplierInvoice}
-                  onChange={(e) => handleFormChange('supplierInvoice', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  labelPlacement="outside"
-                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                />
-                <Input
-                  label="Llegada estimada"
-                  type="date"
-                  value={orderFormData.expectedArrivalDate}
-                  onChange={(e) => handleFormChange('expectedArrivalDate', e.target.value)}
-                  variant="bordered"
-                  size="sm"
-                  labelPlacement="outside"
-                  classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                />
-              </div>
-
-              {/* Notes */}
-              <Textarea
-                label="Notas"
-                placeholder="Instrucciones especiales..."
-                value={orderFormData.notes}
-                onChange={(e) => handleFormChange('notes', e.target.value)}
-                variant="bordered"
-                size="sm"
-                labelPlacement="outside"
-                minRows={2}
-                classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-              />
-
-              {/* Divider */}
-              <div className="border-t border-gray-200 dark:border-[#2a2a2a] pt-4">
-                <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Productos</h3>
-
-                {/* Add Product Row */}
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <Select
-                      label="Producto"
-                      placeholder="Seleccionar producto..."
-                      selectedKeys={newLineProduct ? [newLineProduct] : []}
-                      onChange={(e) => setNewLineProduct(e.target.value)}
-                      variant="bordered"
-                      size="sm"
-                      labelPlacement="outside"
-                      classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
-                    >
-                      {MOCK_PRODUCTS.slice(0, 20).map((product) => (
-                        <SelectItem key={product.id} textValue={product.description}>
-                          <div className="flex flex-col">
-                            <span className="text-sm">{product.description}</span>
-                            <span className="text-xs text-gray-500">{product.reference}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </div>
-                  <div className="w-20">
-                    <Input
-                      label="Cant."
-                      placeholder="0"
-                      type="number"
-                      value={newLineQty}
-                      onChange={(e) => setNewLineQty(e.target.value)}
-                      variant="bordered"
-                      size="sm"
-                      labelPlacement="outside"
-                      classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                    />
-                  </div>
-                  {canViewCosts && (
-                    <div className="w-24">
-                      <Input
-                        label="Costo"
-                        placeholder="0.00"
-                        type="number"
-                        value={newLineCost}
-                        onChange={(e) => setNewLineCost(e.target.value)}
-                        variant="bordered"
-                        size="sm"
-                        labelPlacement="outside"
-                        startContent={<span className="text-xs text-gray-400">$</span>}
-                        classNames={{ inputWrapper: 'bg-white dark:bg-[#1a1a1a]' }}
-                      />
-                    </div>
-                  )}
-                  <div className="pb-0.5">
-                    <Button color="primary" size="sm" onPress={handleAddLine} isIconOnly className="bg-brand-600">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Lines List */}
-                {orderLines.length > 0 ? (
-                  <div className="mt-3 max-h-40 space-y-2 overflow-y-auto">
-                    {orderLines.map((line) => (
-                      <div key={line.id} className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate text-sm text-gray-900 dark:text-white">{line.productDescription}</p>
-                          <p className="text-xs text-gray-500">
-                            {line.quantity} unidades {canViewCosts && `• ${formatCurrency(line.totalFOB)}`}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveLine(line.id)}
-                          className="ml-2 flex h-7 w-7 items-center justify-center rounded text-gray-400 hover:bg-red-50 hover:text-red-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-3 rounded-lg border border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] py-6 text-center">
-                    <Package className="mx-auto mb-2 h-6 w-6 text-gray-400" />
-                    <p className="text-xs text-gray-500">No hay productos agregados</p>
-                  </div>
-                )}
-
-                {/* Total */}
-                {orderLines.length > 0 && canViewCosts && (
-                  <div className="mt-3 flex justify-end">
-                    <div className="rounded-lg bg-gray-100 dark:bg-[#1a1a1a] px-4 py-2">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Total FOB: </span>
-                      <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
-                        {formatCurrency(orderLines.reduce((sum, l) => sum + l.totalFOB, 0))}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onCreateClose}>
-              Cancelar
-            </Button>
-            <Button color="primary" onPress={handleCreateOrder} className="bg-brand-600">
-              Crear Orden
             </Button>
           </ModalFooter>
         </ModalContent>

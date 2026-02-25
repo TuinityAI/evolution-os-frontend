@@ -38,7 +38,7 @@ export function ChatWindow({
       exit={{ opacity: 0, y: 20, scale: 0.95 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
       className={cn(
-        'fixed bottom-20 right-4 z-50',
+        'dark fixed bottom-20 right-4 z-50',
         'flex h-[500px] w-[380px] flex-col',
         'overflow-hidden rounded-2xl',
         'border border-[#2a2a2a] bg-[#0a0a0a]',
@@ -52,8 +52,8 @@ export function ChatWindow({
             <span className="text-lg font-bold text-black">E</span>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-white">Asistente Evo</h3>
-            <p className="text-xs text-[#888888]">Evolution OS Support</p>
+            <h3 className="text-sm font-semibold" style={{ color: '#FFFFFF' }}>Asistente Evo</h3>
+            <p className="text-xs" style={{ color: '#888888' }}>Evolution OS Support</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
