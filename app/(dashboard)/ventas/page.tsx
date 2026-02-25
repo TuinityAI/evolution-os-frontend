@@ -14,6 +14,7 @@ import {
   ModalBody,
   ModalFooter,
   Button,
+  Tooltip,
   useDisclosure,
 } from '@heroui/react';
 import {
@@ -32,6 +33,7 @@ import {
   Calendar,
   Building2,
   CheckCircle2,
+  XCircle,
   PackageCheck,
   FileCheck,
   Send,
@@ -521,13 +523,24 @@ export default function VentasPage() {
                           {order.marginPercent?.toFixed(1)}%
                         </span>
                       ) : isVendedor ? (
-                        <span
-                          className={cn(
-                            'inline-flex h-4 w-4 rounded-full',
-                            allLinesEligible ? 'bg-emerald-500' : 'bg-red-500'
-                          )}
-                          title={allLinesEligible ? 'Comisiona' : 'No comisiona'}
-                        />
+                        <Tooltip
+                          content={allLinesEligible ? "Por encima del 10%" : "Por debajo del 10%"}
+                          placement="top"
+                        >
+                          <span
+                            className={cn(
+                              'inline-flex items-center justify-center h-6 w-6 rounded-full cursor-help',
+                              allLinesEligible
+                                ? 'bg-emerald-500/10 text-emerald-500'
+                                : 'bg-red-500/10 text-red-500'
+                            )}
+                          >
+                            {allLinesEligible
+                              ? <CheckCircle2 className="h-4 w-4" />
+                              : <XCircle className="h-4 w-4" />
+                            }
+                          </span>
+                        </Tooltip>
                       ) : null}
                     </td>
                     <td className="px-4 py-3 text-center">

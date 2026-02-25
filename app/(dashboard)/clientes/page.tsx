@@ -79,6 +79,25 @@ export default function ClientesPage() {
   const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
   const { isOpen: isNewOpen, onOpen: onNewOpen, onClose: onNewClose } = useDisclosure();
 
+  // Form state for new client
+  const [newClientData, setNewClientData] = useState({
+    name: '',
+    tradeName: '',
+    taxId: '',
+    taxIdType: 'RUC',
+    country: '',
+    city: '',
+    address: '',
+    priceLevel: '' as PriceLevel | '',
+    paymentTerms: 'contado',
+    creditLimit: '',
+    contactName: '',
+    contactRole: '',
+    contactEmail: '',
+    contactPhone: '',
+  });
+  const [isCreating, setIsCreating] = useState(false);
+
   // Get stats
   const stats = getClientStats();
   const countries = getUniqueCountries();
@@ -105,10 +124,62 @@ export default function ClientesPage() {
   };
 
   const handleCreateClient = () => {
-    toast.success('Cliente creado', {
-      description: 'El nuevo cliente ha sido registrado exitosamente.',
+    // Validate required fields
+    if (!newClientData.name.trim()) {
+      toast.error('Campo requerido', { description: 'El nombre del cliente es obligatorio.' });
+      return;
+    }
+    if (!newClientData.taxId.trim()) {
+      toast.error('Campo requerido', { description: 'El RUC / Tax ID es obligatorio.' });
+      return;
+    }
+    if (!newClientData.country) {
+      toast.error('Campo requerido', { description: 'El país es obligatorio.' });
+      return;
+    }
+    if (!newClientData.priceLevel) {
+      toast.error('Campo requerido', { description: 'El nivel de precio es obligatorio.' });
+      return;
+    }
+    if (!newClientData.contactEmail.trim()) {
+      toast.error('Campo requerido', { description: 'El email del contacto es obligatorio.' });
+      return;
+    }
+
+    setIsCreating(true);
+
+    // Simulate API call
+    setTimeout(() => {
+      toast.success('Cliente creado', {
+        description: `El cliente ${newClientData.name} ha sido registrado exitosamente.`,
+      });
+
+      // Reset form
+      setNewClientData({
+        name: '',
+        tradeName: '',
+        taxId: '',
+        taxIdType: 'RUC',
+        country: '',
+        city: '',
+        address: '',
+        priceLevel: '',
+        paymentTerms: 'contado',
+        creditLimit: '',
+        contactName: '',
+        contactRole: '',
+        contactEmail: '',
+        contactPhone: '',
+      });
+      setIsCreating(false);
+      onNewClose();
+    }, 500);
+  };
+
+  const handleEditClient = (client: Client) => {
+    toast.info('Editar cliente', {
+      description: `La edición de ${client.name} estará disponible próximamente.`,
     });
-    onNewClose();
   };
 
   // Redirect if not authorized
@@ -366,6 +437,7 @@ export default function ClientesPage() {
                             size="sm"
                             variant="light"
                             isIconOnly
+                            onPress={() => handleEditClient(client)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -576,7 +648,16 @@ export default function ClientesPage() {
             <Button variant="light" onPress={onViewClose}>
               Cerrar
             </Button>
-            <Button color="primary" startContent={<Edit className="h-4 w-4" />}>
+            <Button
+              color="primary"
+              startContent={<Edit className="h-4 w-4" />}
+              onPress={() => {
+                if (selectedClient) {
+                  handleEditClient(selectedClient);
+                  onViewClose();
+                }
+              }}
+            >
               Editar Cliente
             </Button>
           </ModalFooter>
@@ -604,12 +685,16 @@ export default function ClientesPage() {
                   variant="bordered"
                   labelPlacement="outside"
                   isRequired
+                  value={newClientData.name}
+                  onChange={(e) => setNewClientData((prev) => ({ ...prev, name: e.target.value }))}
                 />
                 <Input
                   label="Nombre Comercial"
                   placeholder="Nombre de fantasía"
                   variant="bordered"
                   labelPlacement="outside"
+                  value={newClientData.tradeName}
+                  onChange={(e) => setNewClientData((prev) => ({ ...prev, tradeName: e.target.value }))}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -619,11 +704,15 @@ export default function ClientesPage() {
                   variant="bordered"
                   labelPlacement="outside"
                   isRequired
+                  value={newClientData.taxId}
+                  onChange={(e) => setNewClientData((prev) => ({ ...prev, taxId: e.target.value }))}
                 />
                 <Select
                   label="Tipo de Documento"
                   variant="bordered"
                   labelPlacement="outside"
+                  selectedKeys={newClientData.taxIdType ? [newClientData.taxIdType] : []}
+                  onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, taxIdType: Array.from(keys)[0] as string }))}
                 >
                   <SelectItem key="RUC">RUC</SelectItem>
                   <SelectItem key="NIT">NIT</SelectItem>
@@ -639,6 +728,8 @@ export default function ClientesPage() {
                   labelPlacement="outside"
                   isRequired
                   items={countries.map((c) => ({ key: c, label: c }))}
+                  selectedKeys={newClientData.country ? [newClientData.country] : []}
+                  onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, country: Array.from(keys)[0] as string }))}
                 >
                   {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
                 </Select>
@@ -647,6 +738,8 @@ export default function ClientesPage() {
                   placeholder="Ciudad"
                   variant="bordered"
                   labelPlacement="outside"
+                  value={newClientData.city}
+                  onChange={(e) => setNewClientData((prev) => ({ ...prev, city: e.target.value }))}
                 />
               </div>
               <Input
@@ -654,6 +747,8 @@ export default function ClientesPage() {
                 placeholder="Dirección completa"
                 variant="bordered"
                 labelPlacement="outside"
+                value={newClientData.address}
+                onChange={(e) => setNewClientData((prev) => ({ ...prev, address: e.target.value }))}
               />
               <div className="grid grid-cols-3 gap-4">
                 <Select
@@ -662,6 +757,8 @@ export default function ClientesPage() {
                   labelPlacement="outside"
                   isRequired
                   items={PRICE_LEVELS.map((l) => ({ key: l, label: `Nivel ${l}` }))}
+                  selectedKeys={newClientData.priceLevel ? [newClientData.priceLevel] : []}
+                  onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, priceLevel: Array.from(keys)[0] as PriceLevel }))}
                 >
                   {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
                 </Select>
@@ -670,6 +767,8 @@ export default function ClientesPage() {
                   variant="bordered"
                   labelPlacement="outside"
                   isRequired
+                  selectedKeys={newClientData.paymentTerms ? [newClientData.paymentTerms] : []}
+                  onSelectionChange={(keys) => setNewClientData((prev) => ({ ...prev, paymentTerms: Array.from(keys)[0] as string }))}
                 >
                   <SelectItem key="contado">Contado</SelectItem>
                   <SelectItem key="credito_15">Crédito 15 días</SelectItem>
@@ -684,6 +783,8 @@ export default function ClientesPage() {
                   variant="bordered"
                   labelPlacement="outside"
                   startContent={<span className="text-muted-foreground">$</span>}
+                  value={newClientData.creditLimit}
+                  onChange={(e) => setNewClientData((prev) => ({ ...prev, creditLimit: e.target.value }))}
                 />
               </div>
               {/* Contact */}
@@ -696,12 +797,16 @@ export default function ClientesPage() {
                     variant="bordered"
                     labelPlacement="outside"
                     isRequired
+                    value={newClientData.contactName}
+                    onChange={(e) => setNewClientData((prev) => ({ ...prev, contactName: e.target.value }))}
                   />
                   <Input
                     label="Cargo"
                     placeholder="Gerente, Director, etc."
                     variant="bordered"
                     labelPlacement="outside"
+                    value={newClientData.contactRole}
+                    onChange={(e) => setNewClientData((prev) => ({ ...prev, contactRole: e.target.value }))}
                   />
                   <Input
                     label="Email"
@@ -710,22 +815,26 @@ export default function ClientesPage() {
                     variant="bordered"
                     labelPlacement="outside"
                     isRequired
+                    value={newClientData.contactEmail}
+                    onChange={(e) => setNewClientData((prev) => ({ ...prev, contactEmail: e.target.value }))}
                   />
                   <Input
                     label="Teléfono"
                     placeholder="+507 000-0000"
                     variant="bordered"
                     labelPlacement="outside"
+                    value={newClientData.contactPhone}
+                    onChange={(e) => setNewClientData((prev) => ({ ...prev, contactPhone: e.target.value }))}
                   />
                 </div>
               </div>
             </div>
           </ModalBody>
           <ModalFooter className="border-t border-border pt-4">
-            <Button variant="light" onPress={onNewClose}>
+            <Button variant="light" onPress={onNewClose} isDisabled={isCreating}>
               Cancelar
             </Button>
-            <Button color="primary" onPress={handleCreateClient}>
+            <Button color="primary" onPress={handleCreateClient} isLoading={isCreating}>
               Crear Cliente
             </Button>
           </ModalFooter>

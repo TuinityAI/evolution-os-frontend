@@ -10,6 +10,7 @@ import {
   ModalFooter,
   Button,
   Textarea,
+  Tooltip,
   useDisclosure,
 } from '@heroui/react';
 import {
@@ -419,17 +420,21 @@ export default function SalesOrderDetailPage() {
 
             {/* Commission indicator for vendedor */}
             {isVendedor && (
-              <div className="mt-4 flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                <span
-                  className={cn(
-                    'h-4 w-4 rounded-full',
-                    allLinesEligible ? 'bg-emerald-500' : 'bg-red-500'
-                  )}
-                />
-                <span className="text-sm text-muted-foreground">
-                  {allLinesEligible ? 'Este documento genera comisión' : 'Este documento NO genera comisión'}
-                </span>
-              </div>
+              <Tooltip content={allLinesEligible ? "Por encima del 10%" : "Por debajo del 10%"}>
+                <div className="mt-4 flex items-center gap-2 rounded-lg bg-muted/50 p-3 cursor-help">
+                  <span
+                    className={cn(
+                      'inline-flex items-center justify-center h-5 w-5 rounded-full',
+                      allLinesEligible ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
+                    )}
+                  >
+                    {allLinesEligible ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {allLinesEligible ? 'Este documento genera comisión' : 'Este documento NO genera comisión'}
+                  </span>
+                </div>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -569,13 +574,24 @@ export default function SalesOrderDetailPage() {
                   )}
                   {isVendedor && (
                     <td className="px-4 py-3 text-center">
-                      <span
-                        className={cn(
-                          'inline-flex h-4 w-4 rounded-full',
-                          line.commissionEligible ? 'bg-emerald-500' : 'bg-red-500'
-                        )}
-                        title={line.commissionEligible ? 'Comisiona' : 'No comisiona'}
-                      />
+                      <Tooltip
+                        content={line.commissionEligible ? "Por encima del 10%" : "Por debajo del 10%"}
+                        placement="top"
+                      >
+                        <span
+                          className={cn(
+                            'inline-flex items-center justify-center h-6 w-6 rounded-full cursor-help',
+                            line.commissionEligible
+                              ? 'bg-emerald-500/10 text-emerald-500'
+                              : 'bg-red-500/10 text-red-500'
+                          )}
+                        >
+                          {line.commissionEligible
+                            ? <CheckCircle2 className="h-4 w-4" />
+                            : <XCircle className="h-4 w-4" />
+                          }
+                        </span>
+                      </Tooltip>
                     </td>
                   )}
                 </motion.tr>

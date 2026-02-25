@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Input, Select, SelectItem, Textarea } from '@heroui/react';
-import { ArrowLeft, ClipboardList, Plus, Trash2, Package, AlertTriangle } from 'lucide-react';
+import { Button, Input, Select, SelectItem, Textarea, Tooltip } from '@heroui/react';
+import { ArrowLeft, ClipboardList, Plus, Trash2, Package, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
 import {
@@ -31,6 +31,7 @@ export default function NuevaCotizacionPage() {
   const { checkPermission } = useAuth();
   const canViewMargins = checkPermission('canViewMargins');
   const canApproveOrders = checkPermission('canApproveOrders');
+  const isVendedor = !canViewMargins; // Vendedores no pueden ver márgenes exactos
 
   // Form state
   const [quoteFormData, setQuoteFormData] = useState(initialQuoteForm);
@@ -321,6 +322,9 @@ export default function NuevaCotizacionPage() {
                         {canViewMargins && (
                           <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Margen</th>
                         )}
+                        {isVendedor && (
+                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Comisión</th>
+                        )}
                         <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Acción</th>
                       </tr>
                     </thead>
@@ -350,6 +354,26 @@ export default function NuevaCotizacionPage() {
                               )}>
                                 {line.marginPercent?.toFixed(0)}%
                               </span>
+                            </td>
+                          )}
+                          {isVendedor && (
+                            <td className="px-4 py-3 text-center">
+                              <Tooltip
+                                content={line.commissionEligible ? "Por encima del 10%" : "Por debajo del 10%"}
+                                placement="top"
+                              >
+                                <span className={cn(
+                                  'inline-flex items-center justify-center h-6 w-6 rounded-full cursor-help',
+                                  line.commissionEligible
+                                    ? 'bg-emerald-500/10 text-emerald-500'
+                                    : 'bg-red-500/10 text-red-500'
+                                )}>
+                                  {line.commissionEligible
+                                    ? <CheckCircle2 className="h-4 w-4" />
+                                    : <XCircle className="h-4 w-4" />
+                                  }
+                                </span>
+                              </Tooltip>
                             </td>
                           )}
                           <td className="px-4 py-3 text-center">
@@ -387,6 +411,19 @@ export default function NuevaCotizacionPage() {
                         ({quoteMarginPercent.toFixed(0)}% margen)
                       </span>
                     )}
+                    {isVendedor && (
+                      <Tooltip content={!hasLowMarginLines ? "Por encima del 10%" : "Hay productos por debajo del 10%"}>
+                        <span className={cn(
+                          'ml-3 inline-flex items-center gap-1.5 text-sm cursor-help',
+                          !hasLowMarginLines ? 'text-emerald-500' : 'text-amber-500'
+                        )}>
+                          {!hasLowMarginLines
+                            ? <><CheckCircle2 className="h-4 w-4" /> Comisiona</>
+                            : <><AlertTriangle className="h-4 w-4" /> Revisar</>
+                          }
+                        </span>
+                      </Tooltip>
+                    )}
                   </div>
                 </div>
               )}
@@ -395,7 +432,12 @@ export default function NuevaCotizacionPage() {
               {hasLowMarginLines && (
                 <div className="mt-4 flex items-center gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-500">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>Hay productos con margen menor al 10%. {canApproveOrders ? 'No requiere aprobación adicional.' : 'Requiere aprobación de supervisor.'}</span>
+                  <span>
+                    {isVendedor
+                      ? 'Hay productos que no generan comisión. Requiere aprobación de supervisor.'
+                      : `Hay productos con margen menor al 10%. ${canApproveOrders ? 'No requiere aprobación adicional.' : 'Requiere aprobación de supervisor.'}`
+                    }
+                  </span>
                 </div>
               )}
             </div>
