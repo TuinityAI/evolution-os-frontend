@@ -551,7 +551,7 @@ export function printPurchaseOrder(
 export interface SalesOrderPrintData {
   orderNumber: string;
   customerName: string;
-  customerCountry: string;
+  customerCountry?: string;
   requestedDeliveryDate?: string;
   shippingAddress?: string;
   status: string;
@@ -601,7 +601,7 @@ export function printSalesOrder(
 
   const metadata = [
     { label: 'Cliente', value: order.customerName },
-    { label: 'País', value: order.customerCountry },
+    { label: 'País', value: order.customerCountry || '-' },
     { label: 'Estado', value: order.status },
     {
       label: 'Fecha Entrega',
@@ -661,7 +661,7 @@ export function printPackingList(order: SalesOrderPrintData): void {
 
   const metadata = [
     { label: 'Cliente', value: order.customerName },
-    { label: 'País', value: order.customerCountry },
+    { label: 'País', value: order.customerCountry || '-' },
     { label: 'Total Productos', value: `${order.lines.length} líneas` },
     { label: 'Total Unidades', value: totalQuantity.toString() },
     {

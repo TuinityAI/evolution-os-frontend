@@ -59,7 +59,7 @@ export default function LoginPage() {
       {/* World Map Background */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-full max-w-[1600px] scale-125">
-          <WorldMap dots={mapDots} lineColor="#3B82F6" />
+          <WorldMap dots={MAP_DOTS} lineColor="#3B82F6" />
         </div>
       </div>
 
