@@ -218,105 +218,126 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* Stats Grid - Main 4 */}
+      {/* Section: Resumen */}
+      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">Resumen General</p>
+
+      {/* Stats Grid - Main 4, unified */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="-mt-4 overflow-hidden rounded-xl border border-border-default bg-surface-main shadow-sm"
       >
-        {STATS.map((stat) => {
-          const Icon = stat.icon;
-          const colorClasses = {
-            brand: 'bg-brand-100 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400',
-            success: 'bg-success-bg text-success',
-            warning: 'bg-warning-bg text-warning',
-            danger: 'bg-danger-bg text-danger',
-          };
+        <div className="grid grid-cols-1 divide-y divide-border-default sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
+          {STATS.map((stat, index) => {
+            const Icon = stat.icon;
+            const colorClasses = {
+              brand: 'bg-brand-100 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400',
+              success: 'bg-success-bg text-success',
+              warning: 'bg-warning-bg text-warning',
+              danger: 'bg-danger-bg text-danger',
+            };
 
-          return (
-            <motion.div key={stat.label} variants={itemVariants}>
-              <Card
-                isPressable
-                onPress={() => router.push(stat.href)}
-                className="border border-border-default bg-surface-main shadow-sm transition-all hover:border-brand-200 hover:shadow-md"
+            return (
+              <motion.div
+                key={stat.label}
+                variants={itemVariants}
+                onClick={() => router.push(stat.href)}
+                className={cn(
+                  'cursor-pointer p-5 transition-colors hover:bg-surface-secondary',
+                  index < 2 && 'sm:border-b sm:border-border-default lg:border-b-0'
+                )}
               >
-                <CardBody className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-text-secondary">{stat.label}</p>
-                      <p className="mt-2 text-2xl font-semibold text-text-primary">{stat.value}</p>
-                      <div className="mt-2 flex items-center gap-1">
-                        {stat.changeType === 'positive' && <ArrowUpRight className="h-4 w-4 text-success" />}
-                        {stat.changeType === 'negative' && <ArrowDownRight className="h-4 w-4 text-danger" />}
-                        <span className={cn('text-xs font-medium', stat.changeType === 'positive' ? 'text-success' : stat.changeType === 'negative' ? 'text-danger' : 'text-warning')}>
-                          {stat.change}
-                        </span>
-                      </div>
-                    </div>
-                    <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', colorClasses[stat.color as keyof typeof colorClasses])}>
-                      <Icon className="h-5 w-5" />
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-text-secondary">{stat.label}</p>
+                    <p className="mt-2 text-2xl font-semibold text-text-primary">{stat.value}</p>
+                    <div className="mt-2 flex items-center gap-1">
+                      {stat.changeType === 'positive' && <ArrowUpRight className="h-4 w-4 text-success" />}
+                      {stat.changeType === 'negative' && <ArrowDownRight className="h-4 w-4 text-danger" />}
+                      <span className={cn('text-xs font-medium', stat.changeType === 'positive' ? 'text-success' : stat.changeType === 'negative' ? 'text-danger' : 'text-warning')}>
+                        {stat.change}
+                      </span>
                     </div>
                   </div>
-                </CardBody>
-              </Card>
-            </motion.div>
-          );
-        })}
+                  <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl', colorClasses[stat.color as keyof typeof colorClasses])}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
       </motion.div>
 
-      {/* KPIs Row - All together */}
+      {/* Section: KPIs */}
+      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">Indicadores Clave</p>
+
+      {/* KPIs Row - All together, touching */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="-mt-4 overflow-hidden rounded-xl border border-border-default bg-surface-main shadow-sm"
       >
-        {KPIS.map((kpi) => {
-          const Icon = kpi.icon;
-          const progress = (kpi.current / kpi.target) * 100;
-          const isOnTrack = progress >= 80;
+        <div className="grid grid-cols-1 divide-y divide-border-default sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-4">
+          {KPIS.map((kpi, index) => {
+            const Icon = kpi.icon;
+            const progress = (kpi.current / kpi.target) * 100;
+            const isOnTrack = progress >= 80;
 
-          const colorClasses = {
-            brand: 'bg-brand-100 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400',
-            info: 'bg-info-bg text-info',
-            success: 'bg-success-bg text-success',
-            warning: 'bg-warning-bg text-warning',
-          };
+            const colorClasses = {
+              brand: 'bg-brand-100 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400',
+              info: 'bg-info-bg text-info',
+              success: 'bg-success-bg text-success',
+              warning: 'bg-warning-bg text-warning',
+            };
 
-          return (
-            <motion.div key={kpi.label} variants={itemVariants}>
-              <Card className="border border-border-default bg-surface-main shadow-sm">
-                <CardBody className="p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', colorClasses[kpi.color as keyof typeof colorClasses])}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <span className="text-sm font-medium text-text-secondary">{kpi.label}</span>
-                    </div>
-                    <span className={cn('text-lg font-bold', isOnTrack ? 'text-success' : 'text-warning')}>
-                      {kpi.unit === '$' ? formatCurrency(kpi.current) : `${kpi.current}${kpi.unit}`}
-                    </span>
+            return (
+              <motion.div
+                key={kpi.label}
+                variants={itemVariants}
+                className={cn(
+                  'p-5',
+                  index < 2 && 'sm:border-b sm:border-border-default lg:border-b-0'
+                )}
+              >
+                <div className="mb-4 flex items-center gap-3">
+                  <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl', colorClasses[kpi.color as keyof typeof colorClasses])}>
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <Progress
-                    value={Math.min(progress, 100)}
-                    color={isOnTrack ? 'success' : 'warning'}
-                    size="sm"
-                    className="h-1.5"
-                  />
-                  <p className="mt-2 text-xs text-text-muted">
-                    Meta: {kpi.unit === '$' ? formatCurrency(kpi.target) : `${kpi.target}${kpi.unit}`} • {progress.toFixed(0)}%
-                  </p>
-                </CardBody>
-              </Card>
-            </motion.div>
-          );
-        })}
+                  <div>
+                    <p className="text-sm font-medium text-text-secondary">{kpi.label}</p>
+                    <p className={cn('text-xl font-bold', isOnTrack ? 'text-success' : 'text-warning')}>
+                      {kpi.unit === '$' ? formatCurrency(kpi.current) : `${kpi.current}${kpi.unit}`}
+                    </p>
+                  </div>
+                </div>
+                <Progress
+                  value={Math.min(progress, 100)}
+                  color={isOnTrack ? 'success' : 'warning'}
+                  size="sm"
+                  className="h-2"
+                />
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <span className="text-text-muted">
+                    Meta: {kpi.unit === '$' ? formatCurrency(kpi.target) : `${kpi.target}${kpi.unit}`}
+                  </span>
+                  <span className={cn('font-semibold', isOnTrack ? 'text-success' : 'text-warning')}>
+                    {progress.toFixed(0)}%
+                  </span>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
       </motion.div>
+
+      {/* Section: Análisis */}
+      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">Análisis de Ventas</p>
 
       {/* Charts Row - Sales + Monthly */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+      <div className="-mt-4 grid grid-cols-1 gap-6 lg:grid-cols-5">
         {/* Weekly Sales Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -460,7 +481,9 @@ export default function DashboardPage() {
 
       {/* Pending Approvals + Inventory Alerts */}
       {canApproveAdjustments && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <>
+          <p className="text-xs font-medium uppercase tracking-wider text-text-muted">Gestión Operativa</p>
+          <div className="-mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Pending Approvals */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -582,10 +605,14 @@ export default function DashboardPage() {
             </Card>
           </motion.div>
         </div>
+        </>
       )}
 
+      {/* Section: Logística */}
+      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">Logística y Productos</p>
+
       {/* Upcoming Shipments + Top Products */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="-mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Upcoming Shipments */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -717,8 +744,11 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
+      {/* Section: Clientes y Agenda */}
+      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">Clientes y Agenda</p>
+
       {/* Top Customers + Calendar */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="-mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Top Customers */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -861,8 +891,11 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
+      {/* Section: Actividad */}
+      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">Actividad y Acciones</p>
+
       {/* Recent Activity + Quick Actions */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="-mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Recent Activity */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -926,35 +959,35 @@ export default function DashboardPage() {
             <Divider />
             <CardBody className="space-y-2 p-4">
               <button
-                onClick={() => router.push('/compras/nueva')}
+                onClick={() => router.push('/compras?action=new')}
                 className="flex w-full items-center gap-3 rounded-lg bg-brand-600 px-4 py-3 text-left text-sm font-medium text-white transition-colors hover:bg-brand-700"
               >
                 <ShoppingCart className="h-4 w-4" />
                 Nueva Orden de Compra
               </button>
               <button
-                onClick={() => router.push('/productos/nuevo')}
+                onClick={() => router.push('/productos?action=new')}
                 className="flex w-full items-center gap-3 rounded-lg border border-brand-600 px-4 py-3 text-left text-sm font-medium text-brand-600 transition-colors hover:bg-brand-50 dark:hover:bg-brand-900/20"
               >
                 <Package className="h-4 w-4" />
                 Nuevo Producto
               </button>
               <button
-                onClick={() => router.push('/ventas/nueva')}
+                onClick={() => router.push('/ventas?action=new')}
                 className="flex w-full items-center gap-3 rounded-lg border border-border-default px-4 py-3 text-left text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
               >
                 <TrendingUp className="h-4 w-4" />
                 Nueva Cotización
               </button>
               <button
-                onClick={() => router.push('/inventario/transferencias/nueva')}
+                onClick={() => router.push('/inventario?tab=transferencias&action=new')}
                 className="flex w-full items-center gap-3 rounded-lg border border-border-default px-4 py-3 text-left text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
               >
                 <ArrowRightLeft className="h-4 w-4" />
                 Nueva Transferencia
               </button>
               <button
-                onClick={() => router.push('/inventario/conteo/nuevo')}
+                onClick={() => router.push('/inventario?tab=conteo&action=new')}
                 className="flex w-full items-center gap-3 rounded-lg border border-border-default px-4 py-3 text-left text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
               >
                 <ClipboardList className="h-4 w-4" />

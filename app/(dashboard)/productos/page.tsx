@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Dropdown,
@@ -95,6 +95,7 @@ const initialFormState = {
 
 export default function ProductosPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [stockFilter, setStockFilter] = useState<StockFilter>('all');
@@ -106,6 +107,15 @@ export default function ProductosPage() {
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
   const { isOpen: isFilterOpen, onOpen: onFilterOpen, onClose: onFilterClose } = useDisclosure();
+
+  // Auto-open modal from query parameter
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      onCreateOpen();
+      // Clear the query parameter
+      router.replace('/productos', { scroll: false });
+    }
+  }, [searchParams, onCreateOpen, router]);
 
   // Advanced filters state
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
@@ -711,7 +721,7 @@ export default function ProductosPage() {
                     value={priceRange.min}
                     onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
                     variant="bordered"
-                    classNames={{ inputWrapper: 'bg-white' }}
+                    labelPlacement="outside"
                   />
                   <Input
                     label="Máximo"
@@ -721,7 +731,7 @@ export default function ProductosPage() {
                     value={priceRange.max}
                     onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
                     variant="bordered"
-                    classNames={{ inputWrapper: 'bg-white' }}
+                    labelPlacement="outside"
                   />
                 </div>
               </div>
@@ -737,7 +747,7 @@ export default function ProductosPage() {
                     value={stockRange.min}
                     onChange={(e) => setStockRange(prev => ({ ...prev, min: e.target.value }))}
                     variant="bordered"
-                    classNames={{ inputWrapper: 'bg-white' }}
+                    labelPlacement="outside"
                   />
                   <Input
                     label="Máximo"
@@ -746,7 +756,7 @@ export default function ProductosPage() {
                     value={stockRange.max}
                     onChange={(e) => setStockRange(prev => ({ ...prev, max: e.target.value }))}
                     variant="bordered"
-                    classNames={{ inputWrapper: 'bg-white' }}
+                    labelPlacement="outside"
                   />
                 </div>
               </div>
@@ -759,7 +769,7 @@ export default function ProductosPage() {
                   selectedKeys={selectedSupplier ? [selectedSupplier] : []}
                   onChange={(e) => setSelectedSupplier(e.target.value || null)}
                   variant="bordered"
-                  classNames={{ trigger: 'bg-white' }}
+                  labelPlacement="outside"
                 >
                   {MOCK_SUPPLIERS.map((supplier) => (
                     <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
@@ -838,7 +848,7 @@ export default function ProductosPage() {
                         value={formData.description}
                         onChange={(e) => handleFormChange('description', e.target.value)}
                         variant="bordered"
-                        classNames={{ inputWrapper: 'bg-white' }}
+                        labelPlacement="outside"
                       />
                       <div className="grid grid-cols-2 gap-4">
                         <Input
@@ -847,7 +857,7 @@ export default function ProductosPage() {
                           value={formData.brand}
                           onChange={(e) => handleFormChange('brand', e.target.value)}
                           variant="bordered"
-                          classNames={{ inputWrapper: 'bg-white' }}
+                          labelPlacement="outside"
                         />
                         <Select
                           label="Categoría *"
@@ -855,7 +865,7 @@ export default function ProductosPage() {
                           selectedKeys={formData.group ? [formData.group] : []}
                           onChange={(e) => handleFormChange('group', e.target.value)}
                           variant="bordered"
-                          classNames={{ trigger: 'bg-white' }}
+                          labelPlacement="outside"
                         >
                           {PRODUCT_GROUPS.map((group) => (
                             <SelectItem key={group.id}>{group.label}</SelectItem>
@@ -875,7 +885,7 @@ export default function ProductosPage() {
                         value={formData.barcode}
                         onChange={(e) => handleFormChange('barcode', e.target.value)}
                         variant="bordered"
-                        classNames={{ inputWrapper: 'bg-white' }}
+                        labelPlacement="outside"
                       />
                       <Input
                         label="Referencia interna"
@@ -883,7 +893,7 @@ export default function ProductosPage() {
                         value={formData.reference}
                         onChange={(e) => handleFormChange('reference', e.target.value)}
                         variant="bordered"
-                        classNames={{ inputWrapper: 'bg-white' }}
+                        labelPlacement="outside"
                       />
                       <Input
                         label="Código arancelario"
@@ -891,7 +901,7 @@ export default function ProductosPage() {
                         value={formData.tariffCode}
                         onChange={(e) => handleFormChange('tariffCode', e.target.value)}
                         variant="bordered"
-                        classNames={{ inputWrapper: 'bg-white' }}
+                        labelPlacement="outside"
                       />
                     </div>
                   </div>
@@ -906,7 +916,7 @@ export default function ProductosPage() {
                         selectedKeys={formData.supplier ? [formData.supplier] : []}
                         onChange={(e) => handleFormChange('supplier', e.target.value)}
                         variant="bordered"
-                        classNames={{ trigger: 'bg-white' }}
+                        labelPlacement="outside"
                       >
                         {MOCK_SUPPLIERS.map((supplier) => (
                           <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
@@ -917,7 +927,7 @@ export default function ProductosPage() {
                         selectedKeys={[formData.unit]}
                         onChange={(e) => handleFormChange('unit', e.target.value)}
                         variant="bordered"
-                        classNames={{ trigger: 'bg-white' }}
+                        labelPlacement="outside"
                       >
                         <SelectItem key="CAJA">Caja</SelectItem>
                         <SelectItem key="UNIDAD">Unidad</SelectItem>
@@ -931,7 +941,7 @@ export default function ProductosPage() {
                         value={formData.minimumQty}
                         onChange={(e) => handleFormChange('minimumQty', e.target.value)}
                         variant="bordered"
-                        classNames={{ inputWrapper: 'bg-white' }}
+                        labelPlacement="outside"
                       />
                     </div>
                   </div>
@@ -970,7 +980,7 @@ export default function ProductosPage() {
                       value={formData.priceA}
                       onChange={(e) => handleFormChange('priceA', e.target.value)}
                       variant="bordered"
-                      classNames={{ inputWrapper: 'bg-white' }}
+                      labelPlacement="outside"
                       description="Mayorista"
                     />
                     <Input
@@ -981,7 +991,7 @@ export default function ProductosPage() {
                       value={formData.priceB}
                       onChange={(e) => handleFormChange('priceB', e.target.value)}
                       variant="bordered"
-                      classNames={{ inputWrapper: 'bg-white' }}
+                      labelPlacement="outside"
                       description="Distribuidor"
                     />
                     <Input
@@ -992,7 +1002,7 @@ export default function ProductosPage() {
                       value={formData.priceC}
                       onChange={(e) => handleFormChange('priceC', e.target.value)}
                       variant="bordered"
-                      classNames={{ inputWrapper: 'bg-white' }}
+                      labelPlacement="outside"
                       description="Detallista"
                     />
                     <Input
@@ -1003,7 +1013,7 @@ export default function ProductosPage() {
                       value={formData.priceD}
                       onChange={(e) => handleFormChange('priceD', e.target.value)}
                       variant="bordered"
-                      classNames={{ inputWrapper: 'bg-white' }}
+                      labelPlacement="outside"
                       description="Especial"
                     />
                     <Input
@@ -1014,7 +1024,7 @@ export default function ProductosPage() {
                       value={formData.priceE}
                       onChange={(e) => handleFormChange('priceE', e.target.value)}
                       variant="bordered"
-                      classNames={{ inputWrapper: 'bg-white' }}
+                      labelPlacement="outside"
                       description="Público"
                     />
                   </div>

@@ -103,37 +103,25 @@ export default function LoginPage() {
         >
           {/* Glassmorphism Card */}
           <div className="rounded-2xl border border-white/30 bg-white/20 p-6 shadow-xl backdrop-blur-md">
-            {/* Logo & Title */}
+            {/* Logo */}
             <div className="mb-6 text-center">
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.2, duration: 0.4 }}
-                className="mb-3 flex justify-center"
+                className="mb-4 flex justify-center"
               >
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/40 backdrop-blur-sm">
-                  <svg
-                    viewBox="0 0 40 40"
-                    className="h-8 w-8 text-gray-700"
-                    fill="currentColor"
-                  >
-                    <path d="M20 4L4 12v16l16 8 16-8V12L20 4zm0 4l12 6-12 6-12-6 12-6zm-12 10l12 6 12-6v8l-12 6-12-6v-8z" />
-                  </svg>
-                </div>
+                <img
+                  src="https://res.cloudinary.com/db3espoei/image/upload/v1771993730/Logo_Evolution_ZL__1_-cropped_onzamv.svg"
+                  alt="Evolution Zona Libre"
+                  className="h-12 w-auto"
+                />
               </motion.div>
-              <motion.h1
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="text-xl font-bold tracking-tight text-gray-800"
-              >
-                EvolutionOS
-              </motion.h1>
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
-                className="mt-1 text-xs text-gray-500"
+                className="text-xs text-gray-500"
               >
                 Sistema de Gestión Comercial
               </motion.p>

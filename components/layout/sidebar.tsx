@@ -119,33 +119,24 @@ export function Sidebar() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex items-center gap-2.5"
+              className="flex items-center"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
-                <svg
-                  viewBox="0 0 40 40"
-                  className="h-4 w-4 text-white"
-                  fill="currentColor"
-                >
-                  <path d="M20 4L4 12v16l16 8 16-8V12L20 4zm0 4l12 6-12 6-12-6 12-6zm-12 10l12 6 12-6v8l-12 6-12-6v-8z" />
-                </svg>
-              </div>
-              <span className="text-sm font-semibold text-white">
-                EvolutionOS
-              </span>
+              <img
+                src="https://res.cloudinary.com/db3espoei/image/upload/v1771993730/Logo_Evolution_ZL__1_-1_wgd1hg.svg"
+                alt="Evolution"
+                className="h-7 w-auto invert"
+              />
             </motion.div>
           )}
         </AnimatePresence>
 
         {isCollapsed && (
-          <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
-            <svg
-              viewBox="0 0 40 40"
-              className="h-4 w-4 text-white"
-              fill="currentColor"
-            >
-              <path d="M20 4L4 12v16l16 8 16-8V12L20 4zm0 4l12 6-12 6-12-6 12-6zm-12 10l12 6 12-6v8l-12 6-12-6v-8z" />
-            </svg>
+          <div className="mx-auto">
+            <img
+              src="https://res.cloudinary.com/db3espoei/image/upload/v1771993730/Logo_Evolution_ZL__1_-cropped_onzamv.svg"
+              alt="Evolution"
+              className="h-7 w-auto invert"
+            />
           </div>
         )}
 

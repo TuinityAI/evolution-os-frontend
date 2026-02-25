@@ -602,12 +602,14 @@ export default function ClientesPage() {
                   label="Nombre / Razón Social"
                   placeholder="EMPRESA S.A."
                   variant="bordered"
+                  labelPlacement="outside"
                   isRequired
                 />
                 <Input
                   label="Nombre Comercial"
                   placeholder="Nombre de fantasía"
                   variant="bordered"
+                  labelPlacement="outside"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -615,11 +617,13 @@ export default function ClientesPage() {
                   label="RUC / Tax ID"
                   placeholder="000-000000-0-000000"
                   variant="bordered"
+                  labelPlacement="outside"
                   isRequired
                 />
                 <Select
                   label="Tipo de Documento"
                   variant="bordered"
+                  labelPlacement="outside"
                 >
                   <SelectItem key="RUC">RUC</SelectItem>
                   <SelectItem key="NIT">NIT</SelectItem>
@@ -632,6 +636,7 @@ export default function ClientesPage() {
                 <Select
                   label="País"
                   variant="bordered"
+                  labelPlacement="outside"
                   isRequired
                   items={countries.map((c) => ({ key: c, label: c }))}
                 >
@@ -641,17 +646,20 @@ export default function ClientesPage() {
                   label="Ciudad"
                   placeholder="Ciudad"
                   variant="bordered"
+                  labelPlacement="outside"
                 />
               </div>
               <Input
                 label="Dirección"
                 placeholder="Dirección completa"
                 variant="bordered"
+                labelPlacement="outside"
               />
               <div className="grid grid-cols-3 gap-4">
                 <Select
                   label="Nivel de Precio"
                   variant="bordered"
+                  labelPlacement="outside"
                   isRequired
                   items={PRICE_LEVELS.map((l) => ({ key: l, label: `Nivel ${l}` }))}
                 >
@@ -660,6 +668,7 @@ export default function ClientesPage() {
                 <Select
                   label="Términos de Pago"
                   variant="bordered"
+                  labelPlacement="outside"
                   isRequired
                 >
                   <SelectItem key="contado">Contado</SelectItem>
@@ -673,6 +682,7 @@ export default function ClientesPage() {
                   placeholder="0.00"
                   type="number"
                   variant="bordered"
+                  labelPlacement="outside"
                   startContent={<span className="text-muted-foreground">$</span>}
                 />
               </div>
@@ -684,24 +694,28 @@ export default function ClientesPage() {
                     label="Nombre"
                     placeholder="Nombre del contacto"
                     variant="bordered"
+                    labelPlacement="outside"
                     isRequired
                   />
                   <Input
                     label="Cargo"
                     placeholder="Gerente, Director, etc."
                     variant="bordered"
+                    labelPlacement="outside"
                   />
                   <Input
                     label="Email"
                     placeholder="email@empresa.com"
                     type="email"
                     variant="bordered"
+                    labelPlacement="outside"
                     isRequired
                   />
                   <Input
                     label="Teléfono"
                     placeholder="+507 000-0000"
                     variant="bordered"
+                    labelPlacement="outside"
                   />
                 </div>
               </div>

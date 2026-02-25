@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Dropdown,
@@ -81,6 +81,7 @@ const initialOrderForm = {
 
 export default function ComprasPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { checkPermission } = useAuth();
   const canViewCosts = checkPermission('canViewCosts');
 
@@ -100,6 +101,15 @@ export default function ComprasPage() {
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
   const { isOpen: isReceiveOpen, onOpen: onReceiveOpen, onClose: onReceiveClose } = useDisclosure();
+
+  // Auto-open modal from query parameter
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      onCreateOpen();
+      // Clear the query parameter
+      router.replace('/compras', { scroll: false });
+    }
+  }, [searchParams, onCreateOpen, router]);
 
   // Stats
   const stats = getPurchaseOrderStats();
@@ -668,7 +678,7 @@ export default function ComprasPage() {
                       selectedKeys={orderFormData.supplierId ? [orderFormData.supplierId] : []}
                       onChange={(e) => handleFormChange('supplierId', e.target.value)}
                       variant="bordered"
-                      classNames={{ trigger: 'bg-white' }}
+                      labelPlacement="outside"
                       startContent={<Building2 className="h-4 w-4 text-gray-400" />}
                     >
                       {MOCK_SUPPLIERS.map((supplier) => (
@@ -681,7 +691,7 @@ export default function ComprasPage() {
                       selectedKeys={orderFormData.bodegaId ? [orderFormData.bodegaId] : []}
                       onChange={(e) => handleFormChange('bodegaId', e.target.value)}
                       variant="bordered"
-                      classNames={{ trigger: 'bg-white' }}
+                      labelPlacement="outside"
                       startContent={<Package className="h-4 w-4 text-gray-400" />}
                     >
                       {MOCK_BODEGAS.map((bodega) => (
@@ -698,7 +708,7 @@ export default function ComprasPage() {
                       value={orderFormData.supplierInvoice}
                       onChange={(e) => handleFormChange('supplierInvoice', e.target.value)}
                       variant="bordered"
-                      classNames={{ inputWrapper: 'bg-white' }}
+                      labelPlacement="outside"
                       startContent={<Hash className="h-4 w-4 text-gray-400" />}
                     />
                     <Input
@@ -707,7 +717,7 @@ export default function ComprasPage() {
                       value={orderFormData.expectedArrivalDate}
                       onChange={(e) => handleFormChange('expectedArrivalDate', e.target.value)}
                       variant="bordered"
-                      classNames={{ inputWrapper: 'bg-white' }}
+                      labelPlacement="outside"
                       startContent={<Calendar className="h-4 w-4 text-gray-400" />}
                     />
                   </div>
@@ -719,7 +729,7 @@ export default function ComprasPage() {
                     value={orderFormData.notes}
                     onChange={(e) => handleFormChange('notes', e.target.value)}
                     variant="bordered"
-                    classNames={{ inputWrapper: 'bg-white' }}
+                    labelPlacement="outside"
                     minRows={2}
                   />
                 </div>
@@ -738,7 +748,7 @@ export default function ComprasPage() {
                           selectedKeys={newLineProduct ? [newLineProduct] : []}
                           onChange={(e) => setNewLineProduct(e.target.value)}
                           variant="bordered"
-                          classNames={{ trigger: 'bg-white' }}
+                          labelPlacement="outside"
                         >
                           {MOCK_PRODUCTS.map((product) => (
                             <SelectItem key={product.id} textValue={product.description}>
@@ -758,7 +768,7 @@ export default function ComprasPage() {
                           value={newLineQty}
                           onChange={(e) => setNewLineQty(e.target.value)}
                           variant="bordered"
-                          classNames={{ inputWrapper: 'bg-white' }}
+                          labelPlacement="outside"
                         />
                       </div>
                       {canViewCosts && (
@@ -770,7 +780,7 @@ export default function ComprasPage() {
                             value={newLineCost}
                             onChange={(e) => setNewLineCost(e.target.value)}
                             variant="bordered"
-                            classNames={{ inputWrapper: 'bg-white' }}
+                            labelPlacement="outside"
                             startContent={<span className="text-xs text-gray-400">$</span>}
                           />
                         </div>

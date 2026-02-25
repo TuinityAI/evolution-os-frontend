@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Dropdown,
@@ -91,6 +91,7 @@ const initialQuoteForm = {
 
 export default function VentasPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { checkPermission, user } = useAuth();
   const canViewMargins = checkPermission('canViewMargins');
   const canCreateQuotes = checkPermission('canCreateQuotes');
@@ -116,6 +117,15 @@ export default function VentasPage() {
   // Modal states
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
+
+  // Auto-open modal from query parameter
+  useEffect(() => {
+    if (searchParams.get('action') === 'new' && canCreateQuotes) {
+      onCreateOpen();
+      // Clear the query parameter
+      router.replace('/ventas', { scroll: false });
+    }
+  }, [searchParams, canCreateQuotes, onCreateOpen, router]);
 
   // Stats
   const stats = getSalesStats();
@@ -776,6 +786,7 @@ export default function VentasPage() {
                     selectedKeys={quoteFormData.customerId ? [quoteFormData.customerId] : []}
                     onChange={(e) => handleFormChange('customerId', e.target.value)}
                     variant="bordered"
+                    labelPlacement="outside"
                     startContent={<Building2 className="h-4 w-4 text-muted-foreground" />}
                   >
                     {MOCK_CLIENTS.filter((c) => c.status === 'active').map((client) => (
@@ -847,6 +858,7 @@ export default function VentasPage() {
                       value={quoteFormData.validUntil}
                       onChange={(e) => handleFormChange('validUntil', e.target.value)}
                       variant="bordered"
+                      labelPlacement="outside"
                     />
                     <Input
                       label="Fecha entrega solicitada"
@@ -854,6 +866,7 @@ export default function VentasPage() {
                       value={quoteFormData.requestedDeliveryDate}
                       onChange={(e) => handleFormChange('requestedDeliveryDate', e.target.value)}
                       variant="bordered"
+                      labelPlacement="outside"
                     />
                   </div>
 
@@ -863,6 +876,7 @@ export default function VentasPage() {
                     value={quoteFormData.notes}
                     onChange={(e) => handleFormChange('notes', e.target.value)}
                     variant="bordered"
+                    labelPlacement="outside"
                     minRows={2}
                   />
                 </div>
@@ -882,6 +896,7 @@ export default function VentasPage() {
                           selectedKeys={newLineProduct ? [newLineProduct] : []}
                           onChange={(e) => handleProductSelect(e.target.value)}
                           variant="bordered"
+                          labelPlacement="outside"
                         >
                           {MOCK_PRODUCTS.map((product) => (
                             <SelectItem key={product.id} textValue={product.description}>
@@ -903,6 +918,7 @@ export default function VentasPage() {
                           value={newLineQty}
                           onChange={(e) => setNewLineQty(e.target.value)}
                           variant="bordered"
+                          labelPlacement="outside"
                         />
                       </div>
                       <div className="w-28">
@@ -913,6 +929,7 @@ export default function VentasPage() {
                           value={newLinePrice}
                           onChange={(e) => setNewLinePrice(e.target.value)}
                           variant="bordered"
+                          labelPlacement="outside"
                           startContent={<span className="text-xs text-muted-foreground">$</span>}
                           isReadOnly={!canViewMargins}
                         />
@@ -925,6 +942,7 @@ export default function VentasPage() {
                           value={newLineDiscount}
                           onChange={(e) => setNewLineDiscount(e.target.value)}
                           variant="bordered"
+                          labelPlacement="outside"
                         />
                       </div>
                       {/* Commission indicator */}
