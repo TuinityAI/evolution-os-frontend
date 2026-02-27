@@ -1,20 +1,16 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useStore } from '@/hooks/use-store';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
   Select,
   SelectItem,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   FileText,
   Receipt,
@@ -31,7 +27,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  MOCK_SALES_ORDERS,
+  getSalesOrdersData,
+  subscribeSalesOrders,
+  updateSalesOrder,
   formatDate,
   formatCurrency,
   getNextOrderNumber,
@@ -49,6 +47,7 @@ const PAYMENT_METHODS = [
 
 export default function FacturacionPage() {
   const router = useRouter();
+  const salesOrders = useStore(subscribeSalesOrders, getSalesOrdersData);
   const { checkPermission } = useAuth();
   const canCreateInvoices = checkPermission('canCreateInvoices');
 
@@ -57,22 +56,22 @@ export default function FacturacionPage() {
   const [paymentMethod, setPaymentMethod] = useState<string>('transferencia');
   const [invoiceNotes, setInvoiceNotes] = useState('');
 
-  const { isOpen: isInvoiceOpen, onOpen: onInvoiceOpen, onClose: onInvoiceClose } = useDisclosure();
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
 
   // Get orders ready for invoicing (status: empacado)
   const readyToInvoice = useMemo(() => {
-    return MOCK_SALES_ORDERS.filter(
+    return salesOrders.filter(
       (order) => order.status === 'empacado'
     ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, []);
+  }, [salesOrders]);
 
   // Get recent invoices (status: facturado)
   const recentInvoices = useMemo(() => {
-    return MOCK_SALES_ORDERS.filter(
+    return salesOrders.filter(
       (order) => order.status === 'facturado'
     ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 10);
-  }, []);
+  }, [salesOrders]);
 
   // Filter by search
   const filteredReadyToInvoice = useMemo(() => {
@@ -95,16 +94,17 @@ export default function FacturacionPage() {
     setSelectedOrder(order);
     setPaymentMethod('transferencia');
     setInvoiceNotes('');
-    onInvoiceOpen();
+    setIsInvoiceOpen(true);
   };
 
   const handleConfirmInvoice = () => {
     if (selectedOrder) {
       const invoiceNumber = getNextOrderNumber('factura');
+      updateSalesOrder(selectedOrder.id, { status: 'facturado', invoiceId: invoiceNumber, invoiceNumber });
       toast.success('Factura generada', {
         description: `Se ha generado la factura ${invoiceNumber} para el pedido ${selectedOrder.orderNumber}.`,
       });
-      onInvoiceClose();
+      setIsInvoiceOpen(false);
       setSelectedOrder(null);
     }
   };
@@ -325,9 +325,9 @@ export default function FacturacionPage() {
       )}
 
       {/* Invoice Generation Modal */}
-      <Modal isOpen={isInvoiceOpen} onClose={onInvoiceClose} size="2xl">
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3 border-b border-border pb-4">
+      <CustomModal isOpen={isInvoiceOpen} onClose={() => setIsInvoiceOpen(false)} size="2xl" scrollable>
+        <CustomModalHeader onClose={() => setIsInvoiceOpen(false)}>
+          <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500/10">
               <FileText className="h-5 w-5 text-brand-500" />
             </div>
@@ -335,138 +335,143 @@ export default function FacturacionPage() {
               <h2 className="text-lg font-semibold text-foreground">Generar Factura</h2>
               <p className="text-sm text-muted-foreground">Pedido {selectedOrder?.orderNumber}</p>
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-6">
-              {/* Customer Info */}
-              <div className="rounded-lg border border-border bg-muted/30 p-4">
-                <h4 className="mb-3 text-sm font-medium text-foreground">Datos del Cliente</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Cliente:</span>
-                    <p className="font-medium text-foreground">{selectedOrder?.customerName}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">País:</span>
-                    <p className="font-medium text-foreground">{selectedOrder?.customerCountry}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Nivel de Precio:</span>
-                    <p className="font-medium text-foreground">Nivel {selectedOrder?.priceLevel}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Términos de Pago:</span>
-                    <p className="font-medium text-foreground capitalize">
-                      {selectedOrder?.paymentTerms?.replace('_', ' ')}
-                    </p>
-                  </div>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <div className="space-y-6">
+            {/* Customer Info */}
+            <div className="rounded-lg border border-border bg-muted/30 p-4">
+              <h4 className="mb-3 text-sm font-medium text-foreground">Datos del Cliente</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Cliente:</span>
+                  <p className="font-medium text-foreground">{selectedOrder?.customerName}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">País:</span>
+                  <p className="font-medium text-foreground">{selectedOrder?.customerCountry}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Nivel de Precio:</span>
+                  <p className="font-medium text-foreground">Nivel {selectedOrder?.priceLevel}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Términos de Pago:</span>
+                  <p className="font-medium text-foreground capitalize">
+                    {selectedOrder?.paymentTerms?.replace('_', ' ')}
+                  </p>
                 </div>
               </div>
+            </div>
 
-              {/* Order Lines Summary */}
-              <div className="rounded-lg border border-border p-4">
-                <h4 className="mb-3 text-sm font-medium text-foreground">Detalle del Pedido</h4>
-                <div className="max-h-48 overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="pb-2 text-left text-xs font-medium text-muted-foreground">Producto</th>
-                        <th className="pb-2 text-center text-xs font-medium text-muted-foreground">Cant.</th>
-                        <th className="pb-2 text-right text-xs font-medium text-muted-foreground">Precio</th>
-                        <th className="pb-2 text-right text-xs font-medium text-muted-foreground">Subtotal</th>
+            {/* Order Lines Summary */}
+            <div className="rounded-lg border border-border p-4">
+              <h4 className="mb-3 text-sm font-medium text-foreground">Detalle del Pedido</h4>
+              <div className="max-h-48 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="pb-2 text-left text-xs font-medium text-muted-foreground">Producto</th>
+                      <th className="pb-2 text-center text-xs font-medium text-muted-foreground">Cant.</th>
+                      <th className="pb-2 text-right text-xs font-medium text-muted-foreground">Precio</th>
+                      <th className="pb-2 text-right text-xs font-medium text-muted-foreground">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {selectedOrder?.lines.map((line) => (
+                      <tr key={line.id}>
+                        <td className="py-2">
+                          <p className="text-foreground">{line.productDescription}</p>
+                          <p className="text-xs text-muted-foreground">{line.productReference}</p>
+                        </td>
+                        <td className="py-2 text-center font-mono text-foreground">{line.quantity}</td>
+                        <td className="py-2 text-right font-mono text-muted-foreground">
+                          {formatCurrency(line.unitPrice)}
+                        </td>
+                        <td className="py-2 text-right font-mono font-medium text-foreground">
+                          {formatCurrency(line.subtotal)}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {selectedOrder?.lines.map((line) => (
-                        <tr key={line.id}>
-                          <td className="py-2">
-                            <p className="text-foreground">{line.productDescription}</p>
-                            <p className="text-xs text-muted-foreground">{line.productReference}</p>
-                          </td>
-                          <td className="py-2 text-center font-mono text-foreground">{line.quantity}</td>
-                          <td className="py-2 text-right font-mono text-muted-foreground">
-                            {formatCurrency(line.unitPrice)}
-                          </td>
-                          <td className="py-2 text-right font-mono font-medium text-foreground">
-                            {formatCurrency(line.subtotal)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+            </div>
 
-              {/* Totals */}
-              <div className="rounded-lg border border-border bg-muted/30 p-4">
-                <div className="space-y-2">
+            {/* Totals */}
+            <div className="rounded-lg border border-border bg-muted/30 p-4">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal:</span>
+                  <span className="font-mono text-foreground">{formatCurrency(selectedOrder?.subtotal || 0)}</span>
+                </div>
+                {(selectedOrder?.expensesTotal ?? 0) > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal:</span>
-                    <span className="font-mono text-foreground">{formatCurrency(selectedOrder?.subtotal || 0)}</span>
+                    <span className="text-muted-foreground">Gastos adicionales:</span>
+                    <span className="font-mono text-foreground">{formatCurrency(selectedOrder?.expensesTotal || 0)}</span>
                   </div>
-                  {(selectedOrder?.expensesTotal ?? 0) > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Gastos adicionales:</span>
-                      <span className="font-mono text-foreground">{formatCurrency(selectedOrder?.expensesTotal || 0)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between border-t border-border pt-2 text-lg font-semibold">
-                    <span className="text-foreground">Total:</span>
-                    <span className="font-mono text-brand-500">{formatCurrency(selectedOrder?.total || 0)}</span>
-                  </div>
+                )}
+                <div className="flex justify-between border-t border-border pt-2 text-lg font-semibold">
+                  <span className="text-foreground">Total:</span>
+                  <span className="font-mono text-brand-500">{formatCurrency(selectedOrder?.total || 0)}</span>
                 </div>
               </div>
+            </div>
 
-              {/* Payment Method */}
-              <div className="grid grid-cols-2 gap-4">
-                <Select
-                  label="Método de Pago"
-                  selectedKeys={[paymentMethod]}
-                  onSelectionChange={(keys) => setPaymentMethod(Array.from(keys)[0] as string)}
-                  variant="bordered"
-                  startContent={<CreditCard className="h-4 w-4 text-muted-foreground" />}
-                >
-                  {PAYMENT_METHODS.map((method) => (
-                    <SelectItem key={method.key}>{method.label}</SelectItem>
-                  ))}
-                </Select>
+            {/* Payment Method */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Método de Pago</label>
+              <Select
+                selectedKeys={[paymentMethod]}
+                onSelectionChange={(keys) => setPaymentMethod(Array.from(keys)[0] as string)}
+                variant="bordered"
+                aria-label="Método de Pago"
+                startContent={<CreditCard className="h-4 w-4 text-muted-foreground" />}
+              >
+                {PAYMENT_METHODS.map((method) => (
+                  <SelectItem key={method.key}>{method.label}</SelectItem>
+                ))}
+              </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Notas (opcional)</label>
                 <Input
-                  label="Notas (opcional)"
                   placeholder="Observaciones de factura..."
                   value={invoiceNotes}
                   onChange={(e) => setInvoiceNotes(e.target.value)}
                   variant="bordered"
                 />
               </div>
+            </div>
 
-              {/* FE Placeholder */}
-              <div className="rounded-lg border border-dashed border-amber-500/50 bg-amber-500/5 p-4">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="h-5 w-5 text-amber-500" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-500">Factura Electrónica</p>
-                    <p className="text-xs text-muted-foreground">
-                      La integración con el sistema de facturación electrónica estará disponible próximamente.
-                    </p>
-                  </div>
+            {/* FE Placeholder */}
+            <div className="rounded-lg border border-dashed border-amber-500/50 bg-amber-500/5 p-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-500" />
+                <div>
+                  <p className="text-sm font-medium text-amber-500">Factura Electrónica</p>
+                  <p className="text-xs text-muted-foreground">
+                    La integración con el sistema de facturación electrónica estará disponible próximamente.
+                  </p>
                 </div>
               </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-border pt-4">
-            <Button variant="light" onPress={onInvoiceClose}>
-              Cancelar
-            </Button>
-            <Button
-              color="primary"
-              onPress={handleConfirmInvoice}
-              startContent={<FileText className="h-4 w-4" />}
-            >
-              Generar Factura
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsInvoiceOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            color="primary"
+            onPress={handleConfirmInvoice}
+            startContent={<FileText className="h-4 w-4" />}
+          >
+            Generar Factura
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

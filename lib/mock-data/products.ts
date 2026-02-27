@@ -1,4 +1,5 @@
 import type { Product, ProductGroup } from '@/lib/types/product';
+import { loadCollection, saveCollection, createSubscribers } from '@/lib/store/local-store';
 
 // Re-export types for convenience
 export type { Product, ProductGroup } from '@/lib/types/product';
@@ -7,7 +8,7 @@ export type { Product, ProductGroup } from '@/lib/types/product';
  * Mock products for Evolution OS prototype.
  * Real data extracted from Dynamo POS.
  */
-export const MOCK_PRODUCTS: Product[] = [
+const SEED_PRODUCTS: Product[] = [
   {
     id: 'EVL-00001',
     reference: 'EVL-00001',
@@ -33,6 +34,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 73.0,
     costCIF: 83.95,
     costAvgWeighted: 82.5,
+    priceB2C: 6.99,
     status: 'active',
     image: '/images/products/black-white.jpg',
   },
@@ -61,6 +63,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 73.0,
     costCIF: 83.95,
     costAvgWeighted: 82.5,
+    priceB2C: 14.99,
     status: 'active',
     image: '/images/products/jw-red.jpg',
   },
@@ -82,6 +85,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 195.0,
     costCIF: 224.25,
     costAvgWeighted: 201.12,
+    priceB2C: 17.99,
     status: 'active',
   },
   {
@@ -102,6 +106,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 528.0,
     costCIF: 607.2,
     costAvgWeighted: 595.0,
+    priceB2C: 189.99,
     status: 'active',
   },
   {
@@ -122,6 +127,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 840.0,
     costCIF: 966.0,
     costAvgWeighted: 952.0,
+    priceB2C: 299.99,
     status: 'active',
   },
   {
@@ -142,6 +148,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 38.0,
     costCIF: 43.7,
     costAvgWeighted: 42.5,
+    priceB2C: 8.99,
     status: 'active',
   },
   {
@@ -162,6 +169,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 52.0,
     costCIF: 59.8,
     costAvgWeighted: 58.5,
+    priceB2C: 19.99,
     status: 'active',
   },
   {
@@ -182,6 +190,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 165.0,
     costCIF: 189.75,
     costAvgWeighted: 185.0,
+    priceB2C: 32.99,
     status: 'active',
   },
   {
@@ -202,6 +211,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 125.0,
     costCIF: 143.75,
     costAvgWeighted: 140.0,
+    priceB2C: 24.99,
     status: 'active',
   },
   {
@@ -222,6 +232,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 75.0,
     costCIF: 86.25,
     costAvgWeighted: 84.0,
+    priceB2C: 29.99,
     status: 'active',
   },
   {
@@ -242,6 +253,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 95.0,
     costCIF: 109.25,
     costAvgWeighted: 106.0,
+    priceB2C: 18.99,
     status: 'active',
   },
   {
@@ -263,6 +275,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 68.0,
     costCIF: 78.2,
     costAvgWeighted: 76.5,
+    priceB2C: 1.99,
     status: 'active',
   },
   {
@@ -283,6 +296,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 255.0,
     costCIF: 293.25,
     costAvgWeighted: 288.0,
+    priceB2C: 45.99,
     status: 'active',
   },
   {
@@ -303,6 +317,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 88.0,
     costCIF: 101.2,
     costAvgWeighted: 99.0,
+    priceB2C: 32.99,
     status: 'active',
   },
   {
@@ -323,6 +338,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 58.0,
     costCIF: 66.7,
     costAvgWeighted: 65.0,
+    priceB2C: 12.99,
     status: 'active',
   },
   {
@@ -343,6 +359,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 45.0,
     costCIF: 51.75,
     costAvgWeighted: 50.5,
+    priceB2C: 9.99,
     status: 'active',
   },
   {
@@ -363,6 +380,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 22.0,
     costCIF: 25.3,
     costAvgWeighted: 24.8,
+    priceB2C: 4.99,
     status: 'active',
   },
   {
@@ -383,6 +401,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 16.0,
     costCIF: 18.4,
     costAvgWeighted: 18.0,
+    priceB2C: 3.49,
     status: 'active',
   },
   {
@@ -403,6 +422,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 115.0,
     costCIF: 132.25,
     costAvgWeighted: 129.0,
+    priceB2C: 21.99,
     status: 'active',
   },
   {
@@ -423,6 +443,7 @@ export const MOCK_PRODUCTS: Product[] = [
     costFOB: 320.0,
     costCIF: 368.0,
     costAvgWeighted: 360.0,
+    priceB2C: 59.99,
     status: 'active',
   },
 ];
@@ -430,7 +451,7 @@ export const MOCK_PRODUCTS: Product[] = [
 /**
  * Product categories (groups and subgroups)
  */
-export const PRODUCT_GROUPS: ProductGroup[] = [
+const SEED_PRODUCT_GROUPS: ProductGroup[] = [
   { id: 'WHISKY', label: 'Whisky', subGroups: ['WHISKY', 'BOURBON', 'SCOTCH'] },
   { id: 'RON', label: 'Ron', subGroups: ['RON', 'RON OSCURO', 'RON BLANCO'] },
   { id: 'VODKA', label: 'Vodka', subGroups: ['VODKA'] },
@@ -445,38 +466,154 @@ export const PRODUCT_GROUPS: ProductGroup[] = [
   { id: 'COCKTEL', label: 'Cóctel', subGroups: ['BASE', 'PREMIX'] },
 ];
 
+// ============================================================================
+// STORE INFRASTRUCTURE – Products
+// ============================================================================
+
+let _products: Product[] = SEED_PRODUCTS;
+let _initialized = false;
+const { subscribe: subscribeProducts, notify: _notifyProducts } = createSubscribers();
+
+function ensureInitialized(): void {
+  if (typeof window === 'undefined' || _initialized) return;
+  _products = loadCollection<Product>('products', SEED_PRODUCTS);
+  _initialized = true;
+}
+
+export function getProductsData(): Product[] {
+  ensureInitialized();
+  return _products;
+}
+
+export { subscribeProducts };
+
+// Backward-compatible export
+export const MOCK_PRODUCTS: Product[] = new Proxy(SEED_PRODUCTS as Product[], {
+  get(_target, prop, receiver) {
+    ensureInitialized();
+    return Reflect.get(_products, prop, receiver);
+  },
+});
+
+// ============================================================================
+// STORE INFRASTRUCTURE – Product Groups
+// ============================================================================
+
+let _productGroups: ProductGroup[] = SEED_PRODUCT_GROUPS;
+let _groupsInitialized = false;
+const { subscribe: subscribeProductGroups, notify: _notifyProductGroups } = createSubscribers();
+
+function ensureGroupsInitialized(): void {
+  if (typeof window === 'undefined' || _groupsInitialized) return;
+  _productGroups = loadCollection<ProductGroup>('product_groups', SEED_PRODUCT_GROUPS);
+  _groupsInitialized = true;
+}
+
+export function getProductGroupsData(): ProductGroup[] {
+  ensureGroupsInitialized();
+  return _productGroups;
+}
+
+export { subscribeProductGroups };
+
+// Backward-compatible export
+export const PRODUCT_GROUPS: ProductGroup[] = new Proxy(SEED_PRODUCT_GROUPS as ProductGroup[], {
+  get(_target, prop, receiver) {
+    ensureGroupsInitialized();
+    return Reflect.get(_productGroups, prop, receiver);
+  },
+});
+
+// ============================================================================
+// CRUD OPERATIONS – Products
+// ============================================================================
+
+export function addProduct(product: Product): void {
+  ensureInitialized();
+  _products = [..._products, product];
+  saveCollection('products', _products);
+  _notifyProducts();
+}
+
+export function updateProduct(id: string, updates: Partial<Product>): void {
+  ensureInitialized();
+  _products = _products.map((p) => (p.id === id ? { ...p, ...updates } : p));
+  saveCollection('products', _products);
+  _notifyProducts();
+}
+
+export function removeProduct(id: string): void {
+  ensureInitialized();
+  _products = _products.filter((p) => p.id !== id);
+  saveCollection('products', _products);
+  _notifyProducts();
+}
+
+// ============================================================================
+// CRUD OPERATIONS – Product Groups
+// ============================================================================
+
+export function addProductGroup(group: ProductGroup): void {
+  ensureGroupsInitialized();
+  _productGroups = [..._productGroups, group];
+  saveCollection('product_groups', _productGroups);
+  _notifyProductGroups();
+}
+
+export function updateProductGroup(id: string, updates: Partial<ProductGroup>): void {
+  ensureGroupsInitialized();
+  _productGroups = _productGroups.map((g) => (g.id === id ? { ...g, ...updates } : g));
+  saveCollection('product_groups', _productGroups);
+  _notifyProductGroups();
+}
+
+export function removeProductGroup(id: string): void {
+  ensureGroupsInitialized();
+  _productGroups = _productGroups.filter((g) => g.id !== id);
+  saveCollection('product_groups', _productGroups);
+  _notifyProductGroups();
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
 /**
  * Get product by ID
  */
 export function getProductById(id: string): Product | undefined {
-  return MOCK_PRODUCTS.find((p) => p.id === id);
+  ensureInitialized();
+  return _products.find((p) => p.id === id);
 }
 
 /**
  * Get unique brands from products
  */
 export function getUniqueBrands(): string[] {
-  return [...new Set(MOCK_PRODUCTS.map((p) => p.brand))].sort();
+  ensureInitialized();
+  return [...new Set(_products.map((p) => p.brand))].sort();
 }
 
 /**
  * Get unique suppliers from products
  */
 export function getUniqueSuppliers(): string[] {
-  return [...new Set(MOCK_PRODUCTS.map((p) => p.supplier))].sort();
+  ensureInitialized();
+  return [...new Set(_products.map((p) => p.supplier))].sort();
 }
 
 /**
  * Calculate product stats
  */
 export function getProductStats() {
-  const total = MOCK_PRODUCTS.length;
-  const active = MOCK_PRODUCTS.filter((p) => p.status === 'active').length;
-  const outOfStock = MOCK_PRODUCTS.filter((p) => p.stock.available === 0).length;
-  const lowStock = MOCK_PRODUCTS.filter(
+  ensureInitialized();
+  const total = _products.length;
+  const active = _products.filter((p) => p.status === 'active').length;
+  const outOfStock = _products.filter((p) => p.stock.available === 0).length;
+  const lowStock = _products.filter(
     (p) => p.stock.available > 0 && p.stock.available < p.minimumQty
   ).length;
-  const arriving = MOCK_PRODUCTS.filter((p) => p.stock.arriving > 0).length;
+  const arriving = _products.filter((p) => p.stock.arriving > 0).length;
 
   return { total, active, outOfStock, lowStock, arriving };
 }

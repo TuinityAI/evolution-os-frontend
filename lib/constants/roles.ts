@@ -59,6 +59,22 @@ export const PERMISSIONS: Record<PermissionKey, UserRole[]> = {
   canViewAuditLog: ['gerencia'],
   // Historial
   canViewHistorial: ['gerencia'],
+  // Tráfico y Documentación
+  canCreateDMC: ['gerencia', 'trafico'],
+  canCreateBL: ['gerencia', 'trafico'],
+  canCreateCertificates: ['gerencia', 'trafico'],
+  canAnnulTrafficDocs: ['gerencia', 'trafico'],
+  canConfigureTrafico: ['gerencia'],
+  // Punto de Venta B2C
+  canSellPOS: ['gerencia', 'vendedor', 'bodega'],
+  canOpenCloseCash: ['gerencia', 'vendedor', 'bodega'],
+  canApplyPOSDiscount: ['gerencia'],
+  canProcessPOSReturn: ['gerencia', 'vendedor', 'bodega'],
+  canAnnulPOSSale: ['gerencia'],
+  canViewPOSReports: ['gerencia', 'contabilidad', 'vendedor'],
+  canViewPOSMargins: ['gerencia'],
+  canConfigurePOSPrices: ['gerencia'],
+  canRequestReplenishment: ['gerencia', 'bodega'],
 };
 
 /**

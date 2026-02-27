@@ -4,18 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
   Select,
   SelectItem,
-  Switch,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
+import { Switch } from '@/components/ui/switch';
 import {
   ArrowLeft,
   Users,
@@ -32,11 +27,17 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
+import { useStore } from '@/hooks/use-store';
 import { useAuth } from '@/lib/contexts/auth-context';
-import { MOCK_USERS } from '@/lib/mock-data/users';
-import { MOCK_ROLE_TEMPLATES, MOCK_ACTIVE_SESSIONS } from '@/lib/mock-data/configuration';
+import { getUsersData, subscribeUsers, addUser, updateUser } from '@/lib/mock-data/users';
+import {
+  getRoleTemplatesData,
+  subscribeRoleTemplates,
+  getActiveSessionsData,
+  subscribeActiveSessions,
+} from '@/lib/mock-data/configuration';
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/constants/roles';
-import type { UserRole } from '@/lib/types/user';
+import type { User, UserRole } from '@/lib/types/user';
 import type { RoleTemplate } from '@/lib/types/configuration';
 
 const TABS = [
@@ -50,15 +51,20 @@ export default function UsuariosPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canManageRoles = checkPermission('canManageRoles');
-  const { isOpen: isUserModalOpen, onOpen: onUserModalOpen, onClose: onUserModalClose } = useDisclosure();
-  const { isOpen: isRoleModalOpen, onOpen: onRoleModalOpen, onClose: onRoleModalClose } = useDisclosure();
+
+  const users = useStore(subscribeUsers, getUsersData);
+  const roleTemplates = useStore(subscribeRoleTemplates, getRoleTemplatesData);
+  const activeSessions = useStore(subscribeActiveSessions, getActiveSessionsData);
+
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<TabId>('usuarios');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
 
   // User modal state
-  const [editingUser, setEditingUser] = useState<(typeof MOCK_USERS)[0] | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState({
     name: '',
     email: '',
@@ -68,20 +74,20 @@ export default function UsuariosPage() {
 
   // Users with active status (mock)
   const [userStatuses, setUserStatuses] = useState<Record<string, boolean>>(
-    Object.fromEntries(MOCK_USERS.map((u) => [u.id, true]))
+    Object.fromEntries(users.map((u) => [u.id, true]))
   );
 
-  const filteredUsers = MOCK_USERS.filter((user) => {
+  const filteredUsers = users.filter((user) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return user.name.toLowerCase().includes(q) || user.email.toLowerCase().includes(q);
   });
 
   const getLastSession = (userId: string) => {
-    return MOCK_ACTIVE_SESSIONS.find((s) => s.userId === userId);
+    return activeSessions.find((s) => s.userId === userId);
   };
 
-  const handleOpenUserModal = (user?: (typeof MOCK_USERS)[0]) => {
+  const handleOpenUserModal = (user?: User) => {
     if (user) {
       setEditingUser(user);
       setUserForm({ name: user.name, email: user.email, role: user.role, password: '' });
@@ -89,29 +95,35 @@ export default function UsuariosPage() {
       setEditingUser(null);
       setUserForm({ name: '', email: '', role: 'vendedor', password: '' });
     }
-    onUserModalOpen();
+    setIsUserModalOpen(true);
   };
 
   const handleSaveUser = () => {
+    if (editingUser) {
+      updateUser(editingUser.id, { name: userForm.name, email: userForm.email, role: userForm.role });
+    } else {
+      const newId = `USR-${String(users.length + 1).padStart(3, '0')}`;
+      addUser({ id: newId, name: userForm.name, email: userForm.email, role: userForm.role, avatar: '' });
+    }
     toast.success(editingUser ? 'Usuario actualizado' : 'Usuario creado', {
       description: editingUser
         ? `El usuario "${userForm.name}" se ha actualizado.`
         : `El usuario "${userForm.name}" se ha creado exitosamente.`,
     });
-    onUserModalClose();
+    setIsUserModalOpen(false);
   };
 
   const handleToggleUser = (userId: string) => {
     setUserStatuses((prev) => {
       const newStatus = !prev[userId];
-      toast.success(newStatus ? 'Usuario activado' : 'Usuario desactivado');
+      toast.success(newStatus ? 'Usuario activado' : 'Usuario desactivado', { id: `toggle-user-${userId}` });
       return { ...prev, [userId]: newStatus };
     });
   };
 
   const handleSaveRole = () => {
     toast.success('Plantilla de rol creada');
-    onRoleModalClose();
+    setIsRoleModalOpen(false);
   };
 
   return (
@@ -246,10 +258,8 @@ export default function UsuariosPage() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <Switch
-                              isSelected={isActive}
-                              onValueChange={() => handleToggleUser(user.id)}
-                              size="sm"
-                              color="success"
+                              checked={isActive}
+                              onCheckedChange={() => handleToggleUser(user.id)}
                             />
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -280,10 +290,10 @@ export default function UsuariosPage() {
           >
             {/* Header */}
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500 dark:text-[#888888]">{MOCK_ROLE_TEMPLATES.length} plantillas de rol configuradas</p>
+              <p className="text-sm text-gray-500 dark:text-[#888888]">{roleTemplates.length} plantillas de rol configuradas</p>
               {canManageRoles && (
                 <button
-                  onClick={onRoleModalOpen}
+                  onClick={() => setIsRoleModalOpen(true)}
                   className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-800"
                 >
                   <Plus className="h-4 w-4" />
@@ -294,7 +304,7 @@ export default function UsuariosPage() {
 
             {/* Roles List */}
             <div className="space-y-3">
-              {MOCK_ROLE_TEMPLATES.map((role, index) => {
+              {roleTemplates.map((role, index) => {
                 const isExpanded = expandedRole === role.id;
                 const roleColor = ROLE_COLORS[role.baseRole];
 
@@ -372,13 +382,11 @@ export default function UsuariosPage() {
                                           <p className="text-xs text-gray-500 dark:text-[#666666]">{perm.description}</p>
                                         </div>
                                         <Switch
-                                          isSelected={perm.enabled}
-                                          isDisabled={role.isSystemRole}
-                                          size="sm"
-                                          color="success"
-                                          onValueChange={() => {
+                                          checked={perm.enabled}
+                                          disabled={role.isSystemRole}
+                                          onCheckedChange={() => {
                                             if (!role.isSystemRole) {
-                                              toast.info('Permiso actualizado (mock)');
+                                              toast.info('Permiso actualizado (mock)', { id: `toggle-perm-${perm.key}` });
                                             }
                                           }}
                                         />
@@ -401,52 +409,61 @@ export default function UsuariosPage() {
       </AnimatePresence>
 
       {/* User Modal */}
-      <Modal isOpen={isUserModalOpen} onClose={onUserModalClose} size="md">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950">
-                <Users className="h-5 w-5 text-violet-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
-                </h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">
-                  {editingUser ? `Editando ${editingUser.name}` : 'Crear un nuevo usuario del sistema'}
-                </p>
-              </div>
+      <CustomModal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} size="md">
+        <CustomModalHeader onClose={() => setIsUserModalOpen(false)}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950">
+              <Users className="h-5 w-5 text-violet-600" />
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-[#888888]">
+                {editingUser ? `Editando ${editingUser.name}` : 'Crear un nuevo usuario del sistema'}
+              </p>
+            </div>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Nombre Completo</label>
               <Input
-                label="Nombre Completo"
                 placeholder="Ej: Juan Pérez"
                 value={userForm.name}
                 onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
                 variant="bordered"
               />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Correo Electrónico</label>
               <Input
-                label="Correo Electrónico"
                 placeholder="juan@evolution.com"
                 type="email"
                 value={userForm.email}
                 onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
                 variant="bordered"
               />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Rol</label>
               <Select
-                label="Rol"
                 selectedKeys={[userForm.role]}
                 onChange={(e) => setUserForm({ ...userForm, role: e.target.value as UserRole })}
                 variant="bordered"
+                aria-label="Rol"
               >
                 {Object.entries(ROLE_LABELS).map(([value, label]) => (
                   <SelectItem key={value}>{label}</SelectItem>
                 ))}
               </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {editingUser ? 'Nueva Contraseña (opcional)' : 'Contraseña'}
+              </label>
               <Input
-                label={editingUser ? 'Nueva Contraseña (opcional)' : 'Contraseña'}
                 placeholder="********"
                 type="password"
                 value={userForm.password}
@@ -454,49 +471,56 @@ export default function UsuariosPage() {
                 variant="bordered"
               />
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onUserModalClose}>Cancelar</Button>
-            <Button color="primary" onPress={handleSaveUser} className="bg-brand-600">
-              {editingUser ? 'Guardar Cambios' : 'Crear Usuario'}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsUserModalOpen(false)}>Cancelar</Button>
+          <Button color="primary" onPress={handleSaveUser} className="bg-brand-600">
+            {editingUser ? 'Guardar Cambios' : 'Crear Usuario'}
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
 
       {/* Role Template Modal */}
-      <Modal isOpen={isRoleModalOpen} onClose={onRoleModalClose} size="md">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950">
-                <Shield className="h-5 w-5 text-violet-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Nueva Plantilla de Rol</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">Definir un nuevo rol con permisos personalizados</p>
-              </div>
+      <CustomModal isOpen={isRoleModalOpen} onClose={() => setIsRoleModalOpen(false)} size="md">
+        <CustomModalHeader onClose={() => setIsRoleModalOpen(false)}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-950">
+              <Shield className="h-5 w-5 text-violet-600" />
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-4">
-              <Input label="Nombre del Rol" placeholder="Ej: Supervisor de Ventas" variant="bordered" />
-              <Input label="Descripción" placeholder="Descripción del rol y sus responsabilidades" variant="bordered" />
-              <Select label="Rol Base" variant="bordered" defaultSelectedKeys={['vendedor']}>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Nueva Plantilla de Rol</h2>
+              <p className="text-sm text-gray-500 dark:text-[#888888]">Definir un nuevo rol con permisos personalizados</p>
+            </div>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Nombre del Rol</label>
+              <Input placeholder="Ej: Supervisor de Ventas" variant="bordered" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Descripción</label>
+              <Input placeholder="Descripción del rol y sus responsabilidades" variant="bordered" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Rol Base</label>
+              <Select variant="bordered" defaultSelectedKeys={['vendedor']} aria-label="Rol Base">
                 {Object.entries(ROLE_LABELS).map(([value, label]) => (
                   <SelectItem key={value}>{label}</SelectItem>
                 ))}
               </Select>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onRoleModalClose}>Cancelar</Button>
-            <Button color="primary" onPress={handleSaveRole} className="bg-brand-600">
-              Crear Plantilla
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsRoleModalOpen(false)}>Cancelar</Button>
+          <Button color="primary" onPress={handleSaveRole} className="bg-brand-600">
+            Crear Plantilla
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

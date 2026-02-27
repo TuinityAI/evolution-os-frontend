@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useStore } from '@/hooks/use-store';
 import { motion } from 'framer-motion';
 import { Button } from '@heroui/react';
 import {
@@ -18,6 +19,10 @@ import {
   getLedgerEntries,
   MOCK_ACCOUNTS,
   formatCurrencyAccounting,
+  subscribeAccounts,
+  getAccountsData,
+  subscribeJournalEntries,
+  getJournalEntriesData,
 } from '@/lib/mock-data/accounting';
 import {
   ACCOUNT_TYPE_LABELS,
@@ -30,6 +35,9 @@ export default function LibroMayorPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
 
+  const accounts = useStore(subscribeAccounts, getAccountsData);
+  useStore(subscribeJournalEntries, getJournalEntriesData);
+
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [accountSearch, setAccountSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -37,7 +45,7 @@ export default function LibroMayorPage() {
 
   const leafAccounts = useMemo(
     () => MOCK_ACCOUNTS.filter((a) => a.level === 3 && a.isActive),
-    []
+    [accounts]
   );
 
   const filteredAccounts = useMemo(() => {
@@ -50,7 +58,7 @@ export default function LibroMayorPage() {
 
   const selectedAccount = useMemo(
     () => MOCK_ACCOUNTS.find((a) => a.id === selectedAccountId),
-    [selectedAccountId]
+    [selectedAccountId, accounts]
   );
 
   const ledgerEntries = useMemo(() => {

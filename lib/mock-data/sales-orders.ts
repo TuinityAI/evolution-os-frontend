@@ -17,6 +17,7 @@ import type {
   Invoice,
   Return,
 } from '@/lib/types/sales-order';
+import { loadCollection, saveCollection, createSubscribers } from '@/lib/store/local-store';
 import { MOCK_PRODUCTS } from './products';
 import { MOCK_CLIENTS } from './clients';
 
@@ -57,7 +58,7 @@ export function getProductCost(productId: string): number {
 // MOCK SALES ORDERS
 // ============================================================================
 
-export const MOCK_SALES_ORDERS: SalesOrder[] = [
+const SEED_SALES_ORDERS: SalesOrder[] = [
   // ========== BORRADOR (Drafts) ==========
   {
     id: 'COT-04355',
@@ -899,7 +900,7 @@ export const MOCK_SALES_ORDERS: SalesOrder[] = [
 // MOCK INVOICES
 // ============================================================================
 
-export const MOCK_INVOICES: Invoice[] = [
+const SEED_INVOICES: Invoice[] = [
   {
     id: 'FAC-04420',
     invoiceNumber: 'FAC-04420',
@@ -973,6 +974,111 @@ export const MOCK_INVOICES: Invoice[] = [
 ];
 
 // ============================================================================
+// STORE INFRASTRUCTURE – Sales Orders
+// ============================================================================
+
+let _salesOrders: SalesOrder[] = SEED_SALES_ORDERS;
+let _soInitialized = false;
+const { subscribe: subscribeSalesOrders, notify: _notifySalesOrders } = createSubscribers();
+
+function ensureSalesOrdersInitialized(): void {
+  if (typeof window === 'undefined' || _soInitialized) return;
+  _salesOrders = loadCollection<SalesOrder>('sales_orders', SEED_SALES_ORDERS);
+  _soInitialized = true;
+}
+
+export function getSalesOrdersData(): SalesOrder[] {
+  ensureSalesOrdersInitialized();
+  return _salesOrders;
+}
+
+export { subscribeSalesOrders };
+
+// Backward-compatible export
+export const MOCK_SALES_ORDERS: SalesOrder[] = new Proxy(SEED_SALES_ORDERS as SalesOrder[], {
+  get(_target, prop, receiver) {
+    ensureSalesOrdersInitialized();
+    return Reflect.get(_salesOrders, prop, receiver);
+  },
+});
+
+// ============================================================================
+// STORE INFRASTRUCTURE – Invoices
+// ============================================================================
+
+let _invoices: Invoice[] = SEED_INVOICES;
+let _invInitialized = false;
+const { subscribe: subscribeInvoices, notify: _notifyInvoices } = createSubscribers();
+
+function ensureInvoicesInitialized(): void {
+  if (typeof window === 'undefined' || _invInitialized) return;
+  _invoices = loadCollection<Invoice>('invoices', SEED_INVOICES);
+  _invInitialized = true;
+}
+
+export function getInvoicesData(): Invoice[] {
+  ensureInvoicesInitialized();
+  return _invoices;
+}
+
+export { subscribeInvoices };
+
+// Backward-compatible export
+export const MOCK_INVOICES: Invoice[] = new Proxy(SEED_INVOICES as Invoice[], {
+  get(_target, prop, receiver) {
+    ensureInvoicesInitialized();
+    return Reflect.get(_invoices, prop, receiver);
+  },
+});
+
+// ============================================================================
+// CRUD OPERATIONS – Sales Orders
+// ============================================================================
+
+export function addSalesOrder(order: SalesOrder): void {
+  ensureSalesOrdersInitialized();
+  _salesOrders = [..._salesOrders, order];
+  saveCollection('sales_orders', _salesOrders);
+  _notifySalesOrders();
+}
+
+export function updateSalesOrder(id: string, updates: Partial<SalesOrder>): void {
+  ensureSalesOrdersInitialized();
+  _salesOrders = _salesOrders.map((o) =>
+    o.id === id ? { ...o, ...updates, updatedAt: new Date().toISOString() } : o
+  );
+  saveCollection('sales_orders', _salesOrders);
+  _notifySalesOrders();
+}
+
+export function removeSalesOrder(id: string): void {
+  ensureSalesOrdersInitialized();
+  _salesOrders = _salesOrders.filter((o) => o.id !== id);
+  saveCollection('sales_orders', _salesOrders);
+  _notifySalesOrders();
+}
+
+// ============================================================================
+// CRUD OPERATIONS – Invoices
+// ============================================================================
+
+export function addInvoice(invoice: Invoice): void {
+  ensureInvoicesInitialized();
+  _invoices = [..._invoices, invoice];
+  saveCollection('invoices', _invoices);
+  _notifyInvoices();
+}
+
+export function updateInvoice(id: string, updates: Partial<Invoice>): void {
+  ensureInvoicesInitialized();
+  _invoices = _invoices.map((i) =>
+    i.id === id ? { ...i, ...updates } : i
+  );
+  saveCollection('invoices', _invoices);
+  _notifyInvoices();
+}
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -1015,14 +1121,16 @@ export function formatDateTime(dateString: string): string {
  * Get sales order by ID
  */
 export function getSalesOrderById(id: string): SalesOrder | undefined {
-  return MOCK_SALES_ORDERS.find((order) => order.id === id);
+  ensureSalesOrdersInitialized();
+  return _salesOrders.find((order) => order.id === id);
 }
 
 /**
  * Get sales orders with filters
  */
 export function getSalesOrders(filters?: SalesOrderFilters): SalesOrder[] {
-  let orders = [...MOCK_SALES_ORDERS];
+  ensureSalesOrdersInitialized();
+  let orders = [..._salesOrders];
 
   if (!filters) return orders;
 
@@ -1079,10 +1187,12 @@ export function getSalesOrders(filters?: SalesOrderFilters): SalesOrder[] {
  * Get sales stats
  */
 export function getSalesStats(): SalesStats {
+  ensureSalesOrdersInitialized();
+  ensureInvoicesInitialized();
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const thisMonthOrders = MOCK_SALES_ORDERS.filter(
+  const thisMonthOrders = _salesOrders.filter(
     (o) => new Date(o.createdAt) >= monthStart
   );
 
@@ -1094,32 +1204,32 @@ export function getSalesStats(): SalesStats {
     (o) => o.documentType === 'pedido'
   ).length;
 
-  const invoicesThisMonth = MOCK_INVOICES.filter(
+  const invoicesThisMonth = _invoices.filter(
     (i) => new Date(i.issueDate) >= monthStart
   ).length;
 
-  const pendingQuotes = MOCK_SALES_ORDERS.filter(
+  const pendingQuotes = _salesOrders.filter(
     (o) => o.status === 'cotizado'
   ).length;
 
-  const pendingApproval = MOCK_SALES_ORDERS.filter(
+  const pendingApproval = _salesOrders.filter(
     (o) => o.status === 'pedido' && o.requiresApproval
   ).length;
 
-  const readyToPack = MOCK_SALES_ORDERS.filter(
+  const readyToPack = _salesOrders.filter(
     (o) => o.status === 'aprobado'
   ).length;
 
-  const readyToInvoice = MOCK_SALES_ORDERS.filter(
+  const readyToInvoice = _salesOrders.filter(
     (o) => o.status === 'empacado'
   ).length;
 
-  const pipelineOrders = MOCK_SALES_ORDERS.filter(
+  const pipelineOrders = _salesOrders.filter(
     (o) => !['facturado', 'cancelado'].includes(o.status)
   );
   const pipelineValue = pipelineOrders.reduce((sum, o) => sum + o.total, 0);
 
-  const invoicedThisMonth = MOCK_INVOICES.filter(
+  const invoicedThisMonth = _invoices.filter(
     (i) => new Date(i.issueDate) >= monthStart
   );
   const salesValueThisMonth = invoicedThisMonth.reduce((sum, i) => sum + i.total, 0);
@@ -1134,13 +1244,13 @@ export function getSalesStats(): SalesStats {
       : 0;
 
   const byStatus: Record<SalesOrderStatus, number> = {
-    borrador: MOCK_SALES_ORDERS.filter((o) => o.status === 'borrador').length,
-    cotizado: MOCK_SALES_ORDERS.filter((o) => o.status === 'cotizado').length,
-    pedido: MOCK_SALES_ORDERS.filter((o) => o.status === 'pedido').length,
-    aprobado: MOCK_SALES_ORDERS.filter((o) => o.status === 'aprobado').length,
-    empacado: MOCK_SALES_ORDERS.filter((o) => o.status === 'empacado').length,
-    facturado: MOCK_SALES_ORDERS.filter((o) => o.status === 'facturado').length,
-    cancelado: MOCK_SALES_ORDERS.filter((o) => o.status === 'cancelado').length,
+    borrador: _salesOrders.filter((o) => o.status === 'borrador').length,
+    cotizado: _salesOrders.filter((o) => o.status === 'cotizado').length,
+    pedido: _salesOrders.filter((o) => o.status === 'pedido').length,
+    aprobado: _salesOrders.filter((o) => o.status === 'aprobado').length,
+    empacado: _salesOrders.filter((o) => o.status === 'empacado').length,
+    facturado: _salesOrders.filter((o) => o.status === 'facturado').length,
+    cancelado: _salesOrders.filter((o) => o.status === 'cancelado').length,
   };
 
   return {
@@ -1163,9 +1273,10 @@ export function getSalesStats(): SalesStats {
  * Get next document number
  */
 export function getNextOrderNumber(docType: DocumentType): string {
+  ensureSalesOrdersInitialized();
   const prefix = docType === 'cotizacion' ? 'COT' : docType === 'pedido' ? 'PED' : 'FAC';
 
-  const existing = MOCK_SALES_ORDERS.filter((o) =>
+  const existing = _salesOrders.filter((o) =>
     o.orderNumber.startsWith(prefix)
   );
 
@@ -1184,7 +1295,8 @@ export function getLastPriceToCustomer(
   customerId: string,
   productId: string
 ): number | undefined {
-  const customerOrders = MOCK_SALES_ORDERS
+  ensureSalesOrdersInitialized();
+  const customerOrders = _salesOrders
     .filter(
       (o) =>
         o.customerId === customerId &&
@@ -1208,7 +1320,8 @@ export function getLastPriceToCustomer(
  * Get orders pending approval
  */
 export function getOrdersPendingApproval(): SalesOrder[] {
-  return MOCK_SALES_ORDERS.filter(
+  ensureSalesOrdersInitialized();
+  return _salesOrders.filter(
     (o) => o.status === 'pedido' && o.requiresApproval
   );
 }
@@ -1217,14 +1330,16 @@ export function getOrdersPendingApproval(): SalesOrder[] {
  * Get orders ready to pack
  */
 export function getOrdersReadyToPack(): SalesOrder[] {
-  return MOCK_SALES_ORDERS.filter((o) => o.status === 'aprobado');
+  ensureSalesOrdersInitialized();
+  return _salesOrders.filter((o) => o.status === 'aprobado');
 }
 
 /**
  * Get orders ready to invoice
  */
 export function getOrdersReadyToInvoice(): SalesOrder[] {
-  return MOCK_SALES_ORDERS.filter((o) => o.status === 'empacado');
+  ensureSalesOrdersInitialized();
+  return _salesOrders.filter((o) => o.status === 'empacado');
 }
 
 // Re-export types

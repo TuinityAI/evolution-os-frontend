@@ -12,7 +12,9 @@ import {
   getProductPrice,
   getProductCost,
   calculateCommissionEligible,
+  addSalesOrder,
 } from '@/lib/mock-data/sales-orders';
+import type { SalesOrder } from '@/lib/types/sales-order';
 import { MOCK_CLIENTS } from '@/lib/mock-data/clients';
 import { MOCK_PRODUCTS } from '@/lib/mock-data/products';
 import type { SalesOrderLine } from '@/lib/types/sales-order';
@@ -124,6 +126,43 @@ export default function NuevaCotizacionPage() {
     }
 
     const orderNumber = getNextOrderNumber('cotizacion');
+    const hasLowMargin = quoteLines.some((l) => (l.marginPercent || 0) < 10);
+
+    const newOrder: SalesOrder = {
+      id: orderNumber,
+      orderNumber,
+      documentType: 'cotizacion',
+      status: 'borrador',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      customerId: selectedClient!.id,
+      customerName: selectedClient!.name,
+      customerTaxId: selectedClient!.taxId || '',
+      customerCountry: selectedClient!.country,
+      priceLevel: selectedClient!.priceLevel,
+      paymentTerms: selectedClient!.paymentTerms,
+      validUntil: quoteFormData.validUntil ? new Date(quoteFormData.validUntil).toISOString() : undefined,
+      requestedDeliveryDate: quoteFormData.requestedDeliveryDate ? new Date(quoteFormData.requestedDeliveryDate).toISOString() : undefined,
+      lines: quoteLines.map((l) => l as SalesOrder['lines'][0]),
+      additionalExpenses: [],
+      subtotal: quoteSubtotal,
+      discountTotal: 0,
+      expensesTotal: 0,
+      taxRate: 0,
+      taxAmount: 0,
+      total: quoteSubtotal,
+      totalCost: quoteTotalCost,
+      totalMargin: quoteSubtotal - quoteTotalCost,
+      marginPercent: quoteMarginPercent,
+      commissionableAmount: quoteSubtotal,
+      createdBy: 'USR-001',
+      createdByName: 'Usuario Actual',
+      requiresApproval: hasLowMargin,
+      notes: quoteFormData.notes || undefined,
+    };
+
+    addSalesOrder(newOrder);
+
     toast.success('Cotización creada', {
       description: `La cotización ${orderNumber} ha sido creada exitosamente.`,
     });

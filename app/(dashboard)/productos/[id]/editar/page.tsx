@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Button, Input, Select, SelectItem, Switch } from '@heroui/react';
+import { Button, Input, Select, SelectItem } from '@heroui/react';
+import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Package, ImagePlus } from 'lucide-react';
 import { toast } from 'sonner';
-import { getProductById, PRODUCT_GROUPS } from '@/lib/mock-data/products';
+import { getProductById, updateProduct, PRODUCT_GROUPS } from '@/lib/mock-data/products';
 import { MOCK_SUPPLIERS } from '@/lib/mock-data/purchase-orders';
 
 function getInitialFormData(productId: string) {
@@ -89,6 +90,33 @@ export default function EditarProductoPage() {
       });
       return;
     }
+
+    const supplierName = MOCK_SUPPLIERS.find(s => s.id === formData.supplier)?.name || product.supplier;
+
+    updateProduct(productId, {
+      description: formData.description,
+      brand: formData.brand,
+      group: formData.group,
+      subGroup: formData.subGroup,
+      barcode: formData.barcode,
+      reference: formData.reference,
+      supplier: supplierName,
+      country: formData.country,
+      unit: formData.unit,
+      unitsPerCase: parseInt(formData.unitsPerCase) || product.unitsPerCase,
+      minimumQty: parseInt(formData.minimumQty) || product.minimumQty,
+      tariffCode: formData.tariffCode,
+      prices: {
+        A: parseFloat(formData.priceA) || product.prices.A,
+        B: parseFloat(formData.priceB) || product.prices.B,
+        C: parseFloat(formData.priceC) || product.prices.C,
+        D: parseFloat(formData.priceD) || product.prices.D,
+        E: parseFloat(formData.priceE) || product.prices.E,
+      },
+      costFOB: parseFloat(formData.costFOB) || product.costFOB,
+      costCIF: parseFloat(formData.costCIF) || product.costCIF,
+      status: formData.status ? 'active' : 'inactive',
+    });
 
     toast.success('Producto actualizado', {
       description: `Los cambios en "${formData.description}" han sido guardados`,
@@ -413,14 +441,13 @@ export default function EditarProductoPage() {
                 <p className="text-sm font-medium text-gray-900 dark:text-white">Estado del producto</p>
                 <p className="text-xs text-gray-500 dark:text-[#888888]">Productos inactivos no aparecen en ventas</p>
               </div>
-              <Switch
-                isSelected={formData.status}
-                onValueChange={(value) => handleFormChange('status', value)}
-                color="success"
-                size="sm"
-              >
-                {formData.status ? 'Activo' : 'Inactivo'}
-              </Switch>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={formData.status}
+                  onCheckedChange={(value) => handleFormChange('status', value)}
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">{formData.status ? 'Activo' : 'Inactivo'}</span>
+              </div>
             </div>
           </div>
         </div>

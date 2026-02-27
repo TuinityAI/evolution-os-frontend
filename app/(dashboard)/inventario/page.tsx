@@ -8,18 +8,13 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
   Select,
   SelectItem,
-  Switch,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
+import { Switch } from '@/components/ui/switch';
 import {
   Search,
   Plus,
@@ -49,9 +44,12 @@ import {
   getInventoryItems,
   getInventoryStats,
   getPendingAdjustments,
+  subscribeAdjustments,
+  getAdjustmentsData,
 } from '@/lib/mock-data/inventory';
-import { MOCK_WAREHOUSES } from '@/lib/mock-data/warehouses';
+import { MOCK_WAREHOUSES, subscribeWarehouses, getWarehousesData } from '@/lib/mock-data/warehouses';
 import { PRODUCT_GROUPS } from '@/lib/mock-data/products';
+import { useStore } from '@/hooks/use-store';
 import type { InventoryItem, InventoryStockFilter } from '@/lib/types/inventory';
 
 // Product images mapping
@@ -76,6 +74,10 @@ export default function InventarioPage() {
   const canCreateTransfers = checkPermission('canCreateTransfers');
   const canCreateCountSessions = checkPermission('canCreateCountSessions');
 
+  // Reactive store subscriptions
+  const warehouses = useStore(subscribeWarehouses, getWarehousesData);
+  const adjustments = useStore(subscribeAdjustments, getAdjustmentsData);
+
   // State
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState<InventoryStockFilter>('all');
@@ -85,7 +87,7 @@ export default function InventarioPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
 
   // Advanced filters
-  const { isOpen: isFilterOpen, onOpen: onFilterOpen, onClose: onFilterClose } = useDisclosure();
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [stockRange, setStockRange] = useState({ min: '', max: '' });
   const [showOnlyWithAlerts, setShowOnlyWithAlerts] = useState(false);
 
@@ -411,7 +413,7 @@ export default function InventarioPage() {
 
           {/* Advanced filters button */}
           <button
-            onClick={onFilterOpen}
+            onClick={() => setIsFilterOpen(true)}
             className={cn(
               'flex h-9 w-9 items-center justify-center rounded-lg border bg-white dark:bg-[#141414] transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]',
               (stockRange.min || stockRange.max || showOnlyWithAlerts || selectedSupplier)
@@ -589,43 +591,39 @@ export default function InventarioPage() {
       </div>
 
       {/* Advanced Filters Modal */}
-      <Modal isOpen={isFilterOpen} onClose={onFilterClose} size="md">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#2a2a2a]">
-                <SlidersHorizontal className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filtros Avanzados</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">Refina tu búsqueda de inventario</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
+      <CustomModal isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} size="md">
+          <CustomModalHeader onClose={() => setIsFilterOpen(false)}>
+              <SlidersHorizontal className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              Filtros Avanzados
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             <div className="space-y-6">
               {/* Stock Range */}
               <div>
                 <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Rango de Stock Disponible</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Mínimo"
-                    type="number"
-                    placeholder="0"
-                    value={stockRange.min}
-                    onChange={(e) => setStockRange((prev) => ({ ...prev, min: e.target.value }))}
-                    variant="bordered"
-                    classNames={{ inputWrapper: 'bg-white' }}
-                  />
-                  <Input
-                    label="Máximo"
-                    type="number"
-                    placeholder="1000"
-                    value={stockRange.max}
-                    onChange={(e) => setStockRange((prev) => ({ ...prev, max: e.target.value }))}
-                    variant="bordered"
-                    classNames={{ inputWrapper: 'bg-white' }}
-                  />
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Mínimo</label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={stockRange.min}
+                      onChange={(e) => setStockRange((prev) => ({ ...prev, min: e.target.value }))}
+                      variant="bordered"
+                      classNames={{ inputWrapper: 'bg-white' }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Máximo</label>
+                    <Input
+                      type="number"
+                      placeholder="1000"
+                      value={stockRange.max}
+                      onChange={(e) => setStockRange((prev) => ({ ...prev, max: e.target.value }))}
+                      variant="bordered"
+                      classNames={{ inputWrapper: 'bg-white' }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -654,14 +652,13 @@ export default function InventarioPage() {
                   <p className="text-xs text-gray-500 dark:text-[#888888]">Mostrar solo bajo stock, sin stock o estancados</p>
                 </div>
                 <Switch
-                  isSelected={showOnlyWithAlerts}
-                  onValueChange={setShowOnlyWithAlerts}
-                  color="primary"
+                  checked={showOnlyWithAlerts}
+                  onCheckedChange={setShowOnlyWithAlerts}
                 />
               </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
+          </CustomModalBody>
+          <CustomModalFooter>
             <Button
               variant="light"
               onPress={() => {
@@ -676,15 +673,14 @@ export default function InventarioPage() {
               color="primary"
               onPress={() => {
                 toast.success('Filtros aplicados');
-                onFilterClose();
+                setIsFilterOpen(false);
               }}
               className="bg-brand-600"
             >
               Aplicar filtros
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

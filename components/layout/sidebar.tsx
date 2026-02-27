@@ -19,6 +19,7 @@ import {
   ChevronRight,
   LogOut,
   Menu,
+  X,
 } from 'lucide-react';
 import { Tooltip } from '@heroui/react';
 import { useAuth } from '@/lib/contexts/auth-context';
@@ -102,7 +103,7 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { logout, checkPermission } = useAuth();
-  const { isCollapsed, setIsCollapsed, sidebarWidth } = useSidebar();
+  const { isCollapsed, setIsCollapsed, sidebarWidth, isMobile, isMobileOpen, setIsMobileOpen } = useSidebar();
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {
@@ -115,12 +116,23 @@ export function Sidebar() {
     (item) => !item.permission || checkPermission(item.permission as any)
   );
 
-  return (
-    <motion.aside
-      initial={false}
-      animate={{ width: sidebarWidth }}
-      transition={{ duration: 0.2, ease: 'easeInOut' }}
-      className="fixed left-0 top-0 z-40 flex h-screen flex-col bg-white dark:bg-[#0a0a0a]"
+  const handleNavClick = () => {
+    if (isMobile) {
+      setIsMobileOpen(false);
+    }
+  };
+
+  // On mobile, show sidebar as overlay when isMobileOpen
+  // On desktop, show normally with animated width
+  const showExpanded = isMobile ? true : !isCollapsed;
+
+  const sidebarContent = (
+    <aside
+      className={cn(
+        'flex h-screen flex-col bg-white dark:bg-[#0a0a0a]',
+        isMobile ? 'w-[260px]' : undefined
+      )}
+      style={!isMobile ? { width: sidebarWidth } : undefined}
     >
       {/* Header - Same color and height as navbar */}
       <div
@@ -128,7 +140,7 @@ export function Sidebar() {
         style={{ backgroundColor: '#1a1a1a' }}
       >
         <AnimatePresence mode="wait">
-          {!isCollapsed && (
+          {showExpanded && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -144,7 +156,7 @@ export function Sidebar() {
           )}
         </AnimatePresence>
 
-        {isCollapsed && (
+        {!isMobile && isCollapsed && (
           <div className="mx-auto">
             <img
               src="https://res.cloudinary.com/db3espoei/image/upload/v1771993730/Logo_Evolution_ZL__1_-cropped_onzamv.svg"
@@ -154,13 +166,22 @@ export function Sidebar() {
           </div>
         )}
 
-        {!isCollapsed && (
+        {isMobile ? (
           <button
-            onClick={() => setIsCollapsed(true)}
+            onClick={() => setIsMobileOpen(false)}
             className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-[#2a2a2a] hover:text-white"
           >
-            <Menu className="h-4 w-4" />
+            <X className="h-4 w-4" />
           </button>
+        ) : (
+          showExpanded && (
+            <button
+              onClick={() => setIsCollapsed(true)}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-[#2a2a2a] hover:text-white"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
+          )
         )}
       </div>
 
@@ -172,6 +193,7 @@ export function Sidebar() {
             const linkContent = (
               <Link
                 href={item.href}
+                onClick={handleNavClick}
                 className={cn(
                   'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
                   active
@@ -188,7 +210,7 @@ export function Sidebar() {
                   {item.icon}
                 </span>
                 <AnimatePresence mode="wait">
-                  {!isCollapsed && (
+                  {showExpanded && (
                     <motion.span
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 'auto' }}
@@ -199,12 +221,12 @@ export function Sidebar() {
                     </motion.span>
                   )}
                 </AnimatePresence>
-                {!isCollapsed && item.badge && (
+                {showExpanded && item.badge && (
                   <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-medium text-white">
                     {item.badge}
                   </span>
                 )}
-                {!isCollapsed && (
+                {showExpanded && (
                   <ChevronRight className={cn(
                     'h-4 w-4 text-gray-300 dark:text-[#444444] opacity-0 transition-all group-hover:opacity-100',
                     active && 'opacity-100 text-gray-400 dark:text-[#666666]'
@@ -215,7 +237,7 @@ export function Sidebar() {
 
             return (
               <li key={item.href} className="relative">
-                {isCollapsed ? (
+                {!isMobile && isCollapsed ? (
                   <Tooltip
                     content={item.label}
                     placement="right"
@@ -237,16 +259,17 @@ export function Sidebar() {
       {/* Bottom Section - Pill (horizontal when expanded, vertical when collapsed) */}
       <div className={cn(
         "flex border-r border-gray-200 dark:border-[#2a2a2a] px-3 py-4",
-        isCollapsed ? "flex-col items-center" : "items-center justify-center"
+        !isMobile && isCollapsed ? "flex-col items-center" : "items-center justify-center"
       )}>
         {/* Pill with Settings & Logout */}
         <div className={cn(
           "flex items-center gap-0.5 rounded-full border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#141414] p-1",
-          isCollapsed && "flex-col"
+          !isMobile && isCollapsed && "flex-col"
         )}>
-          <Tooltip content="Configuración" placement={isCollapsed ? "right" : "top"}>
+          <Tooltip content="Configuración" placement={!isMobile && isCollapsed ? "right" : "top"}>
             <Link
               href="/configuracion"
+              onClick={handleNavClick}
               className={cn(
                 'flex h-8 w-8 items-center justify-center rounded-full transition-colors',
                 isActive('/configuracion')
@@ -260,10 +283,10 @@ export function Sidebar() {
 
           <div className={cn(
             "bg-gray-200 dark:bg-[#2a2a2a]",
-            isCollapsed ? "h-px w-5" : "h-5 w-px"
+            !isMobile && isCollapsed ? "h-px w-5" : "h-5 w-px"
           )} />
 
-          <Tooltip content="Cerrar sesión" placement={isCollapsed ? "right" : "top"}>
+          <Tooltip content="Cerrar sesión" placement={!isMobile && isCollapsed ? "right" : "top"}>
             <button
               onClick={logout}
               className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 dark:text-[#666666] transition-colors hover:bg-white dark:hover:bg-[#1a1a1a] hover:text-gray-600 dark:hover:text-white hover:shadow-sm"
@@ -273,8 +296,8 @@ export function Sidebar() {
           </Tooltip>
         </div>
 
-        {/* Expand button when collapsed */}
-        {isCollapsed && (
+        {/* Expand button when collapsed (desktop only) */}
+        {!isMobile && isCollapsed && (
           <button
             onClick={() => setIsCollapsed(false)}
             className="mt-3 flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 dark:border-[#2a2a2a] text-gray-400 dark:text-[#666666] transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a] hover:text-gray-600 dark:hover:text-white"
@@ -283,6 +306,49 @@ export function Sidebar() {
           </button>
         )}
       </div>
-    </motion.aside>
+    </aside>
+  );
+
+  // Mobile: show as overlay with backdrop
+  if (isMobile) {
+    return (
+      <AnimatePresence>
+        {isMobileOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+              onClick={() => setIsMobileOpen(false)}
+            />
+            {/* Sidebar panel */}
+            <motion.div
+              initial={{ x: -260 }}
+              animate={{ x: 0 }}
+              exit={{ x: -260 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              className="fixed left-0 top-0 z-50"
+            >
+              {sidebarContent}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    );
+  }
+
+  // Desktop: fixed sidebar with animated width
+  return (
+    <motion.div
+      initial={false}
+      animate={{ width: sidebarWidth }}
+      transition={{ duration: 0.2, ease: 'easeInOut' }}
+      className="fixed left-0 top-0 z-40"
+    >
+      {sidebarContent}
+    </motion.div>
   );
 }

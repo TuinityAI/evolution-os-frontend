@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useStore } from '@/hooks/use-store';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -9,18 +10,13 @@ import {
   DropdownMenu,
   DropdownItem,
   Avatar,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
   Select,
   SelectItem,
-  Switch,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
+import { Switch } from '@/components/ui/switch';
 import {
   Search,
   Plus,
@@ -43,7 +39,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { MOCK_PRODUCTS, PRODUCT_GROUPS, getProductStats, Product } from '@/lib/mock-data/products';
+import { getProductsData, subscribeProducts, removeProduct, PRODUCT_GROUPS, getProductStats, Product } from '@/lib/mock-data/products';
 import { MOCK_SUPPLIERS } from '@/lib/mock-data/purchase-orders';
 import { cn } from '@/lib/utils/cn';
 
@@ -65,6 +61,7 @@ const PRODUCT_IMAGES: Record<string, string> = {
 
 export default function ProductosPage() {
   const router = useRouter();
+  const products = useStore(subscribeProducts, getProductsData);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [stockFilter, setStockFilter] = useState<StockFilter>('all');
@@ -72,8 +69,8 @@ export default function ProductosPage() {
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
-  const { isOpen: isFilterOpen, onOpen: onFilterOpen, onClose: onFilterClose } = useDisclosure();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Advanced filters state
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
@@ -85,7 +82,7 @@ export default function ProductosPage() {
 
   // Filter products
   const filteredProducts = useMemo(() => {
-    return MOCK_PRODUCTS.filter((product) => {
+    return products.filter((product) => {
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
         !searchQuery ||
@@ -119,11 +116,11 @@ export default function ProductosPage() {
              matchesPriceMin && matchesPriceMax && matchesStockMin && matchesStockMax &&
              matchesSupplier && matchesActiveOnly;
     });
-  }, [searchQuery, stockFilter, selectedGroup, selectedBrand, priceRange, stockRange, selectedSupplier, showOnlyActive]);
+  }, [products, searchQuery, stockFilter, selectedGroup, selectedBrand, priceRange, stockRange, selectedSupplier, showOnlyActive]);
 
   const uniqueBrands = useMemo(() => {
-    return [...new Set(MOCK_PRODUCTS.map((p) => p.brand))].sort();
-  }, []);
+    return [...new Set(products.map((p) => p.brand))].sort();
+  }, [products]);
 
   const getStockStatus = (product: Product) => {
     if (product.stock.available === 0) {
@@ -159,15 +156,16 @@ export default function ProductosPage() {
 
   const handleDeleteProduct = (product: Product) => {
     setSelectedProduct(product);
-    onDeleteOpen();
+    setIsDeleteOpen(true);
   };
 
   const confirmDelete = () => {
     if (selectedProduct) {
+      removeProduct(selectedProduct.id);
       toast.success('Producto eliminado', {
         description: `"${selectedProduct.description}" ha sido eliminado.`,
       });
-      onDeleteClose();
+      setIsDeleteOpen(false);
       setSelectedProduct(null);
     }
   };
@@ -383,7 +381,7 @@ export default function ProductosPage() {
           </div>
 
           <button
-            onClick={onFilterOpen}
+            onClick={() => setIsFilterOpen(true)}
             className={cn(
               "flex h-9 w-9 items-center justify-center rounded-lg border bg-white dark:bg-[#141414] transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]",
               (priceRange.min || priceRange.max || stockRange.min || stockRange.max || selectedSupplier || showOnlyActive)
@@ -615,61 +613,53 @@ export default function ProductosPage() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} size="sm">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="dark:text-white">Eliminar producto</ModalHeader>
-          <ModalBody>
+      <CustomModal isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} size="sm">
+          <CustomModalHeader onClose={() => setIsDeleteOpen(false)}>Eliminar producto</CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             <p className="text-gray-600 dark:text-gray-400">
               ¿Estás seguro de eliminar <span className="font-medium text-gray-900 dark:text-white">"{selectedProduct?.description}"</span>? Esta acción no se puede deshacer.
             </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="light" onPress={onDeleteClose}>Cancelar</Button>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsDeleteOpen(false)}>Cancelar</Button>
             <Button color="danger" onPress={confirmDelete}>Eliminar</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
 
       {/* Filter Modal */}
-      <Modal isOpen={isFilterOpen} onClose={onFilterClose} size="md">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#2a2a2a]">
-                <SlidersHorizontal className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filtros Avanzados</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">Refina tu búsqueda de productos</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
+      <CustomModal isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} size="md">
+          <CustomModalHeader onClose={() => setIsFilterOpen(false)}>
+              <SlidersHorizontal className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              Filtros Avanzados
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             <div className="space-y-6">
               {/* Price Range */}
               <div>
                 <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Rango de Precio</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Mínimo"
-                    type="number"
-                    placeholder="0"
-                    startContent={<span className="text-gray-400">$</span>}
-                    value={priceRange.min}
-                    onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-                    variant="bordered"
-                    labelPlacement="outside"
-                  />
-                  <Input
-                    label="Máximo"
-                    type="number"
-                    placeholder="1000"
-                    startContent={<span className="text-gray-400">$</span>}
-                    value={priceRange.max}
-                    onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-                    variant="bordered"
-                    labelPlacement="outside"
-                  />
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Mínimo</label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      startContent={<span className="text-gray-400">$</span>}
+                      value={priceRange.min}
+                      onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                      variant="bordered"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Máximo</label>
+                    <Input
+                      type="number"
+                      placeholder="1000"
+                      startContent={<span className="text-gray-400">$</span>}
+                      value={priceRange.max}
+                      onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                      variant="bordered"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -677,24 +667,26 @@ export default function ProductosPage() {
               <div>
                 <h3 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Rango de Stock</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Mínimo"
-                    type="number"
-                    placeholder="0"
-                    value={stockRange.min}
-                    onChange={(e) => setStockRange(prev => ({ ...prev, min: e.target.value }))}
-                    variant="bordered"
-                    labelPlacement="outside"
-                  />
-                  <Input
-                    label="Máximo"
-                    type="number"
-                    placeholder="1000"
-                    value={stockRange.max}
-                    onChange={(e) => setStockRange(prev => ({ ...prev, max: e.target.value }))}
-                    variant="bordered"
-                    labelPlacement="outside"
-                  />
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Mínimo</label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={stockRange.min}
+                      onChange={(e) => setStockRange(prev => ({ ...prev, min: e.target.value }))}
+                      variant="bordered"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Máximo</label>
+                    <Input
+                      type="number"
+                      placeholder="1000"
+                      value={stockRange.max}
+                      onChange={(e) => setStockRange(prev => ({ ...prev, max: e.target.value }))}
+                      variant="bordered"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -721,14 +713,13 @@ export default function ProductosPage() {
                   <p className="text-xs text-gray-500 dark:text-[#888888]">Ocultar productos inactivos</p>
                 </div>
                 <Switch
-                  isSelected={showOnlyActive}
-                  onValueChange={setShowOnlyActive}
-                  color="primary"
+                  checked={showOnlyActive}
+                  onCheckedChange={setShowOnlyActive}
                 />
               </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
+          </CustomModalBody>
+          <CustomModalFooter>
             <Button
               variant="light"
               onPress={() => {
@@ -744,15 +735,14 @@ export default function ProductosPage() {
               color="primary"
               onPress={() => {
                 toast.success('Filtros aplicados');
-                onFilterClose();
+                setIsFilterOpen(false);
               }}
               className="bg-brand-600"
             >
               Aplicar filtros
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

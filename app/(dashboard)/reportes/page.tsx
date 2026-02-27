@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { Card, CardBody, CardHeader, Divider, Progress, Button, Chip, Tabs, Tab } from '@heroui/react';
@@ -32,6 +32,9 @@ import {
   Activity,
   PieChart,
   LineChart,
+  Printer,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils/cn';
@@ -151,6 +154,30 @@ export default function ReportesPage() {
   const isVendedor = !canViewMargins;
 
   const [selectedTab, setSelectedTab] = useState('general');
+  const [selectedMonth, setSelectedMonth] = useState(1); // 0-indexed: 1 = Feb
+  const [selectedYear, setSelectedYear] = useState(2026);
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
+  const monthPickerRef = useRef<HTMLDivElement>(null);
+
+  const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const MONTH_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+  // Close month picker on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (monthPickerRef.current && !monthPickerRef.current.contains(e.target as Node)) {
+        setIsMonthPickerOpen(false);
+      }
+    };
+    if (isMonthPickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMonthPickerOpen]);
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
@@ -194,25 +221,71 @@ export default function ReportesPage() {
               Métricas y Reportes
             </h1>
             <p className="mt-1 text-sm text-text-secondary">
-              Panel de indicadores de rendimiento • Febrero 2026
+              Panel de indicadores de rendimiento • {MONTH_NAMES[selectedMonth]} {selectedYear}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="bordered"
-            size="sm"
-            startContent={<Calendar className="h-4 w-4" />}
-          >
-            Febrero 2026
-          </Button>
+          {/* Month Picker */}
+          <div className="relative" ref={monthPickerRef}>
+            <Button
+              variant="bordered"
+              size="sm"
+              startContent={<Calendar className="h-4 w-4" />}
+              onPress={() => setIsMonthPickerOpen(!isMonthPickerOpen)}
+            >
+              {MONTH_NAMES[selectedMonth]} {selectedYear}
+            </Button>
+            {isMonthPickerOpen && (
+              <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] p-3 shadow-xl">
+                {/* Year selector */}
+                <div className="flex items-center justify-between mb-3">
+                  <button
+                    onClick={() => setSelectedYear((y) => y - 1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-[#1a1a1a] transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{selectedYear}</span>
+                  <button
+                    onClick={() => setSelectedYear((y) => y + 1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-[#1a1a1a] transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                {/* Month grid */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {MONTH_SHORT.map((name, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setSelectedMonth(idx);
+                        setIsMonthPickerOpen(false);
+                      }}
+                      className={cn(
+                        'rounded-lg px-2 py-2 text-xs font-medium transition-colors',
+                        idx === selectedMonth && selectedYear === 2026
+                          ? 'bg-brand-600 text-white'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1a1a1a]'
+                      )}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <Button
             color="primary"
             size="sm"
-            startContent={<FileText className="h-4 w-4" />}
+            startContent={<Printer className="h-4 w-4" />}
             className="bg-brand-600"
+            onPress={handlePrint}
           >
-            Exportar
+            Imprimir
           </Button>
         </div>
       </motion.div>

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useStore } from '@/hooks/use-store';
 import { motion } from 'framer-motion';
 import { Tabs, Tab } from '@heroui/react';
 import {
@@ -19,6 +20,10 @@ import {
   MOCK_BANK_ACCOUNTS,
   formatCurrencyAccounting,
   getCashFlowProjections,
+  subscribeAccounts,
+  getAccountsData,
+  subscribeBankAccounts,
+  getBankAccountsData,
 } from '@/lib/mock-data/accounting';
 import type { FinancialStatementLine } from '@/lib/types/accounting';
 
@@ -29,6 +34,9 @@ export default function EstadosFinancierosPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canViewFinancialStatements = checkPermission('canViewFinancialStatements');
+
+  useStore(subscribeAccounts, getAccountsData);
+  useStore(subscribeBankAccounts, getBankAccountsData);
 
   const [activeTab, setActiveTab] = useState<StatementTab>('estado_resultados');
   const [period, setPeriod] = useState<PeriodType>('mensual');
@@ -42,9 +50,7 @@ export default function EstadosFinancierosPage() {
   };
 
   const handlePrint = () => {
-    toast.success('Preparando impresión', {
-      description: 'El documento se abrirá en una nueva ventana.',
-    });
+    window.print();
   };
 
   const formatAmount = (amount: number) => {

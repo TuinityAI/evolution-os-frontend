@@ -1,6 +1,7 @@
 /**
  * Mock data for Clients (Ventas B2B module)
  * Based on Document 005 specifications
+ * Store-backed: data persists in localStorage
  */
 
 import type {
@@ -13,9 +14,10 @@ import type {
   PriceLevel,
   ShippingAddress,
 } from '@/lib/types/client';
+import { loadCollection, saveCollection, createSubscribers } from '@/lib/store/local-store';
 
-// Mock Clients - Based on Doc 005 real data
-export const MOCK_CLIENTS: Client[] = [
+// Seed data (used on first load only)
+const SEED_CLIENTS: Client[] = [
   {
     id: 'CLI-00007',
     name: 'MARIA DEL MAR PEREZ SV',
@@ -636,25 +638,76 @@ export const MOCK_CLIENTS: Client[] = [
 ];
 
 // ============================================================================
+// STORE INFRASTRUCTURE
+// ============================================================================
+
+let _clients: Client[] = SEED_CLIENTS;
+let _initialized = false;
+const { subscribe: subscribeClients, notify: _notifyClients } = createSubscribers();
+
+function ensureInitialized(): void {
+  if (typeof window === 'undefined' || _initialized) return;
+  _clients = loadCollection<Client>('clients', SEED_CLIENTS);
+  _initialized = true;
+}
+
+export function getClientsData(): Client[] {
+  ensureInitialized();
+  return _clients;
+}
+
+export { subscribeClients };
+
+// Backward-compatible export
+export const MOCK_CLIENTS: Client[] = new Proxy(SEED_CLIENTS as Client[], {
+  get(_target, prop, receiver) {
+    ensureInitialized();
+    return Reflect.get(_clients, prop, receiver);
+  },
+});
+
+// ============================================================================
+// CRUD OPERATIONS
+// ============================================================================
+
+export function addClient(client: Client): void {
+  ensureInitialized();
+  _clients = [..._clients, client];
+  saveCollection('clients', _clients);
+  _notifyClients();
+}
+
+export function updateClient(id: string, updates: Partial<Client>): void {
+  ensureInitialized();
+  _clients = _clients.map((c) =>
+    c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c
+  );
+  saveCollection('clients', _clients);
+  _notifyClients();
+}
+
+export function removeClient(id: string): void {
+  ensureInitialized();
+  _clients = _clients.filter((c) => c.id !== id);
+  saveCollection('clients', _clients);
+  _notifyClients();
+}
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
-/**
- * Get client by ID
- */
 export function getClientById(id: string): Client | undefined {
-  return MOCK_CLIENTS.find((client) => client.id === id);
+  ensureInitialized();
+  return _clients.find((client) => client.id === id);
 }
 
-/**
- * Get clients with filters
- */
 export function getClients(filters?: ClientFilters): Client[] {
-  let clients = [...MOCK_CLIENTS];
+  ensureInitialized();
+  let clients = [..._clients];
 
   if (!filters) return clients;
 
-  // Search filter
   if (filters.search) {
     const searchLower = filters.search.toLowerCase();
     clients = clients.filter(
@@ -666,27 +719,22 @@ export function getClients(filters?: ClientFilters): Client[] {
     );
   }
 
-  // Price level filter
   if (filters.priceLevel && filters.priceLevel !== 'all') {
     clients = clients.filter((c) => c.priceLevel === filters.priceLevel);
   }
 
-  // Country filter
   if (filters.country) {
     clients = clients.filter((c) => c.country === filters.country);
   }
 
-  // Status filter
   if (filters.status && filters.status !== 'all') {
     clients = clients.filter((c) => c.status === filters.status);
   }
 
-  // Has credit available filter
   if (filters.hasCreditAvailable) {
     clients = clients.filter((c) => c.creditAvailable > 0);
   }
 
-  // Sales rep filter
   if (filters.salesRepId) {
     clients = clients.filter((c) => c.salesRepId === filters.salesRepId);
   }
@@ -694,18 +742,16 @@ export function getClients(filters?: ClientFilters): Client[] {
   return clients;
 }
 
-/**
- * Get client stats
- */
 export function getClientStats(): ClientStats {
-  const totalClients = MOCK_CLIENTS.length;
-  const activeClients = MOCK_CLIENTS.filter((c) => c.status === 'active').length;
-  const withCreditAvailable = MOCK_CLIENTS.filter(
+  ensureInitialized();
+  const totalClients = _clients.length;
+  const activeClients = _clients.filter((c) => c.status === 'active').length;
+  const withCreditAvailable = _clients.filter(
     (c) => c.status === 'active' && c.creditAvailable > 0
   ).length;
-  const blockedClients = MOCK_CLIENTS.filter((c) => c.status === 'blocked').length;
-  const totalCreditLimit = MOCK_CLIENTS.reduce((sum, c) => sum + c.creditLimit, 0);
-  const totalCreditUsed = MOCK_CLIENTS.reduce((sum, c) => sum + c.creditUsed, 0);
+  const blockedClients = _clients.filter((c) => c.status === 'blocked').length;
+  const totalCreditLimit = _clients.reduce((sum, c) => sum + c.creditLimit, 0);
+  const totalCreditUsed = _clients.reduce((sum, c) => sum + c.creditUsed, 0);
 
   return {
     totalClients,
@@ -717,9 +763,6 @@ export function getClientStats(): ClientStats {
   };
 }
 
-/**
- * Get credit status for a client
- */
 export function getCreditStatus(client: Client): CreditStatus {
   const percentUsed =
     client.creditLimit > 0
@@ -756,16 +799,11 @@ export function getCreditStatus(client: Client): CreditStatus {
   };
 }
 
-/**
- * Get unique countries from clients
- */
 export function getUniqueCountries(): string[] {
-  return [...new Set(MOCK_CLIENTS.map((c) => c.country))].sort();
+  ensureInitialized();
+  return [...new Set(_clients.map((c) => c.country))].sort();
 }
 
-/**
- * Check if a new order amount would exceed credit
- */
 export function checkCreditForOrder(
   clientId: string,
   orderAmount: number
@@ -773,11 +811,7 @@ export function checkCreditForOrder(
   const client = getClientById(clientId);
 
   if (!client) {
-    return {
-      allowed: false,
-      message: 'Cliente no encontrado',
-      newBalance: 0,
-    };
+    return { allowed: false, message: 'Cliente no encontrado', newBalance: 0 };
   }
 
   if (client.status === 'blocked') {
@@ -789,11 +823,7 @@ export function checkCreditForOrder(
   }
 
   if (client.paymentTerms === 'contado') {
-    return {
-      allowed: true,
-      message: 'Cliente de contado - no aplica crédito',
-      newBalance: 0,
-    };
+    return { allowed: true, message: 'Cliente de contado - no aplica crédito', newBalance: 0 };
   }
 
   const newBalance = client.creditUsed + orderAmount;

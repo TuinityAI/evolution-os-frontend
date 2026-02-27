@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useStore } from '@/hooks/use-store';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -8,13 +9,8 @@ import {
   Input,
   Select,
   SelectItem,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   ArrowLeft,
   Plus,
@@ -31,7 +27,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  MOCK_ANNULMENT_REQUESTS,
+  getAnnulmentRequestsData,
+  subscribeAnnulmentRequests,
+  addAnnulmentRequest,
+  updateAnnulmentRequest,
   formatCurrencyCxC,
 } from '@/lib/mock-data/accounts-receivable';
 import { formatDate } from '@/lib/mock-data/sales-orders';
@@ -55,7 +54,9 @@ export default function AnulacionesPage() {
   const canAccessCxC = checkPermission('canAccessCxC');
   const canApproveAnnulments = checkPermission('canApproveAnnulments');
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const annulmentRequests = useStore(subscribeAnnulmentRequests, getAnnulmentRequestsData);
+
+  const [isOpen, setIsOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -68,9 +69,9 @@ export default function AnulacionesPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const filteredRequests = useMemo(() => {
-    if (statusFilter === 'all') return MOCK_ANNULMENT_REQUESTS;
-    return MOCK_ANNULMENT_REQUESTS.filter((r) => r.status === statusFilter);
-  }, [statusFilter]);
+    if (statusFilter === 'all') return annulmentRequests;
+    return annulmentRequests.filter((r) => r.status === statusFilter);
+  }, [statusFilter, annulmentRequests]);
 
   const resetForm = () => {
     setNewDocType('factura');
@@ -96,22 +97,50 @@ export default function AnulacionesPage() {
 
     setIsSaving(true);
     setTimeout(() => {
+      addAnnulmentRequest({
+        id: `ANU-${String(Date.now()).slice(-5)}`,
+        documentType: newDocType as any,
+        documentId: newDocNumber,
+        documentNumber: newDocNumber,
+        clientId: '',
+        clientName: '',
+        amount: parseFloat(newAmount),
+        reason: newReason,
+        observations: newObservations || undefined,
+        status: 'solicitada',
+        requestedBy: 'USR-006',
+        requestedByName: 'Jackie Chen',
+        requestedAt: new Date().toISOString(),
+      });
       toast.success('Solicitud creada exitosamente', {
         description: `Se creo la solicitud de anulacion para ${newDocNumber}.`,
       });
       setIsSaving(false);
       resetForm();
-      onClose();
+      setIsOpen(false);
     }, 800);
   };
 
   const handleApprove = (id: string) => {
+    updateAnnulmentRequest(id, {
+      status: 'aprobada',
+      approvedBy: 'USR-001',
+      approvedByName: 'Javier Lange',
+      approvedAt: new Date().toISOString(),
+    });
     toast.success('Solicitud aprobada', {
       description: `La solicitud ${id} ha sido aprobada.`,
     });
   };
 
   const handleReject = (id: string) => {
+    updateAnnulmentRequest(id, {
+      status: 'rechazada',
+      approvedBy: 'USR-001',
+      approvedByName: 'Javier Lange',
+      approvedAt: new Date().toISOString(),
+      rejectionReason: 'Rechazada por administrador',
+    });
     toast.info('Solicitud rechazada', {
       description: `La solicitud ${id} ha sido rechazada.`,
     });
@@ -155,7 +184,7 @@ export default function AnulacionesPage() {
           </div>
         </div>
         <button
-          onClick={onOpen}
+          onClick={() => setIsOpen(true)}
           className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-800"
         >
           <Plus className="h-4 w-4" />
@@ -369,24 +398,16 @@ export default function AnulacionesPage() {
       )}
 
       <div className="text-center text-sm text-gray-500 dark:text-[#888888]">
-        Mostrando {filteredRequests.length} de {MOCK_ANNULMENT_REQUESTS.length} solicitudes
+        Mostrando {filteredRequests.length} de {annulmentRequests.length} solicitudes
       </div>
 
       {/* New Request Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 dark:bg-red-950">
-                <Ban className="h-5 w-5 text-red-500" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Nueva Solicitud de Anulacion</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">Solicitar la anulacion de un documento</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
+      <CustomModal isOpen={isOpen} onClose={() => setIsOpen(false)} size="lg">
+          <CustomModalHeader onClose={() => setIsOpen(false)}>
+              <Ban className="h-5 w-5 text-red-500" />
+              Nueva Solicitud de Anulacion
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -462,9 +483,9 @@ export default function AnulacionesPage() {
                 </div>
               </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onClose} isDisabled={isSaving}>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsOpen(false)} isDisabled={isSaving}>
               Cancelar
             </Button>
             <Button
@@ -474,9 +495,8 @@ export default function AnulacionesPage() {
             >
               Enviar Solicitud
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
     </motion.div>
   );
 }

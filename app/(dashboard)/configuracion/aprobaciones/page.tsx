@@ -4,18 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
   Select,
   SelectItem,
-  Switch,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
+import { Switch } from '@/components/ui/switch';
 import {
   ArrowLeft,
   GitBranch,
@@ -30,15 +25,23 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_APPROVAL_FLOWS } from '@/lib/mock-data/configuration';
+import { useStore } from '@/hooks/use-store';
+import {
+  getApprovalFlowsData,
+  subscribeApprovalFlows,
+  addApprovalFlow,
+  updateApprovalFlow,
+} from '@/lib/mock-data/configuration';
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/constants/roles';
 import type { ApprovalFlow } from '@/lib/types/configuration';
 
 export default function AprobacionesPage() {
   const router = useRouter();
-  const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const [flows, setFlows] = useState(MOCK_APPROVAL_FLOWS);
+  const flows = useStore(subscribeApprovalFlows, getApprovalFlowsData);
+
+  const [isOpen, setIsOpen] = useState(false);
+
   const [editingFlow, setEditingFlow] = useState<ApprovalFlow | null>(null);
   const [flowForm, setFlowForm] = useState({
     name: '',
@@ -47,18 +50,14 @@ export default function AprobacionesPage() {
   });
 
   const handleToggleFlow = (flowId: string) => {
-    setFlows((prev) =>
-      prev.map((f) => {
-        if (f.id === flowId) {
-          const newActive = !f.isActive;
-          toast.success(newActive ? 'Flujo activado' : 'Flujo desactivado', {
-            description: f.name,
-          });
-          return { ...f, isActive: newActive };
-        }
-        return f;
-      })
-    );
+    const flow = flows.find((f) => f.id === flowId);
+    if (!flow) return;
+    const newActive = !flow.isActive;
+    updateApprovalFlow(flowId, { isActive: newActive });
+    toast.success(newActive ? 'Flujo activado' : 'Flujo desactivado', {
+      id: `toggle-flow-${flowId}`,
+      description: flow.name,
+    });
   };
 
   const handleOpenModal = (flow?: ApprovalFlow) => {
@@ -73,16 +72,22 @@ export default function AprobacionesPage() {
       setEditingFlow(null);
       setFlowForm({ name: '', description: '', triggerCondition: '' });
     }
-    onOpen();
+    setIsOpen(true);
   };
 
   const handleSaveFlow = () => {
+    if (editingFlow) {
+      updateApprovalFlow(editingFlow.id, { name: flowForm.name, description: flowForm.description, triggerCondition: flowForm.triggerCondition });
+    } else {
+      const newId = `AF-${String(flows.length + 1).padStart(3, '0')}`;
+      addApprovalFlow({ id: newId, name: flowForm.name, description: flowForm.description, triggerCondition: flowForm.triggerCondition, isActive: true, steps: [] });
+    }
     toast.success(editingFlow ? 'Flujo actualizado' : 'Flujo creado', {
       description: editingFlow
         ? `El flujo "${flowForm.name}" se ha actualizado.`
         : `El flujo "${flowForm.name}" se ha creado exitosamente.`,
     });
-    onClose();
+    setIsOpen(false);
   };
 
   return (
@@ -144,10 +149,8 @@ export default function AprobacionesPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Switch
-                  isSelected={flow.isActive}
-                  onValueChange={() => handleToggleFlow(flow.id)}
-                  size="sm"
-                  color="success"
+                  checked={flow.isActive}
+                  onCheckedChange={() => handleToggleFlow(flow.id)}
                 />
                 <button
                   onClick={() => handleOpenModal(flow)}
@@ -219,85 +222,74 @@ export default function AprobacionesPage() {
       </div>
 
       {/* Flow Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950">
-                <GitBranch className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {editingFlow ? 'Editar Flujo de Aprobación' : 'Nuevo Flujo de Aprobación'}
-                </h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">
-                  {editingFlow ? `Editando ${editingFlow.name}` : 'Definir un nuevo flujo de aprobación'}
-                </p>
-              </div>
+      <CustomModal isOpen={isOpen} onClose={() => setIsOpen(false)} size="lg" scrollable>
+        <CustomModalHeader onClose={() => setIsOpen(false)}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950">
+              <GitBranch className="h-5 w-5 text-amber-600" />
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-4">
-              <Input
-                label="Nombre del Flujo"
-                placeholder="Ej: Aprobación de descuentos especiales"
-                value={flowForm.name}
-                onChange={(e) => setFlowForm({ ...flowForm, name: e.target.value })}
-                variant="bordered"
-              />
-              <Input
-                label="Descripción"
-                placeholder="Descripción detallada del flujo"
-                value={flowForm.description}
-                onChange={(e) => setFlowForm({ ...flowForm, description: e.target.value })}
-                variant="bordered"
-              />
-              <Input
-                label="Condición de Activación"
-                placeholder="Ej: Descuento > 15%"
-                value={flowForm.triggerCondition}
-                onChange={(e) => setFlowForm({ ...flowForm, triggerCondition: e.target.value })}
-                variant="bordered"
-              />
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {editingFlow ? 'Editar Flujo de Aprobación' : 'Nuevo Flujo de Aprobación'}
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-[#888888]">
+                {editingFlow ? `Editando ${editingFlow.name}` : 'Definir un nuevo flujo de aprobación'}
+              </p>
+            </div>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Nombre del Flujo</label>
+              <Input placeholder="Ej: Aprobación de descuentos especiales" value={flowForm.name} onChange={(e) => setFlowForm({ ...flowForm, name: e.target.value })} variant="bordered" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Descripción</label>
+              <Input placeholder="Descripción detallada del flujo" value={flowForm.description} onChange={(e) => setFlowForm({ ...flowForm, description: e.target.value })} variant="bordered" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Condición de Activación</label>
+              <Input placeholder="Ej: Descuento > 15%" value={flowForm.triggerCondition} onChange={(e) => setFlowForm({ ...flowForm, triggerCondition: e.target.value })} variant="bordered" />
+            </div>
 
-              {/* Steps Builder */}
-              <div>
-                <h4 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Pasos de Aprobación</h4>
-                {editingFlow ? (
-                  <div className="space-y-2">
-                    {editingFlow.steps.map((step) => (
-                      <div key={step.id} className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#0a0a0a] p-3">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500/10 text-xs font-bold text-brand-600">{step.order}</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{step.approverLabel}</span>
-                        {step.isRequired && <span className="text-xs text-red-500">Requerido</span>}
-                        {step.timeoutHours && <span className="text-xs text-gray-500 dark:text-[#888888]">Timeout: {step.timeoutHours}h</span>}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#0a0a0a] p-6 text-center">
-                    <User className="mx-auto h-8 w-8 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500 dark:text-[#888888]">Agrega pasos de aprobación al flujo</p>
-                    <button
-                      onClick={() => toast.info('Constructor de pasos (mock)')}
-                      className="mt-3 flex mx-auto items-center gap-1.5 rounded-lg bg-gray-100 dark:bg-[#1a1a1a] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      Agregar Paso
-                    </button>
-                  </div>
-                )}
-              </div>
+            {/* Steps Builder */}
+            <div>
+              <h4 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Pasos de Aprobación</h4>
+              {editingFlow ? (
+                <div className="space-y-2">
+                  {editingFlow.steps.map((step) => (
+                    <div key={step.id} className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#0a0a0a] p-3">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-500/10 text-xs font-bold text-brand-600">{step.order}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{step.approverLabel}</span>
+                      {step.isRequired && <span className="text-xs text-red-500">Requerido</span>}
+                      {step.timeoutHours && <span className="text-xs text-gray-500 dark:text-[#888888]">Timeout: {step.timeoutHours}h</span>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-gray-300 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#0a0a0a] p-6 text-center">
+                  <User className="mx-auto h-8 w-8 text-gray-400" />
+                  <p className="mt-2 text-sm text-gray-500 dark:text-[#888888]">Agrega pasos de aprobación al flujo</p>
+                  <button
+                    onClick={() => toast.info('Constructor de pasos (mock)')}
+                    className="mt-3 flex mx-auto items-center gap-1.5 rounded-lg bg-gray-100 dark:bg-[#1a1a1a] px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2a2a2a]"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Agregar Paso
+                  </button>
+                </div>
+              )}
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onClose}>Cancelar</Button>
-            <Button color="primary" onPress={handleSaveFlow} className="bg-brand-600">
-              {editingFlow ? 'Guardar Cambios' : 'Crear Flujo'}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsOpen(false)}>Cancelar</Button>
+          <Button color="primary" onPress={handleSaveFlow} className="bg-brand-600">
+            {editingFlow ? 'Guardar Cambios' : 'Crear Flujo'}
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useStore } from '@/hooks/use-store';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -27,7 +28,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  MOCK_CLIENTS,
+  getClientsData,
+  subscribeClients,
   getClientStats,
   getCreditStatus,
   getUniqueCountries,
@@ -59,6 +61,8 @@ export default function ClientesPage() {
   const { checkPermission } = useAuth();
   const canManageClients = checkPermission('canManageClients');
 
+  const clients = useStore(subscribeClients, getClientsData);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priceLevelFilter, setPriceLevelFilter] = useState<string>('all');
@@ -71,7 +75,7 @@ export default function ClientesPage() {
 
   // Filter clients
   const filteredClients = useMemo(() => {
-    return MOCK_CLIENTS.filter((client) => {
+    return clients.filter((client) => {
       const matchesSearch =
         !searchQuery ||
         client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -83,7 +87,7 @@ export default function ClientesPage() {
       const matchesCountry = countryFilter === 'all' || client.country === countryFilter;
       return matchesSearch && matchesStatus && matchesPriceLevel && matchesCountry;
     });
-  }, [searchQuery, statusFilter, priceLevelFilter, countryFilter]);
+  }, [clients, searchQuery, statusFilter, priceLevelFilter, countryFilter]);
 
   const fmtCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
@@ -196,7 +200,8 @@ export default function ClientesPage() {
           selectedKeys={[statusFilter]}
           onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as string)}
           variant="bordered"
-          label="Estado"
+          placeholder="Estado"
+          aria-label="Filtrar por estado"
         >
           <SelectItem key="all">Todos</SelectItem>
           <SelectItem key="active">Activos</SelectItem>
@@ -208,7 +213,8 @@ export default function ClientesPage() {
           selectedKeys={[priceLevelFilter]}
           onSelectionChange={(keys) => setPriceLevelFilter(Array.from(keys)[0] as string)}
           variant="bordered"
-          label="Nivel"
+          placeholder="Nivel"
+          aria-label="Filtrar por nivel"
           items={[{ key: 'all', label: 'Todos' }, ...PRICE_LEVELS.map((l) => ({ key: l, label: `Nivel ${l}` }))]}
         >
           {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
@@ -218,7 +224,8 @@ export default function ClientesPage() {
           selectedKeys={[countryFilter]}
           onSelectionChange={(keys) => setCountryFilter(Array.from(keys)[0] as string)}
           variant="bordered"
-          label="Pais"
+          placeholder="País"
+          aria-label="Filtrar por país"
           items={[{ key: 'all', label: 'Todos' }, ...countries.map((c) => ({ key: c, label: c }))]}
         >
           {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
@@ -355,7 +362,7 @@ export default function ClientesPage() {
 
       {/* Results count */}
       <div className="text-center text-sm text-gray-500 dark:text-[#888888]">
-        Mostrando {filteredClients.length} de {MOCK_CLIENTS.length} clientes
+        Mostrando {filteredClients.length} de {clients.length} clientes
       </div>
     </motion.div>
   );

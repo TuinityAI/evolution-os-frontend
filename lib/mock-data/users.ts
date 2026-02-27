@@ -1,10 +1,11 @@
 import type { User } from '@/lib/types/user';
+import { loadCollection, saveCollection, createSubscribers } from '@/lib/store/local-store';
 
 /**
- * Mock users for Evolution OS prototype.
+ * Seed users for Evolution OS prototype.
  * These are real team members from Evolution Zona Libre.
  */
-export const MOCK_USERS: User[] = [
+const SEED_USERS: User[] = [
   {
     id: 'USR-001',
     name: 'Javier Ureña',
@@ -63,16 +64,78 @@ export const MOCK_USERS: User[] = [
   },
 ];
 
+// ============================================================================
+// STORE INFRASTRUCTURE
+// ============================================================================
+
+let _users: User[] = SEED_USERS;
+let _initialized = false;
+const { subscribe: subscribeUsers, notify: _notifyUsers } = createSubscribers();
+
+function ensureInitialized(): void {
+  if (typeof window === 'undefined' || _initialized) return;
+  _users = loadCollection<User>('users', SEED_USERS);
+  _initialized = true;
+}
+
+export function getUsersData(): User[] {
+  ensureInitialized();
+  return _users;
+}
+
+export { subscribeUsers };
+
+// Backward-compatible export
+export const MOCK_USERS: User[] = new Proxy(SEED_USERS as User[], {
+  get(_target, prop, receiver) {
+    ensureInitialized();
+    return Reflect.get(_users, prop, receiver);
+  },
+});
+
+// ============================================================================
+// CRUD OPERATIONS
+// ============================================================================
+
+export function addUser(user: User): void {
+  ensureInitialized();
+  _users = [..._users, user];
+  saveCollection('users', _users);
+  _notifyUsers();
+}
+
+export function updateUser(id: string, updates: Partial<User>): void {
+  ensureInitialized();
+  _users = _users.map((u) =>
+    u.id === id ? { ...u, ...updates } : u
+  );
+  saveCollection('users', _users);
+  _notifyUsers();
+}
+
+export function removeUser(id: string): void {
+  ensureInitialized();
+  _users = _users.filter((u) => u.id !== id);
+  saveCollection('users', _users);
+  _notifyUsers();
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
 /**
  * Get user by email (for mock login)
  */
 export function getUserByEmail(email: string): User | undefined {
-  return MOCK_USERS.find((user) => user.email.toLowerCase() === email.toLowerCase());
+  ensureInitialized();
+  return _users.find((user) => user.email.toLowerCase() === email.toLowerCase());
 }
 
 /**
  * Get user by ID
  */
 export function getUserById(id: string): User | undefined {
-  return MOCK_USERS.find((user) => user.id === id);
+  ensureInitialized();
+  return _users.find((user) => user.id === id);
 }

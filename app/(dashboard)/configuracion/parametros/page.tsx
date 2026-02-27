@@ -4,16 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
-  Switch,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
+import { Switch } from '@/components/ui/switch';
 import {
   ArrowLeft,
   DollarSign,
@@ -30,38 +25,57 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_COMMERCIAL_PARAMS, MOCK_DOCUMENT_NUMBERING } from '@/lib/mock-data/configuration';
+import { useStore } from '@/hooks/use-store';
+import {
+  getCommercialParamsData,
+  subscribeCommercialParams,
+  updateCommercialParams,
+  getDocumentNumberingData,
+  subscribeDocumentNumbering,
+  updateDocumentNumbering,
+} from '@/lib/mock-data/configuration';
 
 export default function ParametrosPage() {
   const router = useRouter();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const commercialParams = useStore(subscribeCommercialParams, getCommercialParamsData);
+  const documentNumbering = useStore(subscribeDocumentNumbering, getDocumentNumberingData);
+
+  const [isOpen, setIsOpen] = useState(false);
 
   const [expandedSection, setExpandedSection] = useState<string | null>('precios');
-  const [commissionThreshold, setCommissionThreshold] = useState(MOCK_COMMERCIAL_PARAMS.commissionThreshold.toString());
-  const [taxRate, setTaxRate] = useState(MOCK_COMMERCIAL_PARAMS.taxRate.toString());
+  const [commissionThreshold, setCommissionThreshold] = useState(commercialParams.commissionThreshold.toString());
+  const [taxRate, setTaxRate] = useState(commercialParams.taxRate.toString());
 
   // Document numbering modal
-  const [editingDoc, setEditingDoc] = useState<(typeof MOCK_DOCUMENT_NUMBERING)[0] | null>(null);
+  const [editingDoc, setEditingDoc] = useState<(typeof documentNumbering)[0] | null>(null);
   const [docForm, setDocForm] = useState({ prefix: '', paddingLength: '5' });
 
   const toggleSection = (id: string) => {
     setExpandedSection(expandedSection === id ? null : id);
   };
 
-  const handleOpenDocModal = (doc: (typeof MOCK_DOCUMENT_NUMBERING)[0]) => {
+  const handleOpenDocModal = (doc: (typeof documentNumbering)[0]) => {
     setEditingDoc(doc);
     setDocForm({ prefix: doc.prefix, paddingLength: doc.paddingLength.toString() });
-    onOpen();
+    setIsOpen(true);
   };
 
   const handleSaveDoc = () => {
+    if (editingDoc) {
+      updateDocumentNumbering(editingDoc.id, { prefix: docForm.prefix, paddingLength: parseInt(docForm.paddingLength) || 5 });
+    }
     toast.success('Numeración actualizada', {
       description: `Se actualizó la numeración de ${editingDoc?.documentLabel}`,
     });
-    onClose();
+    setIsOpen(false);
   };
 
   const handleSaveParams = () => {
+    updateCommercialParams({
+      commissionThreshold: parseFloat(commissionThreshold) || 0,
+      taxRate: parseFloat(taxRate) || 0,
+    });
     toast.success('Parámetros guardados', {
       description: 'Los parámetros comerciales se han actualizado correctamente.',
     });
@@ -184,7 +198,7 @@ export default function ParametrosPage() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
-                              {MOCK_COMMERCIAL_PARAMS.priceLevels.map((level) => (
+                              {commercialParams.priceLevels.map((level) => (
                                 <tr key={level.level} className="transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">
                                   <td className="px-4 py-3">
                                     <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500/10 text-sm font-bold text-brand-600">
@@ -198,12 +212,12 @@ export default function ParametrosPage() {
                                     <span className="text-sm text-gray-600 dark:text-gray-400">{level.description}</span>
                                   </td>
                                   <td className="px-4 py-3 text-center">
-                                    {MOCK_COMMERCIAL_PARAMS.defaultPriceLevel === level.level && (
+                                    {commercialParams.defaultPriceLevel === level.level && (
                                       <span className="rounded-full bg-brand-500/10 px-2 py-0.5 text-xs font-medium text-brand-500">Por Defecto</span>
                                     )}
                                   </td>
                                   <td className="px-4 py-3 text-center">
-                                    <Switch isSelected={level.isActive} size="sm" color="success" />
+                                    <Switch defaultChecked={level.isActive} />
                                   </td>
                                 </tr>
                               ))}
@@ -241,7 +255,7 @@ export default function ParametrosPage() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
-                                {MOCK_COMMERCIAL_PARAMS.commissionRates.map((rate) => (
+                                {commercialParams.commissionRates.map((rate) => (
                                   <tr key={rate.userId} className="transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">
                                     <td className="px-4 py-3">
                                       <span className="text-sm font-medium text-gray-900 dark:text-white">{rate.userName}</span>
@@ -255,7 +269,7 @@ export default function ParametrosPage() {
                                       />
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                      <Switch isSelected={rate.isActive} size="sm" color="success" />
+                                      <Switch defaultChecked={rate.isActive} />
                                     </td>
                                   </tr>
                                 ))}
@@ -288,7 +302,7 @@ export default function ParametrosPage() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
-                                {MOCK_COMMERCIAL_PARAMS.paymentTermsOptions.map((term) => (
+                                {commercialParams.paymentTermsOptions.map((term) => (
                                   <tr key={term.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">
                                     <td className="px-4 py-3">
                                       <span className="rounded bg-gray-100 dark:bg-[#2a2a2a] px-2 py-0.5 font-mono text-xs text-gray-700 dark:text-gray-300">{term.code}</span>
@@ -300,7 +314,7 @@ export default function ParametrosPage() {
                                       <span className="text-sm text-gray-600 dark:text-gray-400">{term.days}</span>
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                      <Switch isSelected={term.isActive} size="sm" color="success" />
+                                      <Switch defaultChecked={term.isActive} />
                                     </td>
                                   </tr>
                                 ))}
@@ -332,7 +346,7 @@ export default function ParametrosPage() {
                           <div>
                             <h4 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Zonas Exentas de Impuesto</h4>
                             <div className="flex flex-wrap gap-2">
-                              {MOCK_COMMERCIAL_PARAMS.taxExemptZones.map((zone) => (
+                              {commercialParams.taxExemptZones.map((zone) => (
                                 <span
                                   key={zone}
                                   className="rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-600"
@@ -367,7 +381,7 @@ export default function ParametrosPage() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
-                              {MOCK_DOCUMENT_NUMBERING.map((doc) => (
+                              {documentNumbering.map((doc) => (
                                 <tr key={doc.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">
                                   <td className="px-4 py-3">
                                     <span className="text-sm font-medium text-gray-900 dark:text-white">{doc.documentLabel}</span>
@@ -408,50 +422,43 @@ export default function ParametrosPage() {
       </div>
 
       {/* Document Numbering Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="sm">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-50 dark:bg-[#1a1a1a]">
-                <Hash className="h-5 w-5 text-gray-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Editar Numeración</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">{editingDoc?.documentLabel}</p>
-              </div>
+      <CustomModal isOpen={isOpen} onClose={() => setIsOpen(false)} size="sm">
+        <CustomModalHeader onClose={() => setIsOpen(false)}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-50 dark:bg-[#1a1a1a]">
+              <Hash className="h-5 w-5 text-gray-600" />
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-4">
-              <Input
-                label="Prefijo"
-                value={docForm.prefix}
-                onChange={(e) => setDocForm({ ...docForm, prefix: e.target.value })}
-                variant="bordered"
-              />
-              <Input
-                label="Longitud de Relleno (dígitos)"
-                type="number"
-                value={docForm.paddingLength}
-                onChange={(e) => setDocForm({ ...docForm, paddingLength: e.target.value })}
-                variant="bordered"
-              />
-              <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#0a0a0a] p-3">
-                <p className="text-xs text-gray-500 dark:text-[#888888]">Vista previa:</p>
-                <p className="mt-1 font-mono text-sm font-medium text-brand-600">
-                  {docForm.prefix}{String(editingDoc?.currentNumber || 1).padStart(parseInt(docForm.paddingLength) || 5, '0')}
-                </p>
-              </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Editar Numeración</h2>
+              <p className="text-sm text-gray-500 dark:text-[#888888]">{editingDoc?.documentLabel}</p>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onClose}>Cancelar</Button>
-            <Button color="primary" onPress={handleSaveDoc} className="bg-brand-600">
-              Guardar
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Prefijo</label>
+              <Input placeholder="Ej: FAC-" value={docForm.prefix} onChange={(e) => setDocForm({ ...docForm, prefix: e.target.value })} variant="bordered" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Longitud de Relleno (dígitos)</label>
+              <Input placeholder="5" type="number" value={docForm.paddingLength} onChange={(e) => setDocForm({ ...docForm, paddingLength: e.target.value })} variant="bordered" />
+            </div>
+            <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#0a0a0a] p-3">
+              <p className="text-xs text-gray-500 dark:text-[#888888]">Vista previa:</p>
+              <p className="mt-1 font-mono text-sm font-medium text-brand-600">
+                {docForm.prefix}{String(editingDoc?.currentNumber || 1).padStart(parseInt(docForm.paddingLength) || 5, '0')}
+              </p>
+            </div>
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsOpen(false)}>Cancelar</Button>
+          <Button color="primary" onPress={handleSaveDoc} className="bg-brand-600">
+            Guardar
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

@@ -4,15 +4,10 @@ import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Textarea,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   ArrowLeft,
   FileText,
@@ -28,7 +23,8 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { cn } from '@/lib/utils/cn';
-import { getAdjustmentById } from '@/lib/mock-data/inventory';
+import { getAdjustmentById, updateAdjustment, subscribeAdjustments, getAdjustmentsData } from '@/lib/mock-data/inventory';
+import { useStore } from '@/hooks/use-store';
 import {
   ADJUSTMENT_STATUS_LABELS,
   ADJUSTMENT_REASONS,
@@ -42,12 +38,15 @@ export default function AjusteDetallePage() {
   const canApproveAdjustments = checkPermission('canApproveAdjustments');
   const canViewCosts = checkPermission('canViewCosts');
 
+  // Reactive store subscription
+  const adjustments = useStore(subscribeAdjustments, getAdjustmentsData);
+
   const adjustmentId = params.id as string;
   const adjustment = getAdjustmentById(adjustmentId);
 
   // Modals
-  const { isOpen: isApproveOpen, onOpen: onApproveOpen, onClose: onApproveClose } = useDisclosure();
-  const { isOpen: isRejectOpen, onOpen: onRejectOpen, onClose: onRejectClose } = useDisclosure();
+  const [isApproveOpen, setIsApproveOpen] = useState(false);
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
 
   const [approvalNotes, setApprovalNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
@@ -105,10 +104,18 @@ export default function AjusteDetallePage() {
 
   // Handle approve
   const handleApprove = () => {
+    updateAdjustment(adjustment.id, {
+      status: 'aplicado',
+      approvedBy: user?.id || 'USR-000',
+      approvedByName: user?.name || 'Usuario',
+      approvedAt: new Date().toISOString(),
+      approvalNotes: approvalNotes || undefined,
+      appliedAt: new Date().toISOString(),
+    });
     toast.success('Ajuste aprobado', {
       description: `El ajuste ${adjustment.id} ha sido aprobado y aplicado al inventario.`,
     });
-    onApproveClose();
+    setIsApproveOpen(false);
     router.push('/inventario/ajustes');
   };
 
@@ -120,10 +127,17 @@ export default function AjusteDetallePage() {
       });
       return;
     }
+    updateAdjustment(adjustment.id, {
+      status: 'rechazado',
+      approvedBy: user?.id || 'USR-000',
+      approvedByName: user?.name || 'Usuario',
+      approvedAt: new Date().toISOString(),
+      rejectionReason,
+    });
     toast.error('Ajuste rechazado', {
       description: `El ajuste ${adjustment.id} ha sido rechazado.`,
     });
-    onRejectClose();
+    setIsRejectOpen(false);
     router.push('/inventario/ajustes');
   };
 
@@ -165,14 +179,14 @@ export default function AjusteDetallePage() {
             <Button
               variant="bordered"
               color="danger"
-              onPress={onRejectOpen}
+              onPress={() => setIsRejectOpen(true)}
               startContent={<XCircle className="h-4 w-4" />}
             >
               Rechazar
             </Button>
             <Button
               color="success"
-              onPress={onApproveOpen}
+              onPress={() => setIsApproveOpen(true)}
               startContent={<CheckCircle className="h-4 w-4" />}
               className="bg-emerald-600"
             >
@@ -419,21 +433,13 @@ export default function AjusteDetallePage() {
       </div>
 
       {/* Approve Modal */}
-      <Modal isOpen={isApproveOpen} onClose={onApproveClose} size="md">
-        <ModalContent className="bg-white">
-          <ModalHeader className="border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Aprobar Ajuste</h2>
-                <p className="text-sm text-gray-500">Esta acción actualizará el inventario</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <p className="mb-4 text-sm text-gray-600">
+      <CustomModal isOpen={isApproveOpen} onClose={() => setIsApproveOpen(false)} size="md">
+          <CustomModalHeader onClose={() => setIsApproveOpen(false)}>
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              Aprobar Ajuste
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
+            <p className="text-sm text-gray-600">
               ¿Estás seguro de aprobar el ajuste <span className="font-semibold">{adjustment.id}</span>?
               El inventario se actualizará inmediatamente.
             </p>
@@ -445,33 +451,24 @@ export default function AjusteDetallePage() {
               variant="bordered"
               classNames={{ inputWrapper: 'bg-white' }}
             />
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200">
-            <Button variant="light" onPress={onApproveClose}>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsApproveOpen(false)}>
               Cancelar
             </Button>
             <Button color="success" onPress={handleApprove} className="bg-emerald-600">
               Aprobar y Aplicar
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
 
       {/* Reject Modal */}
-      <Modal isOpen={isRejectOpen} onClose={onRejectClose} size="md">
-        <ModalContent className="bg-white">
-          <ModalHeader className="border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                <XCircle className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Rechazar Ajuste</h2>
-                <p className="text-sm text-gray-500">Indica el motivo del rechazo</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
+      <CustomModal isOpen={isRejectOpen} onClose={() => setIsRejectOpen(false)} size="md">
+          <CustomModalHeader onClose={() => setIsRejectOpen(false)}>
+              <XCircle className="h-5 w-5 text-red-600" />
+              Rechazar Ajuste
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             <Textarea
               label="Motivo del rechazo *"
               placeholder="Escribe el motivo por el cual rechazas este ajuste..."
@@ -481,17 +478,16 @@ export default function AjusteDetallePage() {
               classNames={{ inputWrapper: 'bg-white' }}
               minRows={3}
             />
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200">
-            <Button variant="light" onPress={onRejectClose}>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsRejectOpen(false)}>
               Cancelar
             </Button>
             <Button color="danger" onPress={handleReject}>
               Rechazar Ajuste
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

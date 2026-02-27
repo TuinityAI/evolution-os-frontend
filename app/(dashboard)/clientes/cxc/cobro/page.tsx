@@ -24,6 +24,9 @@ import { MOCK_CLIENTS } from '@/lib/mock-data/clients';
 import {
   getPendingInvoicesForClient,
   formatCurrencyCxC,
+  addPayment,
+  updateReceivable,
+  addCxCTransaction,
 } from '@/lib/mock-data/accounts-receivable';
 import { formatDate } from '@/lib/mock-data/sales-orders';
 import { cn } from '@/lib/utils/cn';
@@ -150,6 +153,59 @@ export default function RegistrarCobroPage() {
 
     setIsSaving(true);
     setTimeout(() => {
+      // Build payment applications (FIFO)
+      const sortedInvoices = pendingInvoices
+        .filter((inv) => selectedInvoiceIds.has(inv.id))
+        .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+      let remaining = parsedAmount;
+      const applications = sortedInvoices.map((inv, idx) => {
+        const applied = Math.min(remaining, inv.balance);
+        remaining = Math.max(0, remaining - inv.balance);
+        const newBalance = inv.balance - applied;
+        return { id: `APP-${Date.now()}-${idx}`, paymentId: '', accountReceivableId: inv.id, invoiceNumber: inv.invoiceNumber, amountApplied: applied, previousBalance: inv.balance, newBalance };
+      });
+
+      const paymentId = `COB-${String(Date.now()).slice(-5)}`;
+      const selectedBank = MOCK_BANKS.find((b) => b.id === bankId);
+      applications.forEach((a) => { a.paymentId = paymentId; });
+
+      addPayment({
+        id: paymentId,
+        clientId: selectedClientId!,
+        clientName: selectedClient?.name ?? '',
+        date: `${paymentDate}T10:00:00Z`,
+        amount: parsedAmount,
+        method: paymentMethod,
+        reference: reference || undefined,
+        bankId: bankId || undefined,
+        bankName: selectedBank?.name,
+        applications,
+        createdBy: 'USR-006',
+        createdByName: 'Jackie Chen',
+        createdAt: new Date().toISOString(),
+        notes: paymentNotes || undefined,
+      });
+
+      // Update receivable balances
+      applications.forEach((app) => {
+        const newStatus = app.newBalance === 0 ? 'pagado' : 'parcial';
+        updateReceivable(app.accountReceivableId, { paidAmount: app.previousBalance - app.newBalance, balance: app.newBalance, status: newStatus as any });
+      });
+
+      // Add transaction entry
+      addCxCTransaction({
+        id: `TXN-${Date.now()}`,
+        date: `${paymentDate}T10:00:00Z`,
+        type: 'cobro',
+        documentNumber: paymentId,
+        description: `Cobro de ${selectedClient?.name}`,
+        debit: 0,
+        credit: parsedAmount,
+        balance: 0,
+        clientId: selectedClientId!,
+        clientName: selectedClient?.name ?? '',
+      });
+
       toast.success('Cobro registrado exitosamente', {
         description: `Se registro un cobro de ${formatCurrencyCxC(parsedAmount)} para ${selectedClient?.name}.`,
       });

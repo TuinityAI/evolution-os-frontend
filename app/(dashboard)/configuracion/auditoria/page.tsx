@@ -8,8 +8,8 @@ import {
   Input,
   Select,
   SelectItem,
-  Switch,
 } from '@heroui/react';
+import { Switch } from '@/components/ui/switch';
 import {
   ArrowLeft,
   Shield,
@@ -25,12 +25,18 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
+import { useStore } from '@/hooks/use-store';
 import { useAuth } from '@/lib/contexts/auth-context';
 import {
   getAuditLog,
-  MOCK_ACTIVE_SESSIONS,
-  MOCK_SECURITY_POLICIES,
-  MOCK_AUDIT_LOG,
+  getAuditLogData,
+  subscribeAuditLog,
+  getActiveSessionsData,
+  subscribeActiveSessions,
+  removeActiveSession,
+  getSecurityPoliciesData,
+  subscribeSecurityPolicies,
+  updateSecurityPolicies,
 } from '@/lib/mock-data/configuration';
 import {
   AUDIT_ACTION_LABELS,
@@ -47,17 +53,6 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id'];
 
-// Unique modules and users from audit log
-const UNIQUE_MODULES = [...new Set(MOCK_AUDIT_LOG.map((e) => e.module))].map((m) => ({
-  value: m,
-  label: MOCK_AUDIT_LOG.find((e) => e.module === m)?.moduleLabel || m,
-}));
-
-const UNIQUE_USERS = [...new Set(MOCK_AUDIT_LOG.map((e) => e.userId))].map((id) => ({
-  value: id,
-  label: MOCK_AUDIT_LOG.find((e) => e.userId === id)?.userName || id,
-}));
-
 const ACTIONS: { value: AuditAction; label: string }[] = Object.entries(AUDIT_ACTION_LABELS).map(
   ([value, label]) => ({ value: value as AuditAction, label })
 );
@@ -66,6 +61,21 @@ export default function AuditoriaPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canViewAuditLog = checkPermission('canViewAuditLog');
+
+  const auditLogAll = useStore(subscribeAuditLog, getAuditLogData);
+  const activeSessions = useStore(subscribeActiveSessions, getActiveSessionsData);
+  const securityPolicies = useStore(subscribeSecurityPolicies, getSecurityPoliciesData);
+
+  // Derived unique modules/users from the store-backed audit log
+  const UNIQUE_MODULES = useMemo(() => [...new Set(auditLogAll.map((e) => e.module))].map((m) => ({
+    value: m,
+    label: auditLogAll.find((e) => e.module === m)?.moduleLabel || m,
+  })), [auditLogAll]);
+
+  const UNIQUE_USERS = useMemo(() => [...new Set(auditLogAll.map((e) => e.userId))].map((id) => ({
+    value: id,
+    label: auditLogAll.find((e) => e.userId === id)?.userName || id,
+  })), [auditLogAll]);
 
   const [activeTab, setActiveTab] = useState<TabId>('log');
 
@@ -76,7 +86,7 @@ export default function AuditoriaPage() {
   const [expandedLogEntry, setExpandedLogEntry] = useState<string | null>(null);
 
   // Security policies form
-  const [policies, setPolicies] = useState({ ...MOCK_SECURITY_POLICIES });
+  const [policies, setPolicies] = useState({ ...securityPolicies });
 
   // Filtered audit log
   const auditEntries = useMemo(() => {
@@ -88,12 +98,14 @@ export default function AuditoriaPage() {
   }, [filterUser, filterModule, filterAction]);
 
   const handleCloseSession = (sessionId: string, userName: string) => {
+    removeActiveSession(sessionId);
     toast.success('Sesión cerrada', {
       description: `Se ha cerrado la sesión de ${userName}`,
     });
   };
 
   const handleSavePolicies = () => {
+    updateSecurityPolicies(policies);
     toast.success('Políticas de seguridad actualizadas', {
       description: 'Los cambios se han guardado correctamente.',
     });
@@ -333,7 +345,7 @@ export default function AuditoriaPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
-                    {MOCK_ACTIVE_SESSIONS.map((session, index) => (
+                    {activeSessions.map((session, index) => (
                       <motion.tr
                         key={session.id}
                         initial={{ opacity: 0 }}
@@ -436,9 +448,8 @@ export default function AuditoriaPage() {
                         <p className="text-xs text-gray-500 dark:text-[#888888]">Al menos una letra mayúscula</p>
                       </div>
                       <Switch
-                        isSelected={policies.requireUppercase}
-                        onValueChange={(v) => setPolicies({ ...policies, requireUppercase: v })}
-                        color="primary"
+                        checked={policies.requireUppercase}
+                        onCheckedChange={(v) => setPolicies({ ...policies, requireUppercase: v as boolean })}
                       />
                     </div>
 
@@ -448,9 +459,8 @@ export default function AuditoriaPage() {
                         <p className="text-xs text-gray-500 dark:text-[#888888]">Al menos un dígito numérico</p>
                       </div>
                       <Switch
-                        isSelected={policies.requireNumbers}
-                        onValueChange={(v) => setPolicies({ ...policies, requireNumbers: v })}
-                        color="primary"
+                        checked={policies.requireNumbers}
+                        onCheckedChange={(v) => setPolicies({ ...policies, requireNumbers: v as boolean })}
                       />
                     </div>
 
@@ -460,9 +470,8 @@ export default function AuditoriaPage() {
                         <p className="text-xs text-gray-500 dark:text-[#888888]">Al menos un carácter especial (!@#$%...)</p>
                       </div>
                       <Switch
-                        isSelected={policies.requireSpecialChars}
-                        onValueChange={(v) => setPolicies({ ...policies, requireSpecialChars: v })}
-                        color="primary"
+                        checked={policies.requireSpecialChars}
+                        onCheckedChange={(v) => setPolicies({ ...policies, requireSpecialChars: v as boolean })}
                       />
                     </div>
                   </div>
@@ -515,9 +524,8 @@ export default function AuditoriaPage() {
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500">Próximamente</span>
                     <Switch
-                      isSelected={policies.twoFactorEnabled}
-                      isDisabled
-                      color="primary"
+                      checked={policies.twoFactorEnabled}
+                      disabled
                     />
                   </div>
                 </div>

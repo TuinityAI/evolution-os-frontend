@@ -2,19 +2,15 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useStore } from '@/hooks/use-store';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
   Select,
   SelectItem,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   Scale,
   ChevronRight,
@@ -30,6 +26,9 @@ import {
   getAccountTree,
   MOCK_ACCOUNTS,
   formatCurrencyAccounting,
+  subscribeAccounts,
+  getAccountsData,
+  addAccount,
 } from '@/lib/mock-data/accounting';
 import {
   ACCOUNT_TYPE_LABELS,
@@ -191,12 +190,14 @@ export default function PlanCuentasPage() {
   const { checkPermission } = useAuth();
   const canCreateManualEntries = checkPermission('canCreateManualEntries');
 
+  const accounts = useStore(subscribeAccounts, getAccountsData);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(
     new Set(MOCK_ACCOUNTS.filter((a) => a.level <= 2).map((a) => a.id))
   );
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
 
   // New account form
   const [newCode, setNewCode] = useState('');
@@ -205,11 +206,11 @@ export default function PlanCuentasPage() {
   const [newNature, setNewNature] = useState<string>('deudora');
   const [newParent, setNewParent] = useState<string>('');
 
-  const accountTree = useMemo(() => getAccountTree(), []);
+  const accountTree = useMemo(() => getAccountTree(), [accounts]);
 
   const parentAccounts = useMemo(
     () => MOCK_ACCOUNTS.filter((a) => a.level <= 2),
-    []
+    [accounts]
   );
 
   const toggleExpand = (id: string) => {
@@ -237,10 +238,24 @@ export default function PlanCuentasPage() {
       toast.error('Debe ingresar código y nombre de la cuenta');
       return;
     }
+    const parentAcc = newParent ? MOCK_ACCOUNTS.find((a) => a.id === newParent) : undefined;
+    addAccount({
+      id: `ACC-${Date.now()}`,
+      code: newCode,
+      name: newName,
+      type: newType as AccountType,
+      nature: newNature as AccountNature,
+      parentId: parentAcc?.id,
+      parentCode: parentAcc?.code,
+      level: parentAcc ? (parentAcc.level + 1 as 1 | 2 | 3) : 1,
+      isActive: true,
+      hasMovements: false,
+      balance: 0,
+    });
     toast.success('Cuenta creada exitosamente', {
       description: `Cuenta ${newCode} - ${newName} creada.`,
     });
-    onClose();
+    setIsOpen(false);
     setNewCode('');
     setNewName('');
     setNewType('activo');
@@ -267,7 +282,7 @@ export default function PlanCuentasPage() {
         </div>
         {canCreateManualEntries && (
           <button
-            onClick={onOpen}
+            onClick={() => setIsOpen(true)}
             className="flex h-9 items-center gap-2 rounded-lg bg-purple-600 px-4 text-sm font-medium text-white transition-colors hover:bg-purple-700"
           >
             <Plus className="h-4 w-4" />
@@ -350,20 +365,12 @@ export default function PlanCuentasPage() {
       </div>
 
       {/* New Account Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-950">
-                <Plus className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Nueva Cuenta</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">Agregar una cuenta al plan contable</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-4">
+      <CustomModal isOpen={isOpen} onClose={() => setIsOpen(false)} size="lg">
+          <CustomModalHeader onClose={() => setIsOpen(false)}>
+              <Plus className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              Nueva Cuenta
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -431,17 +438,16 @@ export default function PlanCuentasPage() {
                 </select>
               </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onClose}>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsOpen(false)}>
               Cancelar
             </Button>
             <Button onPress={handleSaveAccount} className="bg-purple-600 text-white">
               Crear Cuenta
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

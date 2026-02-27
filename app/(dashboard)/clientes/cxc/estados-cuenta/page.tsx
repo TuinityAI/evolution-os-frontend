@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useStore } from '@/hooks/use-store';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -24,6 +25,10 @@ import {
   getPayments,
   getCxCTransactions,
   formatCurrencyCxC,
+  subscribeReceivables,
+  subscribePayments,
+  subscribeCxCTransactions,
+  getReceivablesData,
 } from '@/lib/mock-data/accounts-receivable';
 import { formatDate } from '@/lib/mock-data/sales-orders';
 import { cn } from '@/lib/utils/cn';
@@ -37,6 +42,10 @@ export default function EstadosCuentaPage() {
   const { checkPermission } = useAuth();
   const canSendStatements = checkPermission('canSendStatements');
   const canAccessCxC = checkPermission('canAccessCxC');
+
+  useStore(subscribeReceivables, getReceivablesData);
+  useStore(subscribePayments, () => null);
+  useStore(subscribeCxCTransactions, () => null);
 
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [cutoffDate, setCutoffDate] = useState(new Date().toISOString().split('T')[0]);

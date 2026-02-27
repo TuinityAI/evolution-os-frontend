@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useStore } from '@/hooks/use-store';
 import { motion } from 'framer-motion';
 import {
   BarChart3,
@@ -23,6 +24,10 @@ import {
   getMonthlyPLSummaries,
   MOCK_ACCOUNTS,
   formatCurrencyAccounting,
+  subscribeAccounts,
+  getAccountsData,
+  subscribeJournalEntries,
+  getJournalEntriesData,
 } from '@/lib/mock-data/accounting';
 import {
   ACCOUNT_TYPE_LABELS,
@@ -43,13 +48,16 @@ export default function ReportesPage() {
   const { checkPermission } = useAuth();
   const canViewFinancialStatements = checkPermission('canViewFinancialStatements');
 
+  const accounts = useStore(subscribeAccounts, getAccountsData);
+  useStore(subscribeJournalEntries, getJournalEntriesData);
+
   const [selectedReport, setSelectedReport] = useState<ReportType | null>(null);
   const [accountSearch, setAccountSearch] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  const trialBalance = useMemo(() => getTrialBalance(), []);
+  const trialBalance = useMemo(() => getTrialBalance(), [accounts]);
   const totalDebit = trialBalance.reduce((sum, l) => sum + l.debitBalance, 0);
   const totalCredit = trialBalance.reduce((sum, l) => sum + l.creditBalance, 0);
 
@@ -57,13 +65,13 @@ export default function ReportesPage() {
 
   const gastoAccounts = useMemo(
     () => MOCK_ACCOUNTS.filter((a) => a.type === 'gasto' && a.level === 3 && a.hasMovements),
-    []
+    [accounts]
   );
   const maxGasto = Math.max(...gastoAccounts.map((a) => a.balance));
 
   const leafAccounts = useMemo(
     () => MOCK_ACCOUNTS.filter((a) => a.level === 3 && a.isActive),
-    []
+    [accounts]
   );
 
   const filteredAccounts = useMemo(() => {
@@ -76,7 +84,7 @@ export default function ReportesPage() {
 
   const selectedAccount = useMemo(
     () => MOCK_ACCOUNTS.find((a) => a.id === selectedAccountId),
-    [selectedAccountId]
+    [selectedAccountId, accounts]
   );
 
   const ledgerEntries = useMemo(() => {
@@ -102,9 +110,7 @@ export default function ReportesPage() {
   };
 
   const handlePrint = () => {
-    toast.success('Preparando impresión', {
-      description: 'El documento se abrirá en una nueva ventana.',
-    });
+    window.print();
   };
 
   return (

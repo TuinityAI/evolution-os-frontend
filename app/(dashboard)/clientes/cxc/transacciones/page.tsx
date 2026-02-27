@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useStore } from '@/hooks/use-store';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -21,6 +22,8 @@ import {
 import { toast } from 'sonner';
 import {
   getCxCTransactions,
+  getCxCTransactionsData,
+  subscribeCxCTransactions,
   formatCurrencyCxC,
 } from '@/lib/mock-data/accounts-receivable';
 import { formatDate } from '@/lib/mock-data/sales-orders';
@@ -43,6 +46,8 @@ export default function TransaccionesPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canAccessCxC = checkPermission('canAccessCxC');
+
+  useStore(subscribeCxCTransactions, getCxCTransactionsData);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');

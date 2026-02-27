@@ -94,14 +94,16 @@ export default function HistorialCostosPage() {
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-end">
           <div className="flex-1">
-            <Select
-              label="Seleccionar Producto"
-              placeholder="Buscar producto..."
-              selectedKeys={selectedProductId ? [selectedProductId] : []}
-              onChange={(e) => setSelectedProductId(e.target.value)}
-              variant="bordered"
-              classNames={{ trigger: 'bg-white' }}
-            >
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Seleccionar Producto</label>
+              <Select
+                placeholder="Buscar producto..."
+                selectedKeys={selectedProductId ? [selectedProductId] : []}
+                onChange={(e) => setSelectedProductId(e.target.value)}
+                variant="bordered"
+                aria-label="Seleccionar Producto"
+                classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
+              >
               {MOCK_PRODUCTS.map((product) => (
                 <SelectItem key={product.id} textValue={product.description}>
                   <div className="flex flex-col">
@@ -111,6 +113,7 @@ export default function HistorialCostosPage() {
                 </SelectItem>
               ))}
             </Select>
+            </div>
           </div>
 
           {selectedProduct && (

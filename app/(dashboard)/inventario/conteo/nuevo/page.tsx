@@ -8,8 +8,8 @@ import {
   Select,
   SelectItem,
   Textarea,
-  Checkbox,
 } from '@heroui/react';
+import { Switch } from '@/components/ui/switch';
 import {
   ArrowLeft,
   ClipboardList,
@@ -21,9 +21,10 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_WAREHOUSES } from '@/lib/mock-data/warehouses';
+import { MOCK_WAREHOUSES, subscribeWarehouses, getWarehousesData } from '@/lib/mock-data/warehouses';
 import { MOCK_PRODUCTS } from '@/lib/mock-data/products';
-import { generateNextCountSessionId } from '@/lib/mock-data/inventory';
+import { generateNextCountSessionId, addCountSession } from '@/lib/mock-data/inventory';
+import { useStore } from '@/hooks/use-store';
 
 interface ProductSelection {
   productId: string;
@@ -38,6 +39,9 @@ export default function NuevoConteoPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canCreateCount = checkPermission('canCreateCountSessions');
+
+  // Reactive store subscription
+  const warehouses = useStore(subscribeWarehouses, getWarehousesData);
 
   const [warehouseId, setWarehouseId] = useState('WH-001');
   const [zone, setZone] = useState('');
@@ -101,6 +105,30 @@ export default function NuevoConteoPage() {
     }
 
     const sessionId = generateNextCountSessionId();
+    const warehouse = warehouses.find((w) => w.id === warehouseId);
+
+    addCountSession({
+      id: sessionId,
+      createdAt: new Date().toISOString(),
+      createdBy: 'USR-000',
+      createdByName: 'Usuario',
+      warehouseId,
+      warehouseName: warehouse?.name || '',
+      zone: zone || undefined,
+      status: 'en_progreso',
+      lines: selectedProducts.map((p, idx) => ({
+        id: `CFL-NEW-${idx}`,
+        productId: p.productId,
+        productReference: p.productReference,
+        productDescription: p.productDescription,
+        barcode: p.barcode || undefined,
+        systemQty: p.systemQty,
+      })),
+      totalProducts: selectedProducts.length,
+      countedProducts: 0,
+      productsWithDifference: 0,
+    });
+
     toast.success('Sesión creada', {
       description: `La sesión ${sessionId} ha sido creada. Puedes comenzar a contar.`,
     });
@@ -147,7 +175,7 @@ export default function NuevoConteoPage() {
                 variant="bordered"
                 classNames={{ trigger: 'bg-white' }}
               >
-                {MOCK_WAREHOUSES.map((w) => (
+                {warehouses.map((w) => (
                   <SelectItem key={w.id}>
                     {w.name} ({w.type})
                   </SelectItem>
@@ -198,10 +226,9 @@ export default function NuevoConteoPage() {
               <thead>
                 <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
                   <th className="px-4 py-3 text-left">
-                    <Checkbox
-                      isSelected={selectAll && selectedCount === filteredProducts.length}
-                      onValueChange={handleSelectAll}
-                      size="sm"
+                    <Switch
+                      checked={selectAll && selectedCount === filteredProducts.length}
+                      onCheckedChange={handleSelectAll}
                     />
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -228,10 +255,9 @@ export default function NuevoConteoPage() {
                       onClick={() => handleToggleProduct(product.productId)}
                     >
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          isSelected={isSelected}
-                          onValueChange={() => handleToggleProduct(product.productId)}
-                          size="sm"
+                        <Switch
+                          checked={isSelected}
+                          onCheckedChange={() => handleToggleProduct(product.productId)}
                         />
                       </td>
                       <td className="px-4 py-3">

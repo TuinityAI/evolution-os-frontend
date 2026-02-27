@@ -27,7 +27,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_COUNT_SESSIONS } from '@/lib/mock-data/inventory';
+import { MOCK_COUNT_SESSIONS, subscribeCountSessions, getCountSessionsData } from '@/lib/mock-data/inventory';
+import { useStore } from '@/hooks/use-store';
 import { CountSessionStatus } from '@/lib/types/inventory';
 
 type TabFilter = 'all' | 'en_progreso' | 'completado';
@@ -37,6 +38,9 @@ export default function ConteoPage() {
   const { checkPermission } = useAuth();
   const canCreateCount = checkPermission('canCreateCountSessions');
 
+  // Reactive store subscription
+  const countSessions = useStore(subscribeCountSessions, getCountSessionsData);
+
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
 
@@ -44,22 +48,22 @@ export default function ConteoPage() {
     {
       key: 'all',
       label: 'Todos',
-      count: MOCK_COUNT_SESSIONS.length,
+      count: countSessions.length,
     },
     {
       key: 'en_progreso',
       label: 'En Progreso',
-      count: MOCK_COUNT_SESSIONS.filter((s) => s.status === 'en_progreso').length,
+      count: countSessions.filter((s) => s.status === 'en_progreso').length,
     },
     {
       key: 'completado',
       label: 'Completados',
-      count: MOCK_COUNT_SESSIONS.filter((s) => s.status === 'completado').length,
+      count: countSessions.filter((s) => s.status === 'completado').length,
     },
   ];
 
   const filteredSessions = useMemo(() => {
-    return MOCK_COUNT_SESSIONS.filter((session) => {
+    return countSessions.filter((session) => {
       // Tab filter
       if (activeTab !== 'all' && session.status !== activeTab) return false;
 
@@ -76,7 +80,7 @@ export default function ConteoPage() {
 
       return true;
     });
-  }, [activeTab, search]);
+  }, [countSessions, activeTab, search]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-PA', {

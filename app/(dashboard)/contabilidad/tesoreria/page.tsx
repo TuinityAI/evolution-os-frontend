@@ -2,16 +2,12 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useStore } from '@/hooks/use-store';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   Wallet,
   ChevronRight,
@@ -30,6 +26,11 @@ import {
   MOCK_BANK_MOVEMENTS,
   getCashFlowProjections,
   formatCurrencyAccounting,
+  subscribeBankAccounts,
+  getBankAccountsData,
+  subscribeBankMovements,
+  getBankMovementsData,
+  addBankMovement,
 } from '@/lib/mock-data/accounting';
 
 export default function TesoreriaPage() {
@@ -37,7 +38,10 @@ export default function TesoreriaPage() {
   const { checkPermission } = useAuth();
   const canAccessTreasury = checkPermission('canAccessTreasury');
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  useStore(subscribeBankAccounts, getBankAccountsData);
+  const bankMovements = useStore(subscribeBankMovements, getBankMovementsData);
+
+  const [isOpen, setIsOpen] = useState(false);
 
   // Payment form
   const [paymentBank, setPaymentBank] = useState('');
@@ -52,7 +56,7 @@ export default function TesoreriaPage() {
 
   const recentMovements = useMemo(
     () => [...MOCK_BANK_MOVEMENTS].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    []
+    [bankMovements]
   );
 
   const formatDate = (dateStr: string) => {
@@ -70,10 +74,21 @@ export default function TesoreriaPage() {
       });
       return;
     }
+    addBankMovement({
+      id: `BM-${Date.now()}`,
+      date: new Date().toISOString(),
+      bankAccountId: paymentBank,
+      bankName: MOCK_BANK_ACCOUNTS.find((b) => b.id === paymentBank)?.bankName || '',
+      description: `${paymentConcept} - ${paymentBeneficiary}`,
+      type: 'egreso',
+      amount: parseFloat(paymentAmount),
+      balance: 0,
+      reference: paymentReference || undefined,
+    });
     toast.success('Pago emitido', {
       description: `Pago de ${formatCurrencyAccounting(parseFloat(paymentAmount))} emitido a ${paymentBeneficiary}.`,
     });
-    onClose();
+    setIsOpen(false);
     setPaymentBank('');
     setPaymentAmount('');
     setPaymentBeneficiary('');
@@ -100,7 +115,7 @@ export default function TesoreriaPage() {
         </div>
         {canAccessTreasury && (
           <button
-            onClick={onOpen}
+            onClick={() => setIsOpen(true)}
             className="flex h-9 items-center gap-2 rounded-lg bg-purple-600 px-4 text-sm font-medium text-white transition-colors hover:bg-purple-700"
           >
             <Plus className="h-4 w-4" />
@@ -284,20 +299,12 @@ export default function TesoreriaPage() {
       </div>
 
       {/* Payment Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-950">
-                <Plus className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Emitir Pago</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">Registrar un nuevo pago</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-4">
+      <CustomModal isOpen={isOpen} onClose={() => setIsOpen(false)} size="lg">
+          <CustomModalHeader onClose={() => setIsOpen(false)}>
+              <Plus className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              Emitir Pago
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             <div className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Banco</label>
@@ -357,17 +364,16 @@ export default function TesoreriaPage() {
                 />
               </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onClose}>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsOpen(false)}>
               Cancelar
             </Button>
             <Button onPress={handleEmitPayment} className="bg-purple-600 text-white">
               Emitir Pago
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

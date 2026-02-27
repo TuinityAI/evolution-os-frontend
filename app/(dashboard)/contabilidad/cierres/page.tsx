@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useStore } from '@/hooks/use-store';
 import { motion } from 'framer-motion';
 import { Button } from '@heroui/react';
 import {
@@ -19,6 +20,9 @@ import { cn } from '@/lib/utils/cn';
 import {
   MOCK_MONTHLY_CLOSES,
   formatCurrencyAccounting,
+  subscribeMonthlyCloses,
+  getMonthlyClosesData,
+  updateMonthlyClose,
 } from '@/lib/mock-data/accounting';
 import {
   CLOSE_STATUS_LABELS,
@@ -34,18 +38,20 @@ export default function CierresPage() {
   const canCloseMonthlyPeriod = checkPermission('canCloseMonthlyPeriod');
   const canCloseAnnualPeriod = checkPermission('canCloseAnnualPeriod');
 
+  const monthlyCloses = useStore(subscribeMonthlyCloses, getMonthlyClosesData);
+
   const [activeTab, setActiveTab] = useState<TabType>('mensual');
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
 
   const sortedCloses = useMemo(
     () => [...MOCK_MONTHLY_CLOSES].sort((a, b) => b.period.localeCompare(a.period)),
-    []
+    [monthlyCloses]
   );
 
   const selectedClose = useMemo(
     () => MOCK_MONTHLY_CLOSES.find((c) => c.period === selectedPeriod),
-    [selectedPeriod]
+    [selectedPeriod, monthlyCloses]
   );
 
   const closedMonthsCount = MOCK_MONTHLY_CLOSES.filter((c) => c.status === 'cerrado').length;
@@ -81,6 +87,14 @@ export default function CierresPage() {
         description: 'Debes completar todos los items antes de ejecutar el cierre.',
       });
       return;
+    }
+    if (selectedClose) {
+      updateMonthlyClose(selectedClose.id, {
+        status: 'cerrado',
+        closedBy: 'USR-001',
+        closedByName: 'Usuario',
+        closedAt: new Date().toISOString(),
+      });
     }
     toast.success('Cierre mensual ejecutado', {
       description: `El cierre de ${selectedClose?.monthName} se ha ejecutado exitosamente.`,

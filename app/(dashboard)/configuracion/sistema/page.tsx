@@ -24,7 +24,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_SYSTEM_INFO, MOCK_INTEGRATIONS } from '@/lib/mock-data/configuration';
+import { useStore } from '@/hooks/use-store';
+import {
+  getSystemInfoData,
+  subscribeSystemInfo,
+  getIntegrationsData,
+  subscribeIntegrations,
+} from '@/lib/mock-data/configuration';
 import { INTEGRATION_STATUS_CONFIG } from '@/lib/types/configuration';
 import type { Integration } from '@/lib/types/configuration';
 
@@ -51,7 +57,10 @@ const ENV_LABELS: Record<string, string> = {
 export default function SistemaPage() {
   const router = useRouter();
 
-  const envBadge = ENV_BADGES[MOCK_SYSTEM_INFO.environment] || ENV_BADGES.development;
+  const systemInfo = useStore(subscribeSystemInfo, getSystemInfoData);
+  const integrations = useStore(subscribeIntegrations, getIntegrationsData);
+
+  const envBadge = ENV_BADGES[systemInfo.environment] || ENV_BADGES.development;
 
   const handleExport = () => {
     toast.success('Exportación iniciada', {
@@ -128,14 +137,14 @@ export default function SistemaPage() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: 'Versión', value: MOCK_SYSTEM_INFO.version, icon: Zap },
-            { label: 'Build', value: MOCK_SYSTEM_INFO.buildNumber, icon: Code },
-            { label: 'Entorno', value: ENV_LABELS[MOCK_SYSTEM_INFO.environment] || MOCK_SYSTEM_INFO.environment, icon: Globe, badge: envBadge },
-            { label: 'Último Deploy', value: formatDate(MOCK_SYSTEM_INFO.lastDeploy), icon: Clock },
-            { label: 'Next.js', value: `v${MOCK_SYSTEM_INFO.nextjsVersion}`, icon: Code },
-            { label: 'Node.js', value: `v${MOCK_SYSTEM_INFO.nodeVersion}`, icon: Server },
-            { label: 'Base de Datos', value: MOCK_SYSTEM_INFO.database, icon: HardDrive },
-            { label: 'Uptime', value: MOCK_SYSTEM_INFO.uptime, icon: Clock },
+            { label: 'Versión', value: systemInfo.version, icon: Zap },
+            { label: 'Build', value: systemInfo.buildNumber, icon: Code },
+            { label: 'Entorno', value: ENV_LABELS[systemInfo.environment] || systemInfo.environment, icon: Globe, badge: envBadge },
+            { label: 'Último Deploy', value: formatDate(systemInfo.lastDeploy), icon: Clock },
+            { label: 'Next.js', value: `v${systemInfo.nextjsVersion}`, icon: Code },
+            { label: 'Node.js', value: `v${systemInfo.nodeVersion}`, icon: Server },
+            { label: 'Base de Datos', value: systemInfo.database, icon: HardDrive },
+            { label: 'Uptime', value: systemInfo.uptime, icon: Clock },
           ].map((item, index) => (
             <div
               key={item.label}
@@ -241,7 +250,7 @@ export default function SistemaPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {MOCK_INTEGRATIONS.map((integration, index) => {
+          {integrations.map((integration, index) => {
             const IconComponent = INTEGRATION_ICONS[integration.icon] || Settings;
             const statusConfig = INTEGRATION_STATUS_CONFIG[integration.status];
 

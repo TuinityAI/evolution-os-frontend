@@ -4,16 +4,11 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
-  Switch,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
+import { Switch } from '@/components/ui/switch';
 import {
   ArrowLeft,
   BookOpen,
@@ -33,7 +28,15 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_MASTER_CATALOGS, getCatalogItems } from '@/lib/mock-data/configuration';
+import { useStore } from '@/hooks/use-store';
+import {
+  getMasterCatalogsData,
+  subscribeMasterCatalogs,
+  getCatalogItems,
+  subscribeCatalogItems,
+  addCatalogItem,
+  updateCatalogItem,
+} from '@/lib/mock-data/configuration';
 import type { CatalogItem, MasterCatalog } from '@/lib/types/configuration';
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -51,16 +54,21 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 export default function CatalogosPage() {
   const router = useRouter();
-  const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const [selectedCatalogId, setSelectedCatalogId] = useState<string>(MOCK_MASTER_CATALOGS[0].id);
+  const masterCatalogs = useStore(subscribeMasterCatalogs, getMasterCatalogsData);
+  // Subscribe to catalog items changes so the table re-renders
+  useStore(subscribeCatalogItems, () => 0);
+
+  const [isOpen, setIsOpen] = useState(false);
+
+  const [selectedCatalogId, setSelectedCatalogId] = useState<string>(masterCatalogs[0]?.id ?? '');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Item modal state
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
   const [itemForm, setItemForm] = useState({ code: '', name: '', description: '' });
 
-  const selectedCatalog = MOCK_MASTER_CATALOGS.find((c) => c.id === selectedCatalogId) || MOCK_MASTER_CATALOGS[0];
+  const selectedCatalog = masterCatalogs.find((c) => c.id === selectedCatalogId) || masterCatalogs[0];
 
   const catalogItems = useMemo(() => {
     const items = getCatalogItems(selectedCatalogId);
@@ -82,14 +90,21 @@ export default function CatalogosPage() {
       setEditingItem(null);
       setItemForm({ code: '', name: '', description: '' });
     }
-    onOpen();
+    setIsOpen(true);
   };
 
   const handleSaveItem = () => {
+    if (editingItem) {
+      updateCatalogItem(selectedCatalogId, editingItem.id, { code: itemForm.code, name: itemForm.name, description: itemForm.description });
+    } else {
+      const now = new Date().toISOString();
+      const newId = `CI-NEW-${Date.now()}`;
+      addCatalogItem(selectedCatalogId, { id: newId, code: itemForm.code, name: itemForm.name, description: itemForm.description, isActive: true, sortOrder: catalogItems.length + 1, createdAt: now, updatedAt: now });
+    }
     toast.success(editingItem ? 'Item actualizado' : 'Item creado', {
       description: `"${itemForm.name}" en ${selectedCatalog.name}`,
     });
-    onClose();
+    setIsOpen(false);
   };
 
   return (
@@ -109,7 +124,7 @@ export default function CatalogosPage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Catálogos Maestros</h1>
-            <p className="text-sm text-gray-500 dark:text-[#888888]">{MOCK_MASTER_CATALOGS.length} catálogos configurados</p>
+            <p className="text-sm text-gray-500 dark:text-[#888888]">{masterCatalogs.length} catálogos configurados</p>
           </div>
         </div>
       </div>
@@ -117,7 +132,7 @@ export default function CatalogosPage() {
       {/* Tab navigation for catalogs */}
       <div className="overflow-x-auto">
         <div className="flex gap-1 rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-1 min-w-max">
-          {MOCK_MASTER_CATALOGS.map((catalog) => {
+          {masterCatalogs.map((catalog) => {
             const IconComponent = ICON_MAP[catalog.icon] || BookOpen;
             const isSelected = selectedCatalogId === catalog.id;
             return (
@@ -212,7 +227,7 @@ export default function CatalogosPage() {
                         <span className="text-sm text-gray-500 dark:text-[#888888]">{item.description || '-'}</span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Switch isSelected={item.isActive} size="sm" color="success" />
+                        <Switch defaultChecked={item.isActive} />
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
@@ -252,54 +267,43 @@ export default function CatalogosPage() {
       </div>
 
       {/* Item Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="md">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950">
-                <BookOpen className="h-5 w-5 text-teal-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {editingItem ? 'Editar Item' : 'Nuevo Item'}
-                </h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">{selectedCatalog.name}</p>
-              </div>
+      <CustomModal isOpen={isOpen} onClose={() => setIsOpen(false)} size="md">
+        <CustomModalHeader onClose={() => setIsOpen(false)}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950">
+              <BookOpen className="h-5 w-5 text-teal-600" />
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-4">
-              <Input
-                label="Código"
-                placeholder="Ej: TRF"
-                value={itemForm.code}
-                onChange={(e) => setItemForm({ ...itemForm, code: e.target.value })}
-                variant="bordered"
-              />
-              <Input
-                label="Nombre"
-                placeholder="Ej: Transferencia Bancaria"
-                value={itemForm.name}
-                onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
-                variant="bordered"
-              />
-              <Input
-                label="Descripción (opcional)"
-                placeholder="Descripción del item"
-                value={itemForm.description}
-                onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
-                variant="bordered"
-              />
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {editingItem ? 'Editar Item' : 'Nuevo Item'}
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-[#888888]">{selectedCatalog.name}</p>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onClose}>Cancelar</Button>
-            <Button color="primary" onPress={handleSaveItem} className="bg-brand-600">
-              {editingItem ? 'Guardar Cambios' : 'Crear Item'}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Código</label>
+              <Input placeholder="Ej: TRF" value={itemForm.code} onChange={(e) => setItemForm({ ...itemForm, code: e.target.value })} variant="bordered" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Nombre</label>
+              <Input placeholder="Ej: Transferencia Bancaria" value={itemForm.name} onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })} variant="bordered" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Descripción (opcional)</label>
+              <Input placeholder="Descripción del item" value={itemForm.description} onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })} variant="bordered" />
+            </div>
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsOpen(false)}>Cancelar</Button>
+          <Button color="primary" onPress={handleSaveItem} className="bg-brand-600">
+            {editingItem ? 'Guardar Cambios' : 'Crear Item'}
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

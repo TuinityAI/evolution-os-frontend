@@ -29,7 +29,8 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { cn } from '@/lib/utils/cn';
-import { getTransferById } from '@/lib/mock-data/inventory';
+import { getTransferById, updateTransfer, subscribeTransfers, getTransfersData } from '@/lib/mock-data/inventory';
+import { useStore } from '@/hooks/use-store';
 import { TransferStatus } from '@/lib/types/inventory';
 
 interface ReceivedQuantity {
@@ -44,6 +45,9 @@ export default function TransferenciaDetailPage() {
   const { user, checkPermission } = useAuth();
   const canConfirm = checkPermission('canConfirmTransfers');
   const canViewCosts = checkPermission('canViewCosts');
+
+  // Reactive store subscription
+  const transfers = useStore(subscribeTransfers, getTransfersData);
 
   const transfer = getTransferById(params.id as string);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -156,6 +160,27 @@ export default function TransferenciaDetailPage() {
     const hasDiscrepancies = receivedQuantities.some((rq) => {
       const line = transfer.lines.find((l) => l.id === rq.lineId);
       return line && rq.receivedQty !== line.resultingUnits;
+    });
+
+    const updatedLines = transfer.lines.map((line) => {
+      const rq = receivedQuantities.find((r) => r.lineId === line.id);
+      if (!rq) return line;
+      const diff = rq.receivedQty !== line.resultingUnits;
+      return {
+        ...line,
+        receivedQty: rq.receivedQty,
+        hasDiscrepancy: diff,
+        discrepancyNotes: diff ? rq.notes : undefined,
+      };
+    });
+
+    updateTransfer(transfer.id, {
+      status: hasDiscrepancies ? 'recibida_discrepancia' : 'recibida',
+      receivedAt: new Date().toISOString(),
+      receivedBy: user?.id || 'USR-000',
+      receivedByName: user?.name || 'Usuario',
+      hasDiscrepancies,
+      lines: updatedLines,
     });
 
     setIsConfirmModalOpen(false);

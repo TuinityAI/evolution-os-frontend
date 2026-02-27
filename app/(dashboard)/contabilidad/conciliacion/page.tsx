@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useStore } from '@/hooks/use-store';
 import { motion } from 'framer-motion';
 import { Button } from '@heroui/react';
 import {
@@ -19,6 +20,10 @@ import {
   MOCK_BANK_ACCOUNTS,
   MOCK_BANK_MOVEMENTS,
   formatCurrencyAccounting,
+  subscribeBankAccounts,
+  getBankAccountsData,
+  subscribeBankMovements,
+  getBankMovementsData,
 } from '@/lib/mock-data/accounting';
 import type { BankAccount, BankMovement } from '@/lib/types/accounting';
 
@@ -35,6 +40,9 @@ export default function ConciliacionPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canReconcileBank = checkPermission('canReconcileBank');
+
+  useStore(subscribeBankAccounts, getBankAccountsData);
+  useStore(subscribeBankMovements, getBankMovementsData);
 
   const [selectedBank, setSelectedBank] = useState<BankAccount | null>(null);
   const [extractoImported, setExtractoImported] = useState(false);

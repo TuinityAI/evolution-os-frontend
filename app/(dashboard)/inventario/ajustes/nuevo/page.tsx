@@ -4,18 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
   Select,
   SelectItem,
   Textarea,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   ArrowLeft,
   FileText,
@@ -29,9 +24,10 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_WAREHOUSES } from '@/lib/mock-data/warehouses';
+import { MOCK_WAREHOUSES, subscribeWarehouses, getWarehousesData } from '@/lib/mock-data/warehouses';
 import { MOCK_PRODUCTS, getProductById } from '@/lib/mock-data/products';
-import { generateNextAdjustmentId, validateStockOperation } from '@/lib/mock-data/inventory';
+import { generateNextAdjustmentId, validateStockOperation, addAdjustment } from '@/lib/mock-data/inventory';
+import { useStore } from '@/hooks/use-store';
 import {
   ADJUSTMENT_REASONS,
   type AdjustmentType,
@@ -54,6 +50,9 @@ export default function NuevoAjustePage() {
   const { user, checkPermission } = useAuth();
   const canViewCosts = checkPermission('canViewCosts');
 
+  // Reactive store subscription
+  const warehouses = useStore(subscribeWarehouses, getWarehousesData);
+
   // Form state
   const [warehouseId, setWarehouseId] = useState('WH-001');
   const [adjustmentType, setAdjustmentType] = useState<AdjustmentType>('negativo');
@@ -62,7 +61,7 @@ export default function NuevoAjustePage() {
   const [lines, setLines] = useState<FormLine[]>([]);
 
   // Product search modal
-  const { isOpen: isSearchOpen, onOpen: onSearchOpen, onClose: onSearchClose } = useDisclosure();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [productSearch, setProductSearch] = useState('');
 
   // Pre-populate product from URL if provided
@@ -116,7 +115,7 @@ export default function NuevoAjustePage() {
       costCIF: product.costCIF,
     }]);
 
-    onSearchClose();
+    setIsSearchOpen(false);
     setProductSearch('');
   };
 
@@ -181,6 +180,35 @@ export default function NuevoAjustePage() {
     if (!validateForm()) return;
 
     const adjustmentId = generateNextAdjustmentId();
+    const warehouse = warehouses.find((w) => w.id === warehouseId);
+
+    addAdjustment({
+      id: adjustmentId,
+      createdAt: new Date().toISOString(),
+      createdBy: user?.id || 'USR-000',
+      createdByName: user?.name || 'Usuario',
+      warehouseId,
+      warehouseName: warehouse?.name || '',
+      type: adjustmentType,
+      reason: reason as AdjustmentReason,
+      observation,
+      lines: lines.map((l, idx) => ({
+        id: `AJL-NEW-${idx}`,
+        productId: l.productId,
+        productReference: l.productReference,
+        productDescription: l.productDescription,
+        currentStock: l.currentStock,
+        adjustmentQty: adjustmentType === 'negativo' ? -l.adjustmentQty : l.adjustmentQty,
+        resultingStock: adjustmentType === 'positivo'
+          ? l.currentStock + l.adjustmentQty
+          : l.currentStock - l.adjustmentQty,
+        costCIF: l.costCIF,
+        lineValue: l.adjustmentQty * l.costCIF,
+      })),
+      totalItems: totalItems,
+      totalValue: totalValue,
+      status: 'pendiente',
+    });
 
     toast.success('Ajuste creado', {
       description: `El ajuste ${adjustmentId} ha sido enviado para aprobación.`,
@@ -234,7 +262,7 @@ export default function NuevoAjustePage() {
                 variant="bordered"
                 classNames={{ trigger: 'bg-white' }}
               >
-                {MOCK_WAREHOUSES.map((w) => (
+                {warehouses.map((w) => (
                   <SelectItem key={w.id}>{w.name}</SelectItem>
                 ))}
               </Select>
@@ -323,7 +351,7 @@ export default function NuevoAjustePage() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Productos a Ajustar</h2>
             <button
-              onClick={onSearchOpen}
+              onClick={() => setIsSearchOpen(true)}
               className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
             >
               <Plus className="h-4 w-4" />
@@ -420,7 +448,7 @@ export default function NuevoAjustePage() {
               <p className="mb-1 text-sm font-medium text-gray-900">Sin productos</p>
               <p className="mb-4 text-xs text-gray-500">Agrega productos para el ajuste</p>
               <button
-                onClick={onSearchOpen}
+                onClick={() => setIsSearchOpen(true)}
                 className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
               >
                 <Plus className="h-4 w-4" />
@@ -458,20 +486,12 @@ export default function NuevoAjustePage() {
       </div>
 
       {/* Product Search Modal */}
-      <Modal isOpen={isSearchOpen} onClose={onSearchClose} size="2xl" scrollBehavior="inside">
-        <ModalContent className="bg-white">
-          <ModalHeader className="border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
-                <Search className="h-5 w-5 text-gray-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Buscar Producto</h2>
-                <p className="text-sm text-gray-500">Selecciona un producto para agregar al ajuste</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-4">
+      <CustomModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} size="2xl" scrollable>
+          <CustomModalHeader onClose={() => setIsSearchOpen(false)}>
+              <Search className="h-5 w-5 text-gray-600" />
+              Buscar Producto
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             <Input
               placeholder="Buscar por nombre, referencia o código de barras..."
               value={productSearch}
@@ -503,14 +523,13 @@ export default function NuevoAjustePage() {
                 </div>
               )}
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200">
-            <Button variant="light" onPress={onSearchClose}>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsSearchOpen(false)}>
               Cerrar
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

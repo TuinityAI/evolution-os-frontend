@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useStore } from '@/hooks/use-store';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -8,15 +9,10 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Tooltip,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   Search,
   Plus,
@@ -45,7 +41,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  MOCK_SALES_ORDERS,
+  getSalesOrdersData,
+  subscribeSalesOrders,
+  removeSalesOrder,
+  updateSalesOrder,
   getSalesStats,
   formatCurrency,
   formatDate,
@@ -71,6 +70,7 @@ const PIPELINE_STAGES: { status: SalesOrderStatus; label: string }[] = [
 
 export default function VentasPage() {
   const router = useRouter();
+  const salesOrders = useStore(subscribeSalesOrders, getSalesOrdersData);
   const { checkPermission, user } = useAuth();
   const canViewMargins = checkPermission('canViewMargins');
   const canCreateQuotes = checkPermission('canCreateQuotes');
@@ -85,14 +85,14 @@ export default function VentasPage() {
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
 
   // Modal states
-  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   // Stats
   const stats = getSalesStats();
 
   // Filter orders
   const filteredOrders = useMemo(() => {
-    return MOCK_SALES_ORDERS.filter((order) => {
+    return salesOrders.filter((order) => {
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
         !searchQuery ||
@@ -106,7 +106,7 @@ export default function VentasPage() {
 
       return matchesSearch && matchesStatus && matchesDocType && matchesCustomer;
     });
-  }, [searchQuery, statusFilter, docTypeFilter, selectedCustomer]);
+  }, [salesOrders, searchQuery, statusFilter, docTypeFilter, selectedCustomer]);
 
   // Handlers
   const handleViewOrder = (order: SalesOrder) => {
@@ -115,15 +115,16 @@ export default function VentasPage() {
 
   const handleDeleteOrder = (order: SalesOrder) => {
     setSelectedOrder(order);
-    onDeleteOpen();
+    setIsDeleteOpen(true);
   };
 
   const confirmDelete = () => {
     if (selectedOrder) {
+      removeSalesOrder(selectedOrder.id);
       toast.success('Documento cancelado', {
         description: `El documento ${selectedOrder.orderNumber} ha sido cancelado.`,
       });
-      onDeleteClose();
+      setIsDeleteOpen(false);
       setSelectedOrder(null);
     }
   };
@@ -566,9 +567,9 @@ export default function VentasPage() {
                           aria-label="Acciones"
                           items={[
                             { key: 'view', label: 'Ver detalle', icon: Eye, action: () => handleViewOrder(order), show: true },
-                            { key: 'send', label: 'Enviar cotización', icon: Send, action: () => toast.info('Enviar por email'), show: order.status === 'borrador' },
-                            { key: 'convert', label: 'Convertir a pedido', icon: CheckCircle2, action: () => toast.info('Convertir a pedido'), show: order.status === 'cotizado' },
-                            { key: 'approve', label: 'Aprobar', icon: ThumbsUp, action: () => toast.success('Pedido aprobado'), show: order.status === 'pedido' && canApproveOrders },
+                            { key: 'send', label: 'Enviar cotización', icon: Send, action: () => { updateSalesOrder(order.id, { status: 'cotizado' }); toast.success('Cotización enviada'); }, show: order.status === 'borrador' },
+                            { key: 'convert', label: 'Convertir a pedido', icon: CheckCircle2, action: () => { updateSalesOrder(order.id, { status: 'pedido', documentType: 'pedido' }); toast.success('Convertido a pedido'); }, show: order.status === 'cotizado' },
+                            { key: 'approve', label: 'Aprobar', icon: ThumbsUp, action: () => { updateSalesOrder(order.id, { status: 'aprobado' }); toast.success('Pedido aprobado'); }, show: order.status === 'pedido' && canApproveOrders },
                             { key: 'edit', label: 'Editar', icon: Edit, action: () => handleViewOrder(order), show: order.status === 'borrador' },
                             { key: 'delete', label: 'Cancelar', icon: Trash2, action: () => handleDeleteOrder(order), show: !['facturado', 'cancelado'].includes(order.status), danger: true },
                           ].filter(item => item.show)}
@@ -607,31 +608,29 @@ export default function VentasPage() {
       {/* Results count */}
       {filteredOrders.length > 0 && (
         <div className="text-center text-sm text-muted-foreground">
-          Mostrando {filteredOrders.length} de {MOCK_SALES_ORDERS.length} documentos
+          Mostrando {filteredOrders.length} de {salesOrders.length} documentos
         </div>
       )}
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} size="sm">
-        <ModalContent>
-          <ModalHeader>Cancelar documento</ModalHeader>
-          <ModalBody>
-            <p className="text-muted-foreground">
-              ¿Estás seguro de cancelar{' '}
-              <span className="font-medium text-foreground">"{selectedOrder?.orderNumber}"</span>? Esta acción
-              no se puede deshacer.
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="light" onPress={onDeleteClose}>
-              Volver
-            </Button>
-            <Button color="danger" onPress={confirmDelete}>
-              Cancelar Documento
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <CustomModal isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} size="sm">
+        <CustomModalHeader onClose={() => setIsDeleteOpen(false)}>Cancelar documento</CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <p className="text-muted-foreground">
+            ¿Estás seguro de cancelar{' '}
+            <span className="font-medium text-foreground">"{selectedOrder?.orderNumber}"</span>? Esta acción
+            no se puede deshacer.
+          </p>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsDeleteOpen(false)}>
+            Volver
+          </Button>
+          <Button color="danger" onPress={confirmDelete}>
+            Cancelar Documento
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
 
     </div>
   );

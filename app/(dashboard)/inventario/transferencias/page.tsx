@@ -28,7 +28,8 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_TRANSFERS } from '@/lib/mock-data/inventory';
+import { MOCK_TRANSFERS, subscribeTransfers, getTransfersData } from '@/lib/mock-data/inventory';
+import { useStore } from '@/hooks/use-store';
 import { TRANSFER_STATUS_LABELS, type TransferStatus, type InventoryTransfer } from '@/lib/types/inventory';
 
 type TabKey = 'all' | 'borrador' | 'enviada' | 'recibida' | 'recibida_discrepancia';
@@ -40,12 +41,15 @@ export default function TransferenciasPage() {
   const canConfirmTransfers = checkPermission('canConfirmTransfers');
   const canViewCosts = checkPermission('canViewCosts');
 
+  // Reactive store subscription
+  const transfers = useStore(subscribeTransfers, getTransfersData);
+
   const [selectedTab, setSelectedTab] = useState<TabKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter transfers
   const filteredTransfers = useMemo(() => {
-    return MOCK_TRANSFERS.filter((transfer) => {
+    return transfers.filter((transfer) => {
       if (selectedTab !== 'all' && transfer.status !== selectedTab) return false;
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
@@ -57,7 +61,7 @@ export default function TransferenciasPage() {
       }
       return true;
     });
-  }, [selectedTab, searchQuery]);
+  }, [transfers, selectedTab, searchQuery]);
 
   // Get status badge
   const getStatusBadge = (status: TransferStatus) => {
@@ -103,12 +107,12 @@ export default function TransferenciasPage() {
 
   // Count by status
   const counts = useMemo(() => ({
-    all: MOCK_TRANSFERS.length,
-    borrador: MOCK_TRANSFERS.filter((t) => t.status === 'borrador').length,
-    enviada: MOCK_TRANSFERS.filter((t) => t.status === 'enviada').length,
-    recibida: MOCK_TRANSFERS.filter((t) => t.status === 'recibida').length,
-    recibida_discrepancia: MOCK_TRANSFERS.filter((t) => t.status === 'recibida_discrepancia').length,
-  }), []);
+    all: transfers.length,
+    borrador: transfers.filter((t) => t.status === 'borrador').length,
+    enviada: transfers.filter((t) => t.status === 'enviada').length,
+    recibida: transfers.filter((t) => t.status === 'recibida').length,
+    recibida_discrepancia: transfers.filter((t) => t.status === 'recibida_discrepancia').length,
+  }), [transfers]);
 
   return (
     <div className="space-y-5">

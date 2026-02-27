@@ -7,13 +7,17 @@ import { ArrowLeft, ClipboardList, Plus, Trash2, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
 import {
-  MOCK_SUPPLIERS,
-  MOCK_BODEGAS,
+  getSuppliersData,
+  subscribeSuppliers,
+  getBodegasData,
+  subscribeBodegas,
+  addPurchaseOrder,
   formatCurrency,
   getNextOrderNumber,
 } from '@/lib/mock-data/purchase-orders';
+import { useStore } from '@/hooks/use-store';
 import { MOCK_PRODUCTS } from '@/lib/mock-data/products';
-import type { PurchaseOrderLine } from '@/lib/types/purchase-order';
+import type { PurchaseOrder, PurchaseOrderLine } from '@/lib/types/purchase-order';
 
 const initialOrderForm = {
   supplierId: '',
@@ -27,6 +31,10 @@ export default function NuevaCompraPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canViewCosts = checkPermission('canViewCosts');
+
+  // Store-backed reactive data
+  const suppliers = useStore(subscribeSuppliers, getSuppliersData);
+  const bodegas = useStore(subscribeBodegas, getBodegasData);
 
   // Form state
   const [orderFormData, setOrderFormData] = useState(initialOrderForm);
@@ -88,6 +96,28 @@ export default function NuevaCompraPage() {
     }
 
     const orderNumber = getNextOrderNumber();
+    const supplier = suppliers.find((s) => s.id === orderFormData.supplierId);
+    const bodega = bodegas.find((b) => b.id === orderFormData.bodegaId);
+
+    const newOrder: PurchaseOrder = {
+      id: orderNumber,
+      orderNumber,
+      createdAt: new Date().toISOString(),
+      supplierId: orderFormData.supplierId,
+      supplierName: supplier?.name ?? '',
+      supplierInvoice: orderFormData.supplierInvoice || undefined,
+      bodegaId: orderFormData.bodegaId,
+      bodegaName: bodega?.name ?? '',
+      status: 'pendiente',
+      expectedArrivalDate: orderFormData.expectedArrivalDate || undefined,
+      lines: orderLines,
+      totalFOB: totalFOB,
+      createdBy: 'USR-004',
+      notes: orderFormData.notes || undefined,
+    };
+
+    addPurchaseOrder(newOrder);
+
     toast.success('Orden creada', {
       description: `Orden ${orderNumber} creada exitosamente`,
     });
@@ -135,7 +165,7 @@ export default function NuevaCompraPage() {
                   variant="bordered"
                   classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
                 >
-                  {MOCK_SUPPLIERS.map((supplier) => (
+                  {suppliers.map((supplier) => (
                     <SelectItem key={supplier.id}>{supplier.name}</SelectItem>
                   ))}
                 </Select>
@@ -151,7 +181,7 @@ export default function NuevaCompraPage() {
                   variant="bordered"
                   classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
                 >
-                  {MOCK_BODEGAS.map((bodega) => (
+                  {bodegas.map((bodega) => (
                     <SelectItem key={bodega.id}>{bodega.name}</SelectItem>
                   ))}
                 </Select>

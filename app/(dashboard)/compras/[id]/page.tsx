@@ -3,15 +3,10 @@
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   ArrowLeft,
   PackageCheck,
@@ -58,7 +53,7 @@ export default function OrderDetailPage() {
   const order = getPurchaseOrderById(orderId);
 
   const [expensePercentage, setExpensePercentage] = useState('15');
-  const { isOpen: isReceiveOpen, onOpen: onReceiveOpen, onClose: onReceiveClose } = useDisclosure();
+  const [isReceiveOpen, setIsReceiveOpen] = useState(false);
 
   if (!order) {
     return (
@@ -121,7 +116,7 @@ export default function OrderDetailPage() {
           {canReceive && (
             <Button
               color="success"
-              onPress={onReceiveOpen}
+              onPress={() => setIsReceiveOpen(true)}
               startContent={<PackageCheck className="h-4 w-4" />}
             >
               Recibir Mercancía
@@ -433,20 +428,12 @@ export default function OrderDetailPage() {
       )}
 
       {/* Receive Merchandise Modal */}
-      <Modal isOpen={isReceiveOpen} onClose={onReceiveClose} size="3xl" scrollBehavior="inside">
-        <ModalContent className="bg-white">
-          <ModalHeader className="border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                <PackageCheck className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Recibir Mercancía</h2>
-                <p className="text-sm text-gray-500">Orden {order.orderNumber}</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
+      <CustomModal isOpen={isReceiveOpen} onClose={() => setIsReceiveOpen(false)} size="3xl" scrollable>
+          <CustomModalHeader onClose={() => setIsReceiveOpen(false)}>
+              <PackageCheck className="h-5 w-5 text-emerald-600" />
+              Recibir Mercancía
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             <div className="space-y-6">
               {/* Order Summary */}
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -559,9 +546,9 @@ export default function OrderDetailPage() {
                 </div>
               )}
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200">
-            <Button variant="light" onPress={onReceiveClose}>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsReceiveOpen(false)}>
               Cancelar
             </Button>
             <Button
@@ -570,15 +557,14 @@ export default function OrderDetailPage() {
                 toast.success('Mercancía recibida', {
                   description: `La orden ${order.orderNumber} ha sido procesada exitosamente.`,
                 });
-                onReceiveClose();
+                setIsReceiveOpen(false);
                 router.push('/compras');
               }}
             >
               Confirmar Recepción
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

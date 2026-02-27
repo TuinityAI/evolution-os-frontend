@@ -27,7 +27,8 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_ADJUSTMENTS } from '@/lib/mock-data/inventory';
+import { MOCK_ADJUSTMENTS, subscribeAdjustments, getAdjustmentsData } from '@/lib/mock-data/inventory';
+import { useStore } from '@/hooks/use-store';
 import {
   ADJUSTMENT_STATUS_LABELS,
   ADJUSTMENT_REASONS,
@@ -45,6 +46,9 @@ export default function AjustesPage() {
   const canApproveAdjustments = checkPermission('canApproveAdjustments');
   const canViewCosts = checkPermission('canViewCosts');
 
+  // Reactive store subscription
+  const adjustments = useStore(subscribeAdjustments, getAdjustmentsData);
+
   // Get initial tab from URL
   const initialTab = (searchParams.get('status') as TabKey) || 'all';
   const [selectedTab, setSelectedTab] = useState<TabKey>(initialTab);
@@ -52,7 +56,7 @@ export default function AjustesPage() {
 
   // Filter adjustments
   const filteredAdjustments = useMemo(() => {
-    return MOCK_ADJUSTMENTS.filter((adj) => {
+    return adjustments.filter((adj) => {
       // Tab filter
       if (selectedTab !== 'all' && adj.status !== selectedTab) return false;
 
@@ -69,7 +73,7 @@ export default function AjustesPage() {
 
       return true;
     });
-  }, [selectedTab, searchQuery]);
+  }, [adjustments, selectedTab, searchQuery]);
 
   // Get status badge
   const getStatusBadge = (status: AdjustmentStatus) => {
@@ -151,12 +155,12 @@ export default function AjustesPage() {
 
   // Count by status
   const counts = useMemo(() => ({
-    all: MOCK_ADJUSTMENTS.length,
-    pendiente: MOCK_ADJUSTMENTS.filter((a) => a.status === 'pendiente').length,
-    aprobado: MOCK_ADJUSTMENTS.filter((a) => a.status === 'aprobado').length,
-    rechazado: MOCK_ADJUSTMENTS.filter((a) => a.status === 'rechazado').length,
-    aplicado: MOCK_ADJUSTMENTS.filter((a) => a.status === 'aplicado').length,
-  }), []);
+    all: adjustments.length,
+    pendiente: adjustments.filter((a) => a.status === 'pendiente').length,
+    aprobado: adjustments.filter((a) => a.status === 'aprobado').length,
+    rechazado: adjustments.filter((a) => a.status === 'rechazado').length,
+    aplicado: adjustments.filter((a) => a.status === 'aplicado').length,
+  }), [adjustments]);
 
   return (
     <div className="space-y-5">

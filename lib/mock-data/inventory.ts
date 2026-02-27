@@ -1,6 +1,7 @@
 /**
  * Inventory Mock Data for Evolution OS
  * Based on Document 04 - Módulo de Control de Inventario
+ * Store-backed: data persists in localStorage
  */
 
 import {
@@ -21,6 +22,7 @@ import {
 } from '@/lib/types/inventory';
 import { MOCK_PRODUCTS, Product } from '@/lib/mock-data/products';
 import { MOCK_WAREHOUSES, DEFAULT_TRANSFER_INFLATION_FACTOR } from '@/lib/mock-data/warehouses';
+import { loadCollection, saveCollection, createSubscribers } from '@/lib/store/local-store';
 
 // ============================================
 // EXTENDED PRODUCTS WITH INVENTORY DATA
@@ -210,39 +212,10 @@ export function getInventoryItems(filters?: InventoryFilters): InventoryItem[] {
 }
 
 // ============================================
-// INVENTORY STATS
+// SEED DATA: ADJUSTMENTS
 // ============================================
 
-export function getInventoryStats(): InventoryStats {
-  const items = getInventoryItems();
-
-  const productsWithStock = items.filter((i) => i.available > i.minimumQty).length;
-  const belowMinimum = items.filter((i) => i.available > 0 && i.available <= i.minimumQty).length;
-  const outOfStock = items.filter((i) => i.available === 0).length;
-  const stagnant4Months = items.filter((i) =>
-    i.alerts.some((a) => a.type === 'stagnant_4m' || a.type === 'stagnant_6m')
-  ).length;
-  const stagnant6Months = items.filter((i) => i.alerts.some((a) => a.type === 'stagnant_6m')).length;
-  const totalValue = items.reduce((sum, i) => sum + i.stockValue, 0);
-  const arrivingProducts = items.filter((i) => i.arriving > 0).length;
-
-  return {
-    productsWithStock,
-    belowMinimum,
-    outOfStock,
-    stagnant4Months,
-    stagnant6Months,
-    totalValue,
-    pendingAdjustments: MOCK_ADJUSTMENTS.filter((a) => a.status === 'pendiente').length,
-    arrivingProducts,
-  };
-}
-
-// ============================================
-// MOCK ADJUSTMENTS
-// ============================================
-
-export const MOCK_ADJUSTMENTS: InventoryAdjustment[] = [
+const SEED_ADJUSTMENTS: InventoryAdjustment[] = [
   {
     id: 'AJ-00001',
     createdAt: '2026-02-20T10:30:00Z',
@@ -405,10 +378,10 @@ export const MOCK_ADJUSTMENTS: InventoryAdjustment[] = [
 ];
 
 // ============================================
-// MOCK TRANSFERS
+// SEED DATA: TRANSFERS
 // ============================================
 
-export const MOCK_TRANSFERS: InventoryTransfer[] = [
+const SEED_TRANSFERS: InventoryTransfer[] = [
   {
     id: 'TR-00001',
     createdAt: '2026-02-21T14:00:00Z',
@@ -538,10 +511,10 @@ export const MOCK_TRANSFERS: InventoryTransfer[] = [
 ];
 
 // ============================================
-// MOCK PHYSICAL COUNT SESSIONS
+// SEED DATA: PHYSICAL COUNT SESSIONS
 // ============================================
 
-export const MOCK_COUNT_SESSIONS: PhysicalCountSession[] = [
+const SEED_COUNT_SESSIONS: PhysicalCountSession[] = [
   {
     id: 'CF-00001',
     createdAt: '2026-02-23T08:00:00Z',
@@ -663,31 +636,226 @@ export const MOCK_COUNT_SESSIONS: PhysicalCountSession[] = [
 ];
 
 // ============================================
+// STORE INFRASTRUCTURE: ADJUSTMENTS
+// ============================================
+
+let _adjustments: InventoryAdjustment[] = SEED_ADJUSTMENTS;
+let _adjustmentsInitialized = false;
+const { subscribe: subscribeAdjustments, notify: _notifyAdjustments } = createSubscribers();
+
+function ensureAdjustmentsInitialized(): void {
+  if (typeof window === 'undefined' || _adjustmentsInitialized) return;
+  _adjustments = loadCollection<InventoryAdjustment>('adjustments', SEED_ADJUSTMENTS);
+  _adjustmentsInitialized = true;
+}
+
+export function getAdjustmentsData(): InventoryAdjustment[] {
+  ensureAdjustmentsInitialized();
+  return _adjustments;
+}
+
+export { subscribeAdjustments };
+
+// Backward-compatible export
+export const MOCK_ADJUSTMENTS: InventoryAdjustment[] = new Proxy(SEED_ADJUSTMENTS as InventoryAdjustment[], {
+  get(_target, prop, receiver) {
+    ensureAdjustmentsInitialized();
+    return Reflect.get(_adjustments, prop, receiver);
+  },
+});
+
+// CRUD
+export function addAdjustment(adjustment: InventoryAdjustment): void {
+  ensureAdjustmentsInitialized();
+  _adjustments = [..._adjustments, adjustment];
+  saveCollection('adjustments', _adjustments);
+  _notifyAdjustments();
+}
+
+export function updateAdjustment(id: string, updates: Partial<InventoryAdjustment>): void {
+  ensureAdjustmentsInitialized();
+  _adjustments = _adjustments.map((a) =>
+    a.id === id ? { ...a, ...updates } : a
+  );
+  saveCollection('adjustments', _adjustments);
+  _notifyAdjustments();
+}
+
+export function removeAdjustment(id: string): void {
+  ensureAdjustmentsInitialized();
+  _adjustments = _adjustments.filter((a) => a.id !== id);
+  saveCollection('adjustments', _adjustments);
+  _notifyAdjustments();
+}
+
+// ============================================
+// STORE INFRASTRUCTURE: TRANSFERS
+// ============================================
+
+let _transfers: InventoryTransfer[] = SEED_TRANSFERS;
+let _transfersInitialized = false;
+const { subscribe: subscribeTransfers, notify: _notifyTransfers } = createSubscribers();
+
+function ensureTransfersInitialized(): void {
+  if (typeof window === 'undefined' || _transfersInitialized) return;
+  _transfers = loadCollection<InventoryTransfer>('transfers', SEED_TRANSFERS);
+  _transfersInitialized = true;
+}
+
+export function getTransfersData(): InventoryTransfer[] {
+  ensureTransfersInitialized();
+  return _transfers;
+}
+
+export { subscribeTransfers };
+
+// Backward-compatible export
+export const MOCK_TRANSFERS: InventoryTransfer[] = new Proxy(SEED_TRANSFERS as InventoryTransfer[], {
+  get(_target, prop, receiver) {
+    ensureTransfersInitialized();
+    return Reflect.get(_transfers, prop, receiver);
+  },
+});
+
+// CRUD
+export function addTransfer(transfer: InventoryTransfer): void {
+  ensureTransfersInitialized();
+  _transfers = [..._transfers, transfer];
+  saveCollection('transfers', _transfers);
+  _notifyTransfers();
+}
+
+export function updateTransfer(id: string, updates: Partial<InventoryTransfer>): void {
+  ensureTransfersInitialized();
+  _transfers = _transfers.map((t) =>
+    t.id === id ? { ...t, ...updates } : t
+  );
+  saveCollection('transfers', _transfers);
+  _notifyTransfers();
+}
+
+export function removeTransfer(id: string): void {
+  ensureTransfersInitialized();
+  _transfers = _transfers.filter((t) => t.id !== id);
+  saveCollection('transfers', _transfers);
+  _notifyTransfers();
+}
+
+// ============================================
+// STORE INFRASTRUCTURE: COUNT SESSIONS
+// ============================================
+
+let _countSessions: PhysicalCountSession[] = SEED_COUNT_SESSIONS;
+let _countSessionsInitialized = false;
+const { subscribe: subscribeCountSessions, notify: _notifyCountSessions } = createSubscribers();
+
+function ensureCountSessionsInitialized(): void {
+  if (typeof window === 'undefined' || _countSessionsInitialized) return;
+  _countSessions = loadCollection<PhysicalCountSession>('count_sessions', SEED_COUNT_SESSIONS);
+  _countSessionsInitialized = true;
+}
+
+export function getCountSessionsData(): PhysicalCountSession[] {
+  ensureCountSessionsInitialized();
+  return _countSessions;
+}
+
+export { subscribeCountSessions };
+
+// Backward-compatible export
+export const MOCK_COUNT_SESSIONS: PhysicalCountSession[] = new Proxy(SEED_COUNT_SESSIONS as PhysicalCountSession[], {
+  get(_target, prop, receiver) {
+    ensureCountSessionsInitialized();
+    return Reflect.get(_countSessions, prop, receiver);
+  },
+});
+
+// CRUD
+export function addCountSession(session: PhysicalCountSession): void {
+  ensureCountSessionsInitialized();
+  _countSessions = [..._countSessions, session];
+  saveCollection('count_sessions', _countSessions);
+  _notifyCountSessions();
+}
+
+export function updateCountSession(id: string, updates: Partial<PhysicalCountSession>): void {
+  ensureCountSessionsInitialized();
+  _countSessions = _countSessions.map((c) =>
+    c.id === id ? { ...c, ...updates } : c
+  );
+  saveCollection('count_sessions', _countSessions);
+  _notifyCountSessions();
+}
+
+export function removeCountSession(id: string): void {
+  ensureCountSessionsInitialized();
+  _countSessions = _countSessions.filter((c) => c.id !== id);
+  saveCollection('count_sessions', _countSessions);
+  _notifyCountSessions();
+}
+
+// ============================================
+// INVENTORY STATS
+// ============================================
+
+export function getInventoryStats(): InventoryStats {
+  ensureAdjustmentsInitialized();
+  const items = getInventoryItems();
+
+  const productsWithStock = items.filter((i) => i.available > i.minimumQty).length;
+  const belowMinimum = items.filter((i) => i.available > 0 && i.available <= i.minimumQty).length;
+  const outOfStock = items.filter((i) => i.available === 0).length;
+  const stagnant4Months = items.filter((i) =>
+    i.alerts.some((a) => a.type === 'stagnant_4m' || a.type === 'stagnant_6m')
+  ).length;
+  const stagnant6Months = items.filter((i) => i.alerts.some((a) => a.type === 'stagnant_6m')).length;
+  const totalValue = items.reduce((sum, i) => sum + i.stockValue, 0);
+  const arrivingProducts = items.filter((i) => i.arriving > 0).length;
+
+  return {
+    productsWithStock,
+    belowMinimum,
+    outOfStock,
+    stagnant4Months,
+    stagnant6Months,
+    totalValue,
+    pendingAdjustments: _adjustments.filter((a) => a.status === 'pendiente').length,
+    arrivingProducts,
+  };
+}
+
+// ============================================
 // HELPER FUNCTIONS FOR INVENTORY MODULE
 // ============================================
 
 export function getAdjustmentById(id: string): InventoryAdjustment | undefined {
-  return MOCK_ADJUSTMENTS.find((a) => a.id === id);
+  ensureAdjustmentsInitialized();
+  return _adjustments.find((a) => a.id === id);
 }
 
 export function getTransferById(id: string): InventoryTransfer | undefined {
-  return MOCK_TRANSFERS.find((t) => t.id === id);
+  ensureTransfersInitialized();
+  return _transfers.find((t) => t.id === id);
 }
 
 export function getCountSessionById(id: string): PhysicalCountSession | undefined {
-  return MOCK_COUNT_SESSIONS.find((c) => c.id === id);
+  ensureCountSessionsInitialized();
+  return _countSessions.find((c) => c.id === id);
 }
 
 export function getPendingAdjustments(): InventoryAdjustment[] {
-  return MOCK_ADJUSTMENTS.filter((a) => a.status === 'pendiente');
+  ensureAdjustmentsInitialized();
+  return _adjustments.filter((a) => a.status === 'pendiente');
 }
 
 export function getPendingTransfers(): InventoryTransfer[] {
-  return MOCK_TRANSFERS.filter((t) => t.status === 'enviada');
+  ensureTransfersInitialized();
+  return _transfers.filter((t) => t.status === 'enviada');
 }
 
 export function getActiveCountSessions(): PhysicalCountSession[] {
-  return MOCK_COUNT_SESSIONS.filter((c) => c.status === 'en_progreso');
+  ensureCountSessionsInitialized();
+  return _countSessions.filter((c) => c.status === 'en_progreso');
 }
 
 // Calculate box-to-bottle conversion for B2B to B2C transfers
@@ -746,24 +914,27 @@ export function validateStockOperation(
 
 // Generate next ID for adjustments, transfers, count sessions
 export function generateNextAdjustmentId(): string {
+  ensureAdjustmentsInitialized();
   const maxId = Math.max(
-    ...MOCK_ADJUSTMENTS.map((a) => parseInt(a.id.replace('AJ-', ''), 10)),
+    ..._adjustments.map((a) => parseInt(a.id.replace('AJ-', ''), 10)),
     0
   );
   return `AJ-${String(maxId + 1).padStart(5, '0')}`;
 }
 
 export function generateNextTransferId(): string {
+  ensureTransfersInitialized();
   const maxId = Math.max(
-    ...MOCK_TRANSFERS.map((t) => parseInt(t.id.replace('TR-', ''), 10)),
+    ..._transfers.map((t) => parseInt(t.id.replace('TR-', ''), 10)),
     0
   );
   return `TR-${String(maxId + 1).padStart(5, '0')}`;
 }
 
 export function generateNextCountSessionId(): string {
+  ensureCountSessionsInitialized();
   const maxId = Math.max(
-    ...MOCK_COUNT_SESSIONS.map((c) => parseInt(c.id.replace('CF-', ''), 10)),
+    ..._countSessions.map((c) => parseInt(c.id.replace('CF-', ''), 10)),
     0
   );
   return `CF-${String(maxId + 1).padStart(5, '0')}`;

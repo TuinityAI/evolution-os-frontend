@@ -19,6 +19,7 @@ import {
   Settings,
   Check,
   Keyboard,
+  Menu,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { CommandPalette } from '@/components/ui/command-palette';
@@ -31,7 +32,7 @@ import { ROLE_LABELS } from '@/lib/constants/roles';
 export function Header() {
   const router = useRouter();
   const { user, logout, loginAsUser } = useAuth();
-  const { sidebarWidth } = useSidebar();
+  const { sidebarWidth, isMobile, toggleMobileOpen } = useSidebar();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
@@ -73,11 +74,21 @@ export function Header() {
         initial={false}
         animate={{ left: sidebarWidth }}
         transition={{ duration: 0.2, ease: 'easeInOut' }}
-        className="fixed right-0 top-0 z-30 flex h-12 items-center justify-end px-4"
+        className="fixed right-0 top-0 z-30 flex h-12 items-center justify-between px-4 md:justify-end"
         style={{ backgroundColor: '#1a1a1a' }}
       >
-        {/* Center - Search Bar (opens Command Palette) */}
-        <div className="absolute left-1/2 -translate-x-1/2">
+        {/* Mobile hamburger button */}
+        {isMobile && (
+          <button
+            onClick={toggleMobileOpen}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#2a2a2a] hover:text-white"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
+
+        {/* Center - Search Bar (opens Command Palette) - hidden on mobile */}
+        <div className="absolute left-1/2 -translate-x-1/2 hidden md:block">
           <button
             onClick={() => setIsCommandPaletteOpen(true)}
             className="relative flex items-center"

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useStore } from '@/hooks/use-store';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -23,7 +24,9 @@ import {
   getCxCStats,
   getAgingData,
   getTopClientsByBalance,
-  MOCK_ACCOUNTS_RECEIVABLE,
+  getReceivablesData,
+  subscribeReceivables,
+  subscribePayments,
   formatCurrencyCxC,
 } from '@/lib/mock-data/accounts-receivable';
 import { cn } from '@/lib/utils/cn';
@@ -40,17 +43,20 @@ export default function CxCDashboardPage() {
   const canAccessCxC = checkPermission('canAccessCxC');
   const canRegisterPayments = checkPermission('canRegisterPayments');
 
+  const receivables = useStore(subscribeReceivables, getReceivablesData);
+  useStore(subscribePayments, () => null); // re-render on payment changes
+
   const stats = getCxCStats();
   const agingData = getAgingData();
   const topClients = getTopClientsByBalance(10);
 
   // Overdue invoices (morosidad alerts)
   const overdueInvoices = useMemo(() => {
-    return MOCK_ACCOUNTS_RECEIVABLE
+    return receivables
       .filter((ar) => ar.daysOverdue > 0 && ar.status !== 'anulado' && ar.status !== 'pagado')
       .sort((a, b) => b.daysOverdue - a.daysOverdue)
       .slice(0, 8);
-  }, []);
+  }, [receivables]);
 
   if (!canAccessCxC) {
     return (

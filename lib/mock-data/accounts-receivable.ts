@@ -1,6 +1,7 @@
 /**
  * Mock data for Accounts Receivable (Cuentas por Cobrar)
  * Based on Document 006 specifications
+ * Store-backed: data persists in localStorage
  */
 
 import type {
@@ -15,12 +16,13 @@ import type {
   CxCFilters,
   CxCDocumentStatus,
 } from '@/lib/types/accounts-receivable';
+import { loadCollection, saveCollection, createSubscribers } from '@/lib/store/local-store';
 
 // ============================================================================
-// MOCK ACCOUNTS RECEIVABLE (Pending Invoices)
+// SEED DATA — Accounts Receivable (Pending Invoices)
 // ============================================================================
 
-export const MOCK_ACCOUNTS_RECEIVABLE: AccountReceivable[] = [
+const SEED_ACCOUNTS_RECEIVABLE: AccountReceivable[] = [
   {
     id: 'CXC-00001',
     invoiceId: 'FAC-00015',
@@ -296,10 +298,10 @@ export const MOCK_ACCOUNTS_RECEIVABLE: AccountReceivable[] = [
 ];
 
 // ============================================================================
-// MOCK PAYMENTS
+// SEED DATA — Payments
 // ============================================================================
 
-export const MOCK_PAYMENTS: Payment[] = [
+const SEED_PAYMENTS: Payment[] = [
   {
     id: 'COB-00001',
     clientId: 'CLI-00509',
@@ -490,10 +492,10 @@ export const MOCK_PAYMENTS: Payment[] = [
 ];
 
 // ============================================================================
-// MOCK ANNULMENT REQUESTS
+// SEED DATA — Annulment Requests
 // ============================================================================
 
-export const MOCK_ANNULMENT_REQUESTS: AnnulmentRequest[] = [
+const SEED_ANNULMENT_REQUESTS: AnnulmentRequest[] = [
   {
     id: 'ANU-00001',
     documentType: 'factura',
@@ -566,10 +568,10 @@ export const MOCK_ANNULMENT_REQUESTS: AnnulmentRequest[] = [
 ];
 
 // ============================================================================
-// MOCK CXC TRANSACTIONS (Journal)
+// SEED DATA — CxC Transactions (Journal)
 // ============================================================================
 
-export const MOCK_CXC_TRANSACTIONS: CxCTransaction[] = [
+const SEED_CXC_TRANSACTIONS: CxCTransaction[] = [
   { id: 'TXN-001', date: '2026-02-20T10:00:00Z', type: 'factura', documentNumber: 'FAC-00020', description: 'Factura a BRAND DISTRIBUIDOR CURACAO', debit: 35000, credit: 0, balance: 35000, clientId: 'CLI-00123', clientName: 'BRAND DISTRIBUIDOR CURACAO' },
   { id: 'TXN-002', date: '2026-02-15T10:00:00Z', type: 'cobro', documentNumber: 'COB-00007', description: 'Cobro de MARIA DEL MAR PEREZ SV', debit: 0, credit: 12000, balance: 0, clientId: 'CLI-00007', clientName: 'MARIA DEL MAR PEREZ SV' },
   { id: 'TXN-003', date: '2026-02-15T10:00:00Z', type: 'factura', documentNumber: 'FAC-00018', description: 'Factura a FRANCISCO QUINTERO', debit: 11800, credit: 0, balance: 11800, clientId: 'CLI-00456', clientName: 'FRANCISCO QUINTERO' },
@@ -591,6 +593,210 @@ export const MOCK_CXC_TRANSACTIONS: CxCTransaction[] = [
 ];
 
 // ============================================================================
+// STORE INFRASTRUCTURE — Receivables
+// ============================================================================
+
+let _receivables: AccountReceivable[] = SEED_ACCOUNTS_RECEIVABLE;
+let _receivablesInit = false;
+const { subscribe: subscribeReceivables, notify: _notifyReceivables } = createSubscribers();
+
+function ensureReceivablesInit(): void {
+  if (typeof window === 'undefined' || _receivablesInit) return;
+  _receivables = loadCollection<AccountReceivable>('receivables', SEED_ACCOUNTS_RECEIVABLE);
+  _receivablesInit = true;
+}
+
+export function getReceivablesData(): AccountReceivable[] {
+  ensureReceivablesInit();
+  return _receivables;
+}
+
+export { subscribeReceivables };
+
+// Backward-compatible export
+export const MOCK_ACCOUNTS_RECEIVABLE: AccountReceivable[] = new Proxy(SEED_ACCOUNTS_RECEIVABLE as AccountReceivable[], {
+  get(_target, prop, receiver) {
+    ensureReceivablesInit();
+    return Reflect.get(_receivables, prop, receiver);
+  },
+});
+
+// CRUD
+export function addReceivable(item: AccountReceivable): void {
+  ensureReceivablesInit();
+  _receivables = [..._receivables, item];
+  saveCollection('receivables', _receivables);
+  _notifyReceivables();
+}
+
+export function updateReceivable(id: string, updates: Partial<AccountReceivable>): void {
+  ensureReceivablesInit();
+  _receivables = _receivables.map((r) => (r.id === id ? { ...r, ...updates } : r));
+  saveCollection('receivables', _receivables);
+  _notifyReceivables();
+}
+
+export function removeReceivable(id: string): void {
+  ensureReceivablesInit();
+  _receivables = _receivables.filter((r) => r.id !== id);
+  saveCollection('receivables', _receivables);
+  _notifyReceivables();
+}
+
+// ============================================================================
+// STORE INFRASTRUCTURE — Payments
+// ============================================================================
+
+let _payments: Payment[] = SEED_PAYMENTS;
+let _paymentsInit = false;
+const { subscribe: subscribePayments, notify: _notifyPayments } = createSubscribers();
+
+function ensurePaymentsInit(): void {
+  if (typeof window === 'undefined' || _paymentsInit) return;
+  _payments = loadCollection<Payment>('payments', SEED_PAYMENTS);
+  _paymentsInit = true;
+}
+
+export function getPaymentsData(): Payment[] {
+  ensurePaymentsInit();
+  return _payments;
+}
+
+export { subscribePayments };
+
+// Backward-compatible export
+export const MOCK_PAYMENTS: Payment[] = new Proxy(SEED_PAYMENTS as Payment[], {
+  get(_target, prop, receiver) {
+    ensurePaymentsInit();
+    return Reflect.get(_payments, prop, receiver);
+  },
+});
+
+// CRUD
+export function addPayment(item: Payment): void {
+  ensurePaymentsInit();
+  _payments = [..._payments, item];
+  saveCollection('payments', _payments);
+  _notifyPayments();
+}
+
+export function updatePayment(id: string, updates: Partial<Payment>): void {
+  ensurePaymentsInit();
+  _payments = _payments.map((p) => (p.id === id ? { ...p, ...updates } : p));
+  saveCollection('payments', _payments);
+  _notifyPayments();
+}
+
+export function removePayment(id: string): void {
+  ensurePaymentsInit();
+  _payments = _payments.filter((p) => p.id !== id);
+  saveCollection('payments', _payments);
+  _notifyPayments();
+}
+
+// ============================================================================
+// STORE INFRASTRUCTURE — Annulment Requests
+// ============================================================================
+
+let _annulmentRequests: AnnulmentRequest[] = SEED_ANNULMENT_REQUESTS;
+let _annulmentRequestsInit = false;
+const { subscribe: subscribeAnnulmentRequests, notify: _notifyAnnulmentRequests } = createSubscribers();
+
+function ensureAnnulmentRequestsInit(): void {
+  if (typeof window === 'undefined' || _annulmentRequestsInit) return;
+  _annulmentRequests = loadCollection<AnnulmentRequest>('annulment_requests', SEED_ANNULMENT_REQUESTS);
+  _annulmentRequestsInit = true;
+}
+
+export function getAnnulmentRequestsData(): AnnulmentRequest[] {
+  ensureAnnulmentRequestsInit();
+  return _annulmentRequests;
+}
+
+export { subscribeAnnulmentRequests };
+
+// Backward-compatible export
+export const MOCK_ANNULMENT_REQUESTS: AnnulmentRequest[] = new Proxy(SEED_ANNULMENT_REQUESTS as AnnulmentRequest[], {
+  get(_target, prop, receiver) {
+    ensureAnnulmentRequestsInit();
+    return Reflect.get(_annulmentRequests, prop, receiver);
+  },
+});
+
+// CRUD
+export function addAnnulmentRequest(item: AnnulmentRequest): void {
+  ensureAnnulmentRequestsInit();
+  _annulmentRequests = [..._annulmentRequests, item];
+  saveCollection('annulment_requests', _annulmentRequests);
+  _notifyAnnulmentRequests();
+}
+
+export function updateAnnulmentRequest(id: string, updates: Partial<AnnulmentRequest>): void {
+  ensureAnnulmentRequestsInit();
+  _annulmentRequests = _annulmentRequests.map((r) => (r.id === id ? { ...r, ...updates } : r));
+  saveCollection('annulment_requests', _annulmentRequests);
+  _notifyAnnulmentRequests();
+}
+
+export function removeAnnulmentRequest(id: string): void {
+  ensureAnnulmentRequestsInit();
+  _annulmentRequests = _annulmentRequests.filter((r) => r.id !== id);
+  saveCollection('annulment_requests', _annulmentRequests);
+  _notifyAnnulmentRequests();
+}
+
+// ============================================================================
+// STORE INFRASTRUCTURE — CxC Transactions
+// ============================================================================
+
+let _cxcTransactions: CxCTransaction[] = SEED_CXC_TRANSACTIONS;
+let _cxcTransactionsInit = false;
+const { subscribe: subscribeCxCTransactions, notify: _notifyCxCTransactions } = createSubscribers();
+
+function ensureCxCTransactionsInit(): void {
+  if (typeof window === 'undefined' || _cxcTransactionsInit) return;
+  _cxcTransactions = loadCollection<CxCTransaction>('cxc_transactions', SEED_CXC_TRANSACTIONS);
+  _cxcTransactionsInit = true;
+}
+
+export function getCxCTransactionsData(): CxCTransaction[] {
+  ensureCxCTransactionsInit();
+  return _cxcTransactions;
+}
+
+export { subscribeCxCTransactions };
+
+// Backward-compatible export
+export const MOCK_CXC_TRANSACTIONS: CxCTransaction[] = new Proxy(SEED_CXC_TRANSACTIONS as CxCTransaction[], {
+  get(_target, prop, receiver) {
+    ensureCxCTransactionsInit();
+    return Reflect.get(_cxcTransactions, prop, receiver);
+  },
+});
+
+// CRUD
+export function addCxCTransaction(item: CxCTransaction): void {
+  ensureCxCTransactionsInit();
+  _cxcTransactions = [..._cxcTransactions, item];
+  saveCollection('cxc_transactions', _cxcTransactions);
+  _notifyCxCTransactions();
+}
+
+export function updateCxCTransaction(id: string, updates: Partial<CxCTransaction>): void {
+  ensureCxCTransactionsInit();
+  _cxcTransactions = _cxcTransactions.map((t) => (t.id === id ? { ...t, ...updates } : t));
+  saveCollection('cxc_transactions', _cxcTransactions);
+  _notifyCxCTransactions();
+}
+
+export function removeCxCTransaction(id: string): void {
+  ensureCxCTransactionsInit();
+  _cxcTransactions = _cxcTransactions.filter((t) => t.id !== id);
+  saveCollection('cxc_transactions', _cxcTransactions);
+  _notifyCxCTransactions();
+}
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -598,7 +804,9 @@ export const MOCK_CXC_TRANSACTIONS: CxCTransaction[] = [
  * Get CxC dashboard stats
  */
 export function getCxCStats(): CxCStats {
-  const active = MOCK_ACCOUNTS_RECEIVABLE.filter(ar => ar.status !== 'anulado' && ar.status !== 'pagado');
+  ensureReceivablesInit();
+  ensurePaymentsInit();
+  const active = _receivables.filter(ar => ar.status !== 'anulado' && ar.status !== 'pagado');
   const totalReceivable = active.reduce((sum, ar) => sum + ar.balance, 0);
   const currentAmount = active.filter(ar => ar.agingBucket === 'corriente').reduce((sum, ar) => sum + ar.balance, 0);
   const overdue1_30 = active.filter(ar => ar.agingBucket === '1_30').reduce((sum, ar) => sum + ar.balance, 0);
@@ -606,7 +814,7 @@ export function getCxCStats(): CxCStats {
   const overdue61_90 = active.filter(ar => ar.agingBucket === '61_90').reduce((sum, ar) => sum + ar.balance, 0);
   const overdue90Plus = active.filter(ar => ar.agingBucket === '90_plus').reduce((sum, ar) => sum + ar.balance, 0);
 
-  const collectionsThisMonth = MOCK_PAYMENTS
+  const collectionsThisMonth = _payments
     .filter(p => p.date >= '2026-02-01T00:00:00Z')
     .reduce((sum, p) => sum + p.amount, 0);
 
@@ -631,7 +839,8 @@ export function getCxCStats(): CxCStats {
  * Get aging buckets data
  */
 export function getAgingData(): AgingBucket[] {
-  const active = MOCK_ACCOUNTS_RECEIVABLE.filter(ar => ar.status !== 'anulado' && ar.status !== 'pagado');
+  ensureReceivablesInit();
+  const active = _receivables.filter(ar => ar.status !== 'anulado' && ar.status !== 'pagado');
   const total = active.reduce((sum, ar) => sum + ar.balance, 0);
 
   const buckets: AgingBucketKey[] = ['corriente', '1_30', '31_60', '61_90', '90_plus'];
@@ -668,7 +877,8 @@ export function getAgingData(): AgingBucket[] {
  * Get accounts receivable with filters
  */
 export function getAccountsReceivable(filters?: CxCFilters): AccountReceivable[] {
-  let items = [...MOCK_ACCOUNTS_RECEIVABLE];
+  ensureReceivablesInit();
+  let items = [..._receivables];
 
   if (!filters) return items;
 
@@ -700,7 +910,8 @@ export function getAccountsReceivable(filters?: CxCFilters): AccountReceivable[]
  * Get pending invoices for a client
  */
 export function getPendingInvoicesForClient(clientId: string): AccountReceivable[] {
-  return MOCK_ACCOUNTS_RECEIVABLE.filter(
+  ensureReceivablesInit();
+  return _receivables.filter(
     ar => ar.clientId === clientId && (ar.status === 'pendiente' || ar.status === 'parcial' || ar.status === 'vencido')
   );
 }
@@ -709,17 +920,19 @@ export function getPendingInvoicesForClient(clientId: string): AccountReceivable
  * Get payments with optional client filter
  */
 export function getPayments(clientId?: string): Payment[] {
+  ensurePaymentsInit();
   if (clientId) {
-    return MOCK_PAYMENTS.filter(p => p.clientId === clientId);
+    return _payments.filter(p => p.clientId === clientId);
   }
-  return [...MOCK_PAYMENTS];
+  return [..._payments];
 }
 
 /**
  * Get CxC transactions with filters
  */
 export function getCxCTransactions(filters?: CxCFilters): CxCTransaction[] {
-  let txns = [...MOCK_CXC_TRANSACTIONS];
+  ensureCxCTransactionsInit();
+  let txns = [..._cxcTransactions];
 
   if (!filters) return txns;
 
@@ -751,9 +964,10 @@ export function getCxCTransactions(filters?: CxCFilters): CxCTransaction[] {
  * Get top clients by outstanding balance
  */
 export function getTopClientsByBalance(limit: number = 10): { clientId: string; clientName: string; balance: number; invoiceCount: number }[] {
+  ensureReceivablesInit();
   const clientMap = new Map<string, { clientName: string; balance: number; invoiceCount: number }>();
 
-  MOCK_ACCOUNTS_RECEIVABLE
+  _receivables
     .filter(ar => ar.status !== 'anulado' && ar.status !== 'pagado')
     .forEach(ar => {
       const existing = clientMap.get(ar.clientId);

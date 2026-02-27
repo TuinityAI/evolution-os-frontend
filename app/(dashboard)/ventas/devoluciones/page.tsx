@@ -1,22 +1,18 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useStore } from '@/hooks/use-store';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
   Textarea,
   Select,
   SelectItem,
-  Checkbox,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
+import { Switch } from '@/components/ui/switch';
 import {
   RotateCcw,
   Package,
@@ -34,7 +30,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  MOCK_SALES_ORDERS,
+  getSalesOrdersData,
+  subscribeSalesOrders,
   formatDate,
   formatCurrency,
 } from '@/lib/mock-data/sales-orders';
@@ -122,6 +119,7 @@ const MOCK_RETURNS: Return[] = [
 
 export default function DevolucionesPage() {
   const router = useRouter();
+  const salesOrders = useStore(subscribeSalesOrders, getSalesOrdersData);
   const { checkPermission } = useAuth();
   const canProcessReturns = checkPermission('canProcessReturns');
 
@@ -132,13 +130,13 @@ export default function DevolucionesPage() {
   const [returnLines, setReturnLines] = useState<ReturnLine[]>([]);
   const [returnNotes, setReturnNotes] = useState('');
 
-  const { isOpen: isNewReturnOpen, onOpen: onNewReturnOpen, onClose: onNewReturnClose } = useDisclosure();
-  const { isOpen: isViewReturnOpen, onOpen: onViewReturnOpen, onClose: onViewReturnClose } = useDisclosure();
+  const [isNewReturnOpen, setIsNewReturnOpen] = useState(false);
+  const [isViewReturnOpen, setIsViewReturnOpen] = useState(false);
 
   // Get invoiced orders (can create returns from)
   const invoicedOrders = useMemo(() => {
-    return MOCK_SALES_ORDERS.filter((order) => order.status === 'facturado');
-  }, []);
+    return salesOrders.filter((order) => order.status === 'facturado');
+  }, [salesOrders]);
 
   // Filter returns
   const filteredReturns = useMemo(() => {
@@ -198,7 +196,7 @@ export default function DevolucionesPage() {
     toast.success('Devolución creada', {
       description: `Se ha registrado la devolución para la factura ${selectedInvoice.orderNumber}.`,
     });
-    onNewReturnClose();
+    setIsNewReturnOpen(false);
     setSelectedInvoice(null);
     setReturnLines([]);
     setReturnNotes('');
@@ -206,7 +204,7 @@ export default function DevolucionesPage() {
 
   const handleViewReturn = (ret: Return) => {
     setSelectedReturn(ret);
-    onViewReturnOpen();
+    setIsViewReturnOpen(true);
   };
 
   const handleProcessReturn = () => {
@@ -215,7 +213,7 @@ export default function DevolucionesPage() {
     toast.success('Devolución procesada', {
       description: `La devolución ${selectedReturn.returnNumber} ha sido procesada.`,
     });
-    onViewReturnClose();
+    setIsViewReturnOpen(false);
     setSelectedReturn(null);
   };
 
@@ -255,7 +253,7 @@ export default function DevolucionesPage() {
         <Button
           color="primary"
           startContent={<Plus className="h-4 w-4" />}
-          onPress={onNewReturnOpen}
+          onPress={() => setIsNewReturnOpen(true)}
         >
           Nueva Devolución
         </Button>
@@ -331,7 +329,8 @@ export default function DevolucionesPage() {
           selectedKeys={[statusFilter]}
           onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as string)}
           variant="bordered"
-          label="Estado"
+          placeholder="Estado"
+          aria-label="Filtrar por estado"
         >
           <SelectItem key="all">Todos</SelectItem>
           <SelectItem key="pendiente">Pendientes</SelectItem>
@@ -410,9 +409,9 @@ export default function DevolucionesPage() {
       )}
 
       {/* New Return Modal */}
-      <Modal isOpen={isNewReturnOpen} onClose={onNewReturnClose} size="3xl">
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3 border-b border-border pb-4">
+      <CustomModal isOpen={isNewReturnOpen} onClose={() => setIsNewReturnOpen(false)} size="3xl" scrollable>
+        <CustomModalHeader onClose={() => setIsNewReturnOpen(false)}>
+          <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
               <RotateCcw className="h-5 w-5 text-amber-500" />
             </div>
@@ -420,87 +419,88 @@ export default function DevolucionesPage() {
               <h2 className="text-lg font-semibold text-foreground">Nueva Devolución</h2>
               <p className="text-sm text-muted-foreground">Crear devolución desde factura</p>
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            {!selectedInvoice ? (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">Selecciona la factura para crear la devolución:</p>
-                <div className="max-h-80 space-y-2 overflow-y-auto">
-                  {invoicedOrders.map((order) => (
-                    <button
-                      key={order.id}
-                      onClick={() => handleSelectInvoice(order)}
-                      className="w-full rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-brand-500/50 hover:bg-muted/30"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="font-mono font-semibold text-foreground">{order.orderNumber}</span>
-                          <p className="mt-1 text-sm text-muted-foreground">{order.customerName}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-mono font-semibold text-foreground">{formatCurrency(order.total)}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(order.createdAt)}</p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Selected Invoice */}
-                <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Factura seleccionada</p>
-                    <p className="font-mono font-semibold text-foreground">{selectedInvoice.orderNumber}</p>
-                    <p className="text-sm text-muted-foreground">{selectedInvoice.customerName}</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="light"
-                    onPress={() => setSelectedInvoice(null)}
-                    startContent={<X className="h-4 w-4" />}
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          {!selectedInvoice ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Selecciona la factura para crear la devolución:</p>
+              <div className="max-h-80 space-y-2 overflow-y-auto">
+                {invoicedOrders.map((order) => (
+                  <button
+                    key={order.id}
+                    onClick={() => handleSelectInvoice(order)}
+                    className="w-full rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-brand-500/50 hover:bg-muted/30"
                   >
-                    Cambiar
-                  </Button>
-                </div>
-
-                {/* Select Lines */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-mono font-semibold text-foreground">{order.orderNumber}</span>
+                        <p className="mt-1 text-sm text-muted-foreground">{order.customerName}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono font-semibold text-foreground">{formatCurrency(order.total)}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(order.createdAt)}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Selected Invoice */}
+              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
                 <div>
-                  <h4 className="mb-3 text-sm font-medium text-foreground">Seleccionar productos a devolver:</h4>
-                  <div className="space-y-2">
-                    {selectedInvoice.lines.map((line) => {
-                      const isSelected = returnLines.some((l) => l.lineId === line.id);
-                      const returnLine = returnLines.find((l) => l.lineId === line.id);
+                  <p className="text-sm text-muted-foreground">Factura seleccionada</p>
+                  <p className="font-mono font-semibold text-foreground">{selectedInvoice.orderNumber}</p>
+                  <p className="text-sm text-muted-foreground">{selectedInvoice.customerName}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="light"
+                  onPress={() => setSelectedInvoice(null)}
+                  startContent={<X className="h-4 w-4" />}
+                >
+                  Cambiar
+                </Button>
+              </div>
 
-                      return (
-                        <div
-                          key={line.id}
-                          className={cn(
-                            'rounded-lg border p-4 transition-colors',
-                            isSelected ? 'border-brand-500/50 bg-brand-500/5' : 'border-border bg-card'
-                          )}
-                        >
-                          <div className="flex items-start gap-3">
-                            <Checkbox
-                              isSelected={isSelected}
-                              onValueChange={() => toggleLineForReturn(line)}
-                              color="primary"
-                            />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-foreground">{line.productDescription}</p>
-                              <p className="text-xs text-muted-foreground">{line.productReference}</p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                Cantidad original: <span className="font-mono font-medium">{line.quantity}</span>
-                              </p>
-                            </div>
+              {/* Select Lines */}
+              <div>
+                <h4 className="mb-3 text-sm font-medium text-foreground">Seleccionar productos a devolver:</h4>
+                <div className="space-y-2">
+                  {selectedInvoice.lines.map((line) => {
+                    const isSelected = returnLines.some((l) => l.lineId === line.id);
+                    const returnLine = returnLines.find((l) => l.lineId === line.id);
+
+                    return (
+                      <div
+                        key={line.id}
+                        className={cn(
+                          'rounded-lg border p-4 transition-colors',
+                          isSelected ? 'border-brand-500/50 bg-brand-500/5' : 'border-border bg-card'
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Switch
+                            checked={isSelected}
+                            onCheckedChange={() => toggleLineForReturn(line)}
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">{line.productDescription}</p>
+                            <p className="text-xs text-muted-foreground">{line.productReference}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Cantidad original: <span className="font-mono font-medium">{line.quantity}</span>
+                            </p>
                           </div>
+                        </div>
 
-                          {isSelected && returnLine && (
-                            <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4">
+                        {isSelected && returnLine && (
+                          <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4">
+                            <div className="space-y-1.5">
+                              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Cantidad a devolver</label>
                               <Input
                                 type="number"
-                                label="Cantidad a devolver"
                                 min={1}
                                 max={line.quantity}
                                 value={String(returnLine.returnQuantity)}
@@ -510,76 +510,81 @@ export default function DevolucionesPage() {
                                 variant="bordered"
                                 size="sm"
                               />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Motivo</label>
                               <Select
-                                label="Motivo"
                                 selectedKeys={[returnLine.reason]}
                                 onSelectionChange={(keys) =>
                                   updateReturnLine(line.id, 'reason', Array.from(keys)[0] as string)
                                 }
                                 variant="bordered"
                                 size="sm"
+                                aria-label="Motivo"
                               >
                                 {RETURN_REASONS.map((reason) => (
                                   <SelectItem key={reason.key}>{reason.label}</SelectItem>
                                 ))}
                               </Select>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
+              </div>
 
-                {/* Notes */}
+              {/* Notes */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Notas adicionales</label>
                 <Textarea
-                  label="Notas adicionales"
                   placeholder="Descripción detallada del motivo de la devolución..."
                   value={returnNotes}
                   onChange={(e) => setReturnNotes(e.target.value)}
                   variant="bordered"
                   minRows={2}
                 />
+              </div>
 
-                {/* Warning */}
-                {returnLines.length > 0 && (
-                  <div className="rounded-lg border border-amber-500/50 bg-amber-500/5 p-4">
-                    <div className="flex items-center gap-3">
-                      <AlertTriangle className="h-5 w-5 text-amber-500" />
-                      <div>
-                        <p className="text-sm font-medium text-amber-500">
-                          Se devolverán {returnLines.reduce((sum, l) => sum + l.returnQuantity, 0)} unidades
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Esta acción generará una nota de crédito y ajustará el inventario.
-                        </p>
-                      </div>
+              {/* Warning */}
+              {returnLines.length > 0 && (
+                <div className="rounded-lg border border-amber-500/50 bg-amber-500/5 p-4">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-500">
+                        Se devolverán {returnLines.reduce((sum, l) => sum + l.returnQuantity, 0)} unidades
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Esta acción generará una nota de crédito y ajustará el inventario.
+                      </p>
                     </div>
                   </div>
-                )}
-              </div>
-            )}
-          </ModalBody>
-          <ModalFooter className="border-t border-border pt-4">
-            <Button variant="light" onPress={onNewReturnClose}>
-              Cancelar
-            </Button>
-            <Button
-              color="warning"
-              onPress={handleCreateReturn}
-              isDisabled={!selectedInvoice || returnLines.length === 0}
-              startContent={<RotateCcw className="h-4 w-4" />}
-            >
-              Crear Devolución
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+                </div>
+              )}
+            </div>
+          )}
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsNewReturnOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            color="warning"
+            onPress={handleCreateReturn}
+            isDisabled={!selectedInvoice || returnLines.length === 0}
+            startContent={<RotateCcw className="h-4 w-4" />}
+          >
+            Crear Devolución
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
 
       {/* View Return Modal */}
-      <Modal isOpen={isViewReturnOpen} onClose={onViewReturnClose} size="lg">
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3 border-b border-border pb-4">
+      <CustomModal isOpen={isViewReturnOpen} onClose={() => setIsViewReturnOpen(false)} size="lg" scrollable>
+        <CustomModalHeader onClose={() => setIsViewReturnOpen(false)}>
+          <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
               <FileText className="h-5 w-5 text-amber-500" />
             </div>
@@ -587,75 +592,75 @@ export default function DevolucionesPage() {
               <h2 className="text-lg font-semibold text-foreground">{selectedReturn?.returnNumber}</h2>
               <p className="text-sm text-muted-foreground">Factura: {selectedReturn?.invoiceNumber}</p>
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-4">
-              {/* Info */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Cliente:</span>
-                  <p className="font-medium text-foreground">{selectedReturn?.customerName}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Fecha:</span>
-                  <p className="font-medium text-foreground">{selectedReturn?.createdAt && formatDate(selectedReturn.createdAt)}</p>
-                </div>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <div className="space-y-4">
+            {/* Info */}
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Cliente:</span>
+                <p className="font-medium text-foreground">{selectedReturn?.customerName}</p>
               </div>
-
-              {/* Lines */}
-              <div className="rounded-lg border border-border p-4">
-                <h4 className="mb-3 text-sm font-medium text-foreground">Productos devueltos:</h4>
-                <div className="space-y-3">
-                  {selectedReturn?.lines.map((line) => (
-                    <div key={line.lineId} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{line.productDescription}</p>
-                        <p className="text-xs text-muted-foreground">{line.productReference}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Motivo: {RETURN_REASONS.find((r) => r.key === line.reason)?.label}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-mono font-bold text-red-500">-{line.returnQuantity}</p>
-                        <p className="text-xs text-muted-foreground">de {line.originalQuantity}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Notes */}
-              {selectedReturn?.notes && (
-                <div className="rounded-lg bg-muted/30 p-4">
-                  <p className="text-sm text-muted-foreground">{selectedReturn.notes}</p>
-                </div>
-              )}
-
-              {/* Total */}
-              <div className="flex justify-between rounded-lg border border-border bg-muted/30 p-4">
-                <span className="font-medium text-foreground">Valor de devolución:</span>
-                <span className="font-mono text-lg font-bold text-red-500">
-                  -{formatCurrency(selectedReturn?.total || 0)}
-                </span>
+              <div>
+                <span className="text-muted-foreground">Fecha:</span>
+                <p className="font-medium text-foreground">{selectedReturn?.createdAt && formatDate(selectedReturn.createdAt)}</p>
               </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-border pt-4">
-            <Button variant="light" onPress={onViewReturnClose}>
-              Cerrar
-            </Button>
-            {selectedReturn?.status === 'pendiente' && (
-              <Button
-                color="success"
-                onPress={handleProcessReturn}
-                startContent={<Check className="h-4 w-4" />}
-              >
-                Procesar Devolución
-              </Button>
+
+            {/* Lines */}
+            <div className="rounded-lg border border-border p-4">
+              <h4 className="mb-3 text-sm font-medium text-foreground">Productos devueltos:</h4>
+              <div className="space-y-3">
+                {selectedReturn?.lines.map((line) => (
+                  <div key={line.lineId} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{line.productDescription}</p>
+                      <p className="text-xs text-muted-foreground">{line.productReference}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Motivo: {RETURN_REASONS.find((r) => r.key === line.reason)?.label}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono font-bold text-red-500">-{line.returnQuantity}</p>
+                      <p className="text-xs text-muted-foreground">de {line.originalQuantity}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes */}
+            {selectedReturn?.notes && (
+              <div className="rounded-lg bg-muted/30 p-4">
+                <p className="text-sm text-muted-foreground">{selectedReturn.notes}</p>
+              </div>
             )}
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+
+            {/* Total */}
+            <div className="flex justify-between rounded-lg border border-border bg-muted/30 p-4">
+              <span className="font-medium text-foreground">Valor de devolución:</span>
+              <span className="font-mono text-lg font-bold text-red-500">
+                -{formatCurrency(selectedReturn?.total || 0)}
+              </span>
+            </div>
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsViewReturnOpen(false)}>
+            Cerrar
+          </Button>
+          {selectedReturn?.status === 'pendiente' && (
+            <Button
+              color="success"
+              onPress={handleProcessReturn}
+              startContent={<Check className="h-4 w-4" />}
+            >
+              Procesar Devolución
+            </Button>
+          )}
+        </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

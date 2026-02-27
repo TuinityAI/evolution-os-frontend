@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Input, Select, SelectItem, Switch } from '@heroui/react';
+import { Button, Input, Select, SelectItem } from '@heroui/react';
+import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Package, ImagePlus } from 'lucide-react';
 import { toast } from 'sonner';
-import { PRODUCT_GROUPS } from '@/lib/mock-data/products';
+import { PRODUCT_GROUPS, addProduct } from '@/lib/mock-data/products';
+import type { Product } from '@/lib/mock-data/products';
 
 const MOCK_SUPPLIERS = [
   { id: '1', name: 'GLOBAL BRANDS, S.A.' },
@@ -47,6 +49,39 @@ export default function NuevoProductoPage() {
       });
       return;
     }
+
+    const supplierName = MOCK_SUPPLIERS.find(s => s.id === formData.supplier)?.name || formData.supplier;
+    const newId = `EVL-${String(Date.now()).slice(-5)}`;
+
+    const newProduct: Product = {
+      id: newId,
+      reference: newId,
+      description: formData.description,
+      brand: formData.brand,
+      group: formData.group,
+      subGroup: formData.group,
+      supplier: supplierName,
+      country: '',
+      barcode: formData.barcode,
+      tariffCode: formData.tariffCode,
+      unit: formData.unit,
+      unitsPerCase: 12,
+      minimumQty: parseInt(formData.minimumQty) || 10,
+      stock: { existence: 0, arriving: 0, reserved: 0, available: 0 },
+      prices: {
+        A: parseFloat(formData.priceA) || 0,
+        B: parseFloat(formData.priceB) || 0,
+        C: parseFloat(formData.priceC) || 0,
+        D: parseFloat(formData.priceD) || 0,
+        E: parseFloat(formData.priceE) || 0,
+      },
+      costFOB: 0,
+      costCIF: 0,
+      costAvgWeighted: 0,
+      status: formData.status ? 'active' : 'inactive',
+    };
+
+    addProduct(newProduct);
 
     toast.success('Producto creado', {
       description: `${formData.description} ha sido agregado al catálogo`,
@@ -310,14 +345,13 @@ export default function NuevoProductoPage() {
                 <p className="text-sm font-medium text-gray-900 dark:text-white">Estado del producto</p>
                 <p className="text-xs text-gray-500 dark:text-[#888888]">Productos inactivos no aparecen en ventas</p>
               </div>
-              <Switch
-                isSelected={formData.status}
-                onValueChange={(value) => handleFormChange('status', value)}
-                color="success"
-                size="sm"
-              >
-                {formData.status ? 'Activo' : 'Inactivo'}
-              </Switch>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={formData.status}
+                  onCheckedChange={(value) => handleFormChange('status', value)}
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">{formData.status ? 'Activo' : 'Inactivo'}</span>
+              </div>
             </div>
           </div>
         </div>

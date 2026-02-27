@@ -4,18 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
   Select,
   SelectItem,
-  Switch,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
+import { Switch } from '@/components/ui/switch';
 import {
   ArrowLeft,
   Building2,
@@ -33,7 +28,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_COMPANY_INFO, MOCK_BRANCHES } from '@/lib/mock-data/configuration';
+import { useStore } from '@/hooks/use-store';
+import {
+  getCompanyInfoData,
+  subscribeCompanyInfo,
+  updateCompanyInfo,
+  getBranchesData,
+  subscribeBranches,
+  addBranch,
+  updateBranch,
+} from '@/lib/mock-data/configuration';
 import type { Branch } from '@/lib/types/configuration';
 
 const BRANCH_TYPES: Record<Branch['type'], string> = {
@@ -45,10 +49,14 @@ const BRANCH_TYPES: Record<Branch['type'], string> = {
 
 export default function EmpresaPage() {
   const router = useRouter();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const companyInfo = useStore(subscribeCompanyInfo, getCompanyInfoData);
+  const branches = useStore(subscribeBranches, getBranchesData);
+
+  const [isOpen, setIsOpen] = useState(false);
 
   // Company form state
-  const [company, setCompany] = useState({ ...MOCK_COMPANY_INFO });
+  const [company, setCompany] = useState({ ...companyInfo });
 
   // Branch modal state
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
@@ -64,6 +72,7 @@ export default function EmpresaPage() {
   });
 
   const handleSave = () => {
+    updateCompanyInfo(company);
     toast.success('Empresa actualizada', {
       description: 'Los datos de la empresa se han guardado correctamente.',
     });
@@ -95,16 +104,22 @@ export default function EmpresaPage() {
         manager: '',
       });
     }
-    onOpen();
+    setIsOpen(true);
   };
 
   const handleSaveBranch = () => {
+    if (editingBranch) {
+      updateBranch(editingBranch.id, { ...branchForm });
+    } else {
+      const newId = `BR-${String(branches.length + 1).padStart(3, '0')}`;
+      addBranch({ id: newId, ...branchForm, isActive: true, isHeadquarters: false });
+    }
     toast.success(editingBranch ? 'Sucursal actualizada' : 'Sucursal creada', {
       description: editingBranch
         ? `La sucursal "${branchForm.name}" se ha actualizado.`
         : `La sucursal "${branchForm.name}" se ha creado exitosamente.`,
     });
-    onClose();
+    setIsOpen(false);
   };
 
   return (
@@ -312,7 +327,7 @@ export default function EmpresaPage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500">Próximamente</span>
-              <Switch isSelected={company.electronicInvoicing} isDisabled color="primary" />
+              <Switch checked={company.electronicInvoicing} disabled />
             </div>
           </div>
         </div>
@@ -334,7 +349,7 @@ export default function EmpresaPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sucursales</h2>
-            <p className="text-sm text-gray-500 dark:text-[#888888]">{MOCK_BRANCHES.length} sucursales registradas</p>
+            <p className="text-sm text-gray-500 dark:text-[#888888]">{branches.length} sucursales registradas</p>
           </div>
           <button
             onClick={() => handleOpenBranchModal()}
@@ -360,7 +375,7 @@ export default function EmpresaPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
-                {MOCK_BRANCHES.map((branch, index) => (
+                {branches.map((branch, index) => (
                   <motion.tr
                     key={branch.id}
                     initial={{ opacity: 0 }}
@@ -418,89 +433,65 @@ export default function EmpresaPage() {
       </div>
 
       {/* Branch Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
-                <Building2 className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {editingBranch ? 'Editar Sucursal' : 'Nueva Sucursal'}
-                </h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">
-                  {editingBranch ? `Editando ${editingBranch.name}` : 'Registrar una nueva sucursal'}
-                </p>
-              </div>
+      <CustomModal isOpen={isOpen} onClose={() => setIsOpen(false)} size="lg" scrollable>
+        <CustomModalHeader onClose={() => setIsOpen(false)}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+              <Building2 className="h-5 w-5 text-blue-600" />
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                label="Nombre"
-                placeholder="Ej: Bodega Norte"
-                value={branchForm.name}
-                onChange={(e) => setBranchForm({ ...branchForm, name: e.target.value })}
-                variant="bordered"
-              />
-              <Input
-                label="Código"
-                placeholder="Ej: BOD-N"
-                value={branchForm.code}
-                onChange={(e) => setBranchForm({ ...branchForm, code: e.target.value })}
-                variant="bordered"
-              />
-              <Select
-                label="Tipo"
-                selectedKeys={[branchForm.type]}
-                onChange={(e) => setBranchForm({ ...branchForm, type: e.target.value as Branch['type'] })}
-                variant="bordered"
-              >
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {editingBranch ? 'Editar Sucursal' : 'Nueva Sucursal'}
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-[#888888]">
+                {editingBranch ? `Editando ${editingBranch.name}` : 'Registrar una nueva sucursal'}
+              </p>
+            </div>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Nombre</label>
+              <Input placeholder="Ej: Bodega Norte" value={branchForm.name} onChange={(e) => setBranchForm({ ...branchForm, name: e.target.value })} variant="bordered" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Código</label>
+              <Input placeholder="Ej: BOD-N" value={branchForm.code} onChange={(e) => setBranchForm({ ...branchForm, code: e.target.value })} variant="bordered" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</label>
+              <Select selectedKeys={[branchForm.type]} onChange={(e) => setBranchForm({ ...branchForm, type: e.target.value as Branch['type'] })} variant="bordered" aria-label="Tipo">
                 {Object.entries(BRANCH_TYPES).map(([value, label]) => (
                   <SelectItem key={value}>{label}</SelectItem>
                 ))}
               </Select>
-              <Input
-                label="Ciudad"
-                placeholder="Ej: Ciudad de Panamá"
-                value={branchForm.city}
-                onChange={(e) => setBranchForm({ ...branchForm, city: e.target.value })}
-                variant="bordered"
-              />
-              <div className="sm:col-span-2">
-                <Input
-                  label="Dirección"
-                  placeholder="Dirección completa"
-                  value={branchForm.address}
-                  onChange={(e) => setBranchForm({ ...branchForm, address: e.target.value })}
-                  variant="bordered"
-                />
-              </div>
-              <Input
-                label="Teléfono"
-                placeholder="+507 000-0000"
-                value={branchForm.phone}
-                onChange={(e) => setBranchForm({ ...branchForm, phone: e.target.value })}
-                variant="bordered"
-              />
-              <Input
-                label="Encargado"
-                placeholder="Nombre del encargado"
-                value={branchForm.manager}
-                onChange={(e) => setBranchForm({ ...branchForm, manager: e.target.value })}
-                variant="bordered"
-              />
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onClose}>Cancelar</Button>
-            <Button color="primary" onPress={handleSaveBranch} className="bg-brand-600">
-              {editingBranch ? 'Guardar Cambios' : 'Crear Sucursal'}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Ciudad</label>
+              <Input placeholder="Ej: Ciudad de Panamá" value={branchForm.city} onChange={(e) => setBranchForm({ ...branchForm, city: e.target.value })} variant="bordered" />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Dirección</label>
+              <Input placeholder="Dirección completa" value={branchForm.address} onChange={(e) => setBranchForm({ ...branchForm, address: e.target.value })} variant="bordered" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Teléfono</label>
+              <Input placeholder="+507 000-0000" value={branchForm.phone} onChange={(e) => setBranchForm({ ...branchForm, phone: e.target.value })} variant="bordered" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Encargado</label>
+              <Input placeholder="Nombre del encargado" value={branchForm.manager} onChange={(e) => setBranchForm({ ...branchForm, manager: e.target.value })} variant="bordered" />
+            </div>
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsOpen(false)}>Cancelar</Button>
+          <Button color="primary" onPress={handleSaveBranch} className="bg-brand-600">
+            {editingBranch ? 'Guardar Cambios' : 'Crear Sucursal'}
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

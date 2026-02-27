@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useStore } from '@/hooks/use-store';
 import { motion } from 'framer-motion';
 import { Tooltip } from '@heroui/react';
 import {
@@ -27,6 +27,8 @@ import {
   getMonthlyPLSummaries,
   MOCK_BANK_ACCOUNTS,
   formatCurrencyAccounting,
+  subscribeBankAccounts,
+  getBankAccountsData,
 } from '@/lib/mock-data/accounting';
 
 const SUB_NAV_ITEMS = [
@@ -44,6 +46,8 @@ export default function ContabilidadPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canAccessContabilidad = checkPermission('canAccessContabilidad');
+
+  useStore(subscribeBankAccounts, getBankAccountsData);
 
   const stats = getAccountingStats();
   const plSummaries = getMonthlyPLSummaries();

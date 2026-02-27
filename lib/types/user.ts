@@ -75,4 +75,20 @@ export type PermissionKey =
   | 'canManageCatalogs'
   | 'canViewAuditLog'
   // Historial
-  | 'canViewHistorial';
+  | 'canViewHistorial'
+  // Tráfico y Documentación
+  | 'canCreateDMC'
+  | 'canCreateBL'
+  | 'canCreateCertificates'
+  | 'canAnnulTrafficDocs'
+  | 'canConfigureTrafico'
+  // Punto de Venta B2C
+  | 'canSellPOS'
+  | 'canOpenCloseCash'
+  | 'canApplyPOSDiscount'
+  | 'canProcessPOSReturn'
+  | 'canAnnulPOSSale'
+  | 'canViewPOSReports'
+  | 'canViewPOSMargins'
+  | 'canConfigurePOSPrices'
+  | 'canRequestReplenishment';

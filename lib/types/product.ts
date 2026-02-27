@@ -51,6 +51,7 @@ export interface Product {
   costFOB: number;             // FOB cost (hidden from vendedores)
   costCIF: number;             // CIF cost (hidden from vendedores)
   costAvgWeighted: number;     // Weighted average cost
+  priceB2C?: number;           // Retail price per bottle/unit (B2C)
   status: ProductStatus;
   image?: string;
   createdAt?: string;

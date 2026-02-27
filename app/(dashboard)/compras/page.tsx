@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -8,14 +8,9 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   Search,
   Plus,
@@ -34,13 +29,18 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  MOCK_PURCHASE_ORDERS,
-  MOCK_SUPPLIERS,
-  MOCK_BODEGAS,
+  getPurchaseOrdersData,
+  subscribePurchaseOrders,
+  getSuppliersData,
+  subscribeSuppliers,
+  getBodegasData,
+  subscribeBodegas,
+  removePurchaseOrder,
   getPurchaseOrderStats,
   formatCurrency,
   formatDate,
 } from '@/lib/mock-data/purchase-orders';
+import { useStore } from '@/hooks/use-store';
 import type { PurchaseOrder, PurchaseOrderStatus } from '@/lib/types/purchase-order';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
@@ -61,6 +61,11 @@ export default function ComprasPage() {
   const { checkPermission } = useAuth();
   const canViewCosts = checkPermission('canViewCosts');
 
+  // Store-backed reactive data
+  const orders = useStore(subscribePurchaseOrders, getPurchaseOrdersData);
+  const suppliers = useStore(subscribeSuppliers, getSuppliersData);
+  const bodegas = useStore(subscribeBodegas, getBodegasData);
+
   // State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -69,15 +74,15 @@ export default function ComprasPage() {
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
 
   // Modal states
-  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
-  const { isOpen: isReceiveOpen, onOpen: onReceiveOpen, onClose: onReceiveClose } = useDisclosure();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isReceiveOpen, setIsReceiveOpen] = useState(false);
 
   // Stats
   const stats = getPurchaseOrderStats();
 
   // Filter orders
   const filteredOrders = useMemo(() => {
-    return MOCK_PURCHASE_ORDERS.filter((order) => {
+    return orders.filter((order) => {
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
         !searchQuery ||
@@ -100,22 +105,23 @@ export default function ComprasPage() {
 
   const handleDeleteOrder = (order: PurchaseOrder) => {
     setSelectedOrder(order);
-    onDeleteOpen();
+    setIsDeleteOpen(true);
   };
 
   const confirmDelete = () => {
     if (selectedOrder) {
+      removePurchaseOrder(selectedOrder.id);
       toast.success('Orden eliminada', {
         description: `La orden ${selectedOrder.orderNumber} ha sido eliminada.`,
       });
-      onDeleteClose();
+      setIsDeleteOpen(false);
       setSelectedOrder(null);
     }
   };
 
   const handleReceiveOrder = (order: PurchaseOrder) => {
     setSelectedOrder(order);
-    onReceiveOpen();
+    setIsReceiveOpen(true);
   };
 
   const handleExportOrders = () => {
@@ -291,7 +297,7 @@ export default function ComprasPage() {
                 )}
               >
                 {selectedSupplier
-                  ? MOCK_SUPPLIERS.find((s) => s.id === selectedSupplier)?.name.slice(0, 15) + '...'
+                  ? suppliers.find((s) => s.id === selectedSupplier)?.name.slice(0, 15) + '...'
                   : 'Proveedor'}
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
@@ -305,7 +311,7 @@ export default function ComprasPage() {
               }}
               classNames={{ base: 'bg-white border border-gray-200 shadow-lg' }}
             >
-              {MOCK_SUPPLIERS.map((supplier) => (
+              {suppliers.map((supplier) => (
                 <DropdownItem key={supplier.id}>{supplier.name}</DropdownItem>
               ))}
             </DropdownMenu>
@@ -323,7 +329,7 @@ export default function ComprasPage() {
                 )}
               >
                 {selectedBodega
-                  ? MOCK_BODEGAS.find((b) => b.id === selectedBodega)?.name
+                  ? bodegas.find((b) => b.id === selectedBodega)?.name
                   : 'Bodega'}
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
@@ -337,7 +343,7 @@ export default function ComprasPage() {
               }}
               classNames={{ base: 'bg-white border border-gray-200 shadow-lg' }}
             >
-              {MOCK_BODEGAS.map((bodega) => (
+              {bodegas.map((bodega) => (
                 <DropdownItem key={bodega.id}>{bodega.name}</DropdownItem>
               ))}
             </DropdownMenu>
@@ -522,47 +528,37 @@ export default function ComprasPage() {
       {/* Results count */}
       {filteredOrders.length > 0 && (
         <div className="text-center text-sm text-gray-500 dark:text-[#888888]">
-          Mostrando {filteredOrders.length} de {MOCK_PURCHASE_ORDERS.length} órdenes
+          Mostrando {filteredOrders.length} de {orders.length} órdenes
         </div>
       )}
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} size="sm">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="dark:text-white">Cancelar orden</ModalHeader>
-          <ModalBody>
+      <CustomModal isOpen={isDeleteOpen} onClose={() => setIsDeleteOpen(false)} size="sm">
+          <CustomModalHeader onClose={() => setIsDeleteOpen(false)}>Cancelar orden</CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             <p className="text-gray-600 dark:text-gray-400">
               ¿Estás seguro de cancelar la orden{' '}
               <span className="font-medium text-gray-900 dark:text-white">"{selectedOrder?.orderNumber}"</span>? Esta acción
               no se puede deshacer.
             </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="light" onPress={onDeleteClose}>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsDeleteOpen(false)}>
               Volver
             </Button>
             <Button color="danger" onPress={confirmDelete}>
               Cancelar Orden
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
 
       {/* Receive Merchandise Modal - Simplified for now */}
-      <Modal isOpen={isReceiveOpen} onClose={onReceiveClose} size="2xl">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950">
-                <PackageCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recibir Mercancía</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">Orden {selectedOrder?.orderNumber}</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
+      <CustomModal isOpen={isReceiveOpen} onClose={() => setIsReceiveOpen(false)} size="2xl">
+          <CustomModalHeader onClose={() => setIsReceiveOpen(false)}>
+              <PackageCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              Recibir Mercancía
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             {selectedOrder && (
               <div className="space-y-4">
                 <div className="rounded-lg bg-sky-50 dark:bg-sky-950 p-4">
@@ -605,9 +601,9 @@ export default function ComprasPage() {
                 )}
               </div>
             )}
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onReceiveClose}>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsReceiveOpen(false)}>
               Cancelar
             </Button>
             <Button
@@ -616,14 +612,13 @@ export default function ComprasPage() {
                 toast.success('Mercancía recibida', {
                   description: `La orden ${selectedOrder?.orderNumber} ha sido procesada.`,
                 });
-                onReceiveClose();
+                setIsReceiveOpen(false);
               }}
             >
               Confirmar Recepción
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

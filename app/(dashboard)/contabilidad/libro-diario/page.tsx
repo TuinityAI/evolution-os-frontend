@@ -2,19 +2,15 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useStore } from '@/hooks/use-store';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Input,
   Select,
   SelectItem,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   BookOpen,
   Search,
@@ -32,6 +28,11 @@ import {
   getJournalEntries,
   formatCurrencyAccounting,
   MOCK_ACCOUNTS,
+  subscribeJournalEntries,
+  getJournalEntriesData,
+  addJournalEntry,
+  subscribeAccounts,
+  getAccountsData,
 } from '@/lib/mock-data/accounting';
 import {
   JOURNAL_SOURCE_LABELS,
@@ -53,6 +54,9 @@ export default function LibroDiarioPage() {
   const { checkPermission } = useAuth();
   const canCreateManualEntries = checkPermission('canCreateManualEntries');
 
+  useStore(subscribeJournalEntries, getJournalEntriesData);
+  useStore(subscribeAccounts, getAccountsData);
+
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
@@ -64,7 +68,7 @@ export default function LibroDiarioPage() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   // New entry modal
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
   const [newDate, setNewDate] = useState('2026-02-26');
   const [newDescription, setNewDescription] = useState('');
   const [newLines, setNewLines] = useState<NewEntryLine[]>([
@@ -125,10 +129,36 @@ export default function LibroDiarioPage() {
       });
       return;
     }
+    const entryId = `JE-${String(Date.now()).slice(-5)}`;
+    addJournalEntry({
+      id: entryId,
+      number: Date.now(),
+      date: new Date(newDate).toISOString(),
+      description: newDescription,
+      source: 'manual',
+      status: 'borrador',
+      lines: newLines.filter((l) => l.accountId).map((l, idx) => {
+        const acc = MOCK_ACCOUNTS.find((a) => a.id === l.accountId);
+        return {
+          id: `JEL-${Date.now()}-${idx}`,
+          accountId: l.accountId,
+          accountCode: acc?.code || '',
+          accountName: acc?.name || '',
+          debit: parseFloat(l.debit) || 0,
+          credit: parseFloat(l.credit) || 0,
+        };
+      }),
+      totalDebit,
+      totalCredit,
+      isBalanced: true,
+      createdBy: 'USR-001',
+      createdByName: 'Usuario',
+      createdAt: new Date().toISOString(),
+    });
     toast.success('Asiento registrado exitosamente', {
       description: `Asiento por ${formatCurrencyAccounting(totalDebit)} creado como borrador.`,
     });
-    onClose();
+    setIsOpen(false);
     setNewDescription('');
     setNewLines([
       { accountId: '', description: '', debit: '', credit: '' },
@@ -183,7 +213,7 @@ export default function LibroDiarioPage() {
         </div>
         {canCreateManualEntries && (
           <button
-            onClick={onOpen}
+            onClick={() => setIsOpen(true)}
             className="flex h-9 items-center gap-2 rounded-lg bg-purple-600 px-4 text-sm font-medium text-white transition-colors hover:bg-purple-700"
           >
             <Plus className="h-4 w-4" />
@@ -276,120 +306,115 @@ export default function LibroDiarioPage() {
                 const statusConfig = JOURNAL_STATUS_CONFIG[entry.status];
                 const isExpanded = expandedRow === entry.id;
 
-                return (
-                  <motion.tbody
+                return (<>
+                  <tr
                     key={entry.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.02 }}
+                    className="group cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
+                    onClick={() => setExpandedRow(isExpanded ? null : entry.id)}
                   >
-                    <tr
-                      className="group cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
-                      onClick={() => setExpandedRow(isExpanded ? null : entry.id)}
-                    >
-                      <td className="px-2 py-3 text-center">
-                        <ChevronDown
-                          className={cn(
-                            'h-4 w-4 text-gray-400 transition-transform',
-                            isExpanded && 'rotate-180'
-                          )}
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-                          {entry.id}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">{formatDate(entry.date)}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-gray-900 dark:text-white">{entry.description}</span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium',
-                            sourceColor.bg,
-                            sourceColor.text
-                          )}
-                        >
-                          {JOURNAL_SOURCE_LABELS[entry.source]}
-                          {entry.sourceDocumentNumber && (
-                            <span className="opacity-75">{entry.sourceDocumentNumber}</span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-mono text-sm text-gray-900 dark:text-white">
-                          {formatCurrencyAccounting(entry.totalDebit)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-mono text-sm text-gray-900 dark:text-white">
-                          {formatCurrencyAccounting(entry.totalCredit)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
-                            statusConfig.bg,
-                            statusConfig.text
-                          )}
-                        >
-                          <span className={cn('h-1.5 w-1.5 rounded-full', statusConfig.dot)} />
-                          {JOURNAL_STATUS_LABELS[entry.status]}
-                        </span>
+                    <td className="px-2 py-3 text-center">
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 text-gray-400 transition-transform',
+                          isExpanded && 'rotate-180'
+                        )}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
+                        {entry.id}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{formatDate(entry.date)}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-900 dark:text-white">{entry.description}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium',
+                          sourceColor.bg,
+                          sourceColor.text
+                        )}
+                      >
+                        {JOURNAL_SOURCE_LABELS[entry.source]}
+                        {entry.sourceDocumentNumber && (
+                          <span className="opacity-75">{entry.sourceDocumentNumber}</span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="font-mono text-sm text-gray-900 dark:text-white">
+                        {formatCurrencyAccounting(entry.totalDebit)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="font-mono text-sm text-gray-900 dark:text-white">
+                        {formatCurrencyAccounting(entry.totalCredit)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                          statusConfig.bg,
+                          statusConfig.text
+                        )}
+                      >
+                        <span className={cn('h-1.5 w-1.5 rounded-full', statusConfig.dot)} />
+                        {JOURNAL_STATUS_LABELS[entry.status]}
+                      </span>
+                    </td>
+                  </tr>
+                  {/* Expanded detail */}
+                  {isExpanded && (
+                    <tr key={`${entry.id}-detail`}>
+                      <td colSpan={8} className="bg-gray-50 dark:bg-[#0a0a0a] px-8 py-3">
+                        <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] overflow-hidden">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="bg-gray-100 dark:bg-[#1a1a1a]">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-[#888888]">Codigo</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-[#888888]">Cuenta</th>
+                                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-[#888888]">Debe</th>
+                                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-[#888888]">Haber</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
+                              {entry.lines.map((line) => (
+                                <tr key={line.id} className="bg-white dark:bg-[#141414]">
+                                  <td className="px-4 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">
+                                    {line.accountCode}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                    {line.accountName}
+                                  </td>
+                                  <td className="px-4 py-2 text-right font-mono text-sm text-gray-900 dark:text-white">
+                                    {line.debit > 0 ? formatCurrencyAccounting(line.debit) : ''}
+                                  </td>
+                                  <td className="px-4 py-2 text-right font-mono text-sm text-gray-900 dark:text-white">
+                                    {line.credit > 0 ? formatCurrencyAccounting(line.credit) : ''}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        {entry.notes && (
+                          <p className="mt-2 text-xs text-gray-500 dark:text-[#888888] italic">
+                            Nota: {entry.notes}
+                          </p>
+                        )}
+                        <p className="mt-1 text-xs text-gray-400 dark:text-[#666666]">
+                          Creado por {entry.createdByName} el {formatDate(entry.createdAt)}
+                          {entry.approvedByName && ` | Aprobado por ${entry.approvedByName}`}
+                        </p>
                       </td>
                     </tr>
-                    {/* Expanded detail */}
-                    {isExpanded && (
-                      <tr>
-                        <td colSpan={8} className="bg-gray-50 dark:bg-[#0a0a0a] px-8 py-3">
-                          <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] overflow-hidden">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="bg-gray-100 dark:bg-[#1a1a1a]">
-                                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-[#888888]">Código</th>
-                                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-[#888888]">Cuenta</th>
-                                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-[#888888]">Debe</th>
-                                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-[#888888]">Haber</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
-                                {entry.lines.map((line) => (
-                                  <tr key={line.id} className="bg-white dark:bg-[#141414]">
-                                    <td className="px-4 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">
-                                      {line.accountCode}
-                                    </td>
-                                    <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
-                                      {line.accountName}
-                                    </td>
-                                    <td className="px-4 py-2 text-right font-mono text-sm text-gray-900 dark:text-white">
-                                      {line.debit > 0 ? formatCurrencyAccounting(line.debit) : ''}
-                                    </td>
-                                    <td className="px-4 py-2 text-right font-mono text-sm text-gray-900 dark:text-white">
-                                      {line.credit > 0 ? formatCurrencyAccounting(line.credit) : ''}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                          {entry.notes && (
-                            <p className="mt-2 text-xs text-gray-500 dark:text-[#888888] italic">
-                              Nota: {entry.notes}
-                            </p>
-                          )}
-                          <p className="mt-1 text-xs text-gray-400 dark:text-[#666666]">
-                            Creado por {entry.createdByName} el {formatDate(entry.createdAt)}
-                            {entry.approvedByName && ` | Aprobado por ${entry.approvedByName}`}
-                          </p>
-                        </td>
-                      </tr>
-                    )}
-                  </motion.tbody>
+                  )}
+                </>
                 );
               })}
             </tbody>
@@ -410,20 +435,12 @@ export default function LibroDiarioPage() {
       </div>
 
       {/* New Entry Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="3xl" scrollBehavior="inside">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-950">
-                <Plus className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Nuevo Asiento Manual</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">Crear un asiento contable manual</p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-4">
+      <CustomModal isOpen={isOpen} onClose={() => setIsOpen(false)} size="3xl" scrollable>
+          <CustomModalHeader onClose={() => setIsOpen(false)}>
+              <Plus className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              Nuevo Asiento Manual
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -541,9 +558,9 @@ export default function LibroDiarioPage() {
                 </div>
               </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onClose}>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsOpen(false)}>
               Cancelar
             </Button>
             <Button
@@ -554,9 +571,8 @@ export default function LibroDiarioPage() {
             >
               Guardar Asiento
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

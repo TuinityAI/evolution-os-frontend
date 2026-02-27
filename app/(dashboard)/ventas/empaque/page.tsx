@@ -1,19 +1,15 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useStore } from '@/hooks/use-store';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Textarea,
-  Checkbox,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
+import { Switch } from '@/components/ui/switch';
 import {
   PackageCheck,
   Package,
@@ -29,7 +25,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  MOCK_SALES_ORDERS,
+  getSalesOrdersData,
+  subscribeSalesOrders,
+  updateSalesOrder,
   formatDate,
 } from '@/lib/mock-data/sales-orders';
 import type { SalesOrder } from '@/lib/types/sales-order';
@@ -39,6 +37,7 @@ import { printPackingList } from '@/lib/utils/print-utils';
 
 export default function EmpaquePage() {
   const router = useRouter();
+  const salesOrders = useStore(subscribeSalesOrders, getSalesOrdersData);
   const { checkPermission } = useAuth();
   const canPackOrders = checkPermission('canPackOrders');
 
@@ -47,11 +46,11 @@ export default function EmpaquePage() {
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [checkedLines, setCheckedLines] = useState<Set<string>>(new Set());
 
-  const { isOpen: isPackOpen, onOpen: onPackOpen, onClose: onPackClose } = useDisclosure();
+  const [isPackOpen, setIsPackOpen] = useState(false);
 
   // Get orders ready for packing (status: aprobado)
   const readyToPack = useMemo(() => {
-    return MOCK_SALES_ORDERS.filter(
+    return salesOrders.filter(
       (order) => order.status === 'aprobado'
     ).sort((a, b) => {
       // Sort by requested delivery date (urgent first)
@@ -59,7 +58,7 @@ export default function EmpaquePage() {
       const dateB = b.requestedDeliveryDate ? new Date(b.requestedDeliveryDate).getTime() : Infinity;
       return dateA - dateB;
     });
-  }, []);
+  }, [salesOrders]);
 
   // Stats
   const totalOrders = readyToPack.length;
@@ -98,7 +97,7 @@ export default function EmpaquePage() {
     // Pre-check all lines
     const allLineIds = order.lines.map((l) => l.id);
     setCheckedLines(new Set(allLineIds));
-    onPackOpen();
+    setIsPackOpen(true);
   };
 
   const handlePrint = (order: SalesOrder) => {
@@ -124,10 +123,11 @@ export default function EmpaquePage() {
 
   const handleConfirmPack = () => {
     if (selectedOrder) {
+      updateSalesOrder(selectedOrder.id, { status: 'empacado', packedAt: new Date().toISOString() });
       toast.success('Pedido empacado', {
         description: `El pedido ${selectedOrder.orderNumber} ha sido marcado como empacado y está listo para facturación.`,
       });
-      onPackClose();
+      setIsPackOpen(false);
       setSelectedOrder(null);
       setCheckedLines(new Set());
     }
@@ -361,9 +361,9 @@ export default function EmpaquePage() {
       )}
 
       {/* Pack Confirmation Modal */}
-      <Modal isOpen={isPackOpen} onClose={onPackClose} size="lg">
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3 border-b border-border pb-4">
+      <CustomModal isOpen={isPackOpen} onClose={() => setIsPackOpen(false)} size="lg" scrollable>
+        <CustomModalHeader onClose={() => setIsPackOpen(false)}>
+          <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
               <PackageCheck className="h-5 w-5 text-emerald-500" />
             </div>
@@ -371,46 +371,47 @@ export default function EmpaquePage() {
               <h2 className="text-lg font-semibold text-foreground">Confirmar Empaque</h2>
               <p className="text-sm text-muted-foreground">{selectedOrder?.orderNumber}</p>
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Cliente:</span>
-                  <p className="font-medium text-foreground">{selectedOrder?.customerName}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Destino:</span>
-                  <p className="font-medium text-foreground">{selectedOrder?.customerCountry}</p>
-                </div>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Cliente:</span>
+                <p className="font-medium text-foreground">{selectedOrder?.customerName}</p>
               </div>
-
-              {/* Checklist */}
-              <div className="rounded-lg border border-border p-4">
-                <h4 className="mb-3 text-sm font-medium text-foreground">Verificar productos empacados:</h4>
-                <div className="space-y-2">
-                  {selectedOrder?.lines.map((line) => (
-                    <label
-                      key={line.id}
-                      className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-accent/50"
-                    >
-                      <Checkbox
-                        isSelected={checkedLines.has(line.id)}
-                        onValueChange={() => toggleLineCheck(line.id)}
-                        color="success"
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm text-foreground">{line.productDescription}</p>
-                        <p className="text-xs text-muted-foreground">{line.productReference}</p>
-                      </div>
-                      <span className="font-mono text-sm font-bold text-brand-500">x{line.quantity}</span>
-                    </label>
-                  ))}
-                </div>
+              <div>
+                <span className="text-muted-foreground">Destino:</span>
+                <p className="font-medium text-foreground">{selectedOrder?.customerCountry}</p>
               </div>
+            </div>
 
+            {/* Checklist */}
+            <div className="rounded-lg border border-border p-4">
+              <h4 className="mb-3 text-sm font-medium text-foreground">Verificar productos empacados:</h4>
+              <div className="space-y-2">
+                {selectedOrder?.lines.map((line) => (
+                  <label
+                    key={line.id}
+                    className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-accent/50"
+                  >
+                    <Switch
+                      checked={checkedLines.has(line.id)}
+                      onCheckedChange={() => toggleLineCheck(line.id)}
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm text-foreground">{line.productDescription}</p>
+                      <p className="text-xs text-muted-foreground">{line.productReference}</p>
+                    </div>
+                    <span className="font-mono text-sm font-bold text-brand-500">x{line.quantity}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Notas de empaque (opcional)</label>
               <Textarea
-                label="Notas de empaque (opcional)"
                 placeholder="Observaciones sobre el empaque, bultos, peso..."
                 value={packingNotes}
                 onChange={(e) => setPackingNotes(e.target.value)}
@@ -418,22 +419,22 @@ export default function EmpaquePage() {
                 minRows={2}
               />
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-border pt-4">
-            <Button variant="light" onPress={onPackClose}>
-              Cancelar
-            </Button>
-            <Button
-              color="success"
-              onPress={handleConfirmPack}
-              isDisabled={selectedOrder ? checkedLines.size !== selectedOrder.lines.length : false}
-              startContent={<Check className="h-4 w-4" />}
-            >
-              Confirmar Empaque
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsPackOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            color="success"
+            onPress={handleConfirmPack}
+            isDisabled={selectedOrder ? checkedLines.size !== selectedOrder.lines.length : false}
+            startContent={<Check className="h-4 w-4" />}
+          >
+            Confirmar Empaque
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

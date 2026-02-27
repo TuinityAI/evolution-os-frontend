@@ -1,3 +1,8 @@
+/**
+ * Purchase Orders data store (localStorage-backed)
+ * Based on the clients.ts pattern
+ */
+
 import type {
   PurchaseOrder,
   Supplier,
@@ -6,12 +11,17 @@ import type {
   PurchaseOrderStats,
   ProductCostHistoryEntry,
 } from '@/lib/types/purchase-order';
+import { loadCollection, saveCollection, createSubscribers } from '@/lib/store/local-store';
+
+// ============================================================================
+// SEED DATA
+// ============================================================================
 
 /**
- * Mock suppliers for Evolution OS
+ * Seed suppliers for Evolution OS
  * Based on real suppliers from Dynamo POS
  */
-export const MOCK_SUPPLIERS: Supplier[] = [
+const SEED_SUPPLIERS: Supplier[] = [
   {
     id: 'SUP-001',
     name: 'TRIPLE DOUBLE TRADING LLC',
@@ -61,9 +71,9 @@ export const MOCK_SUPPLIERS: Supplier[] = [
 ];
 
 /**
- * Mock bodegas (warehouses)
+ * Seed bodegas (warehouses)
  */
-export const MOCK_BODEGAS: Bodega[] = [
+const SEED_BODEGAS: Bodega[] = [
   {
     id: 'BOD-001',
     name: 'Bodega Zona Libre',
@@ -85,10 +95,10 @@ export const MOCK_BODEGAS: Bodega[] = [
 ];
 
 /**
- * Mock purchase orders
+ * Seed purchase orders
  * Includes OC-03566 from Document 003
  */
-export const MOCK_PURCHASE_ORDERS: PurchaseOrder[] = [
+const SEED_PURCHASE_ORDERS: PurchaseOrder[] = [
   // OC-03566 - From Document 003 (Real data)
   {
     id: 'OC-03566',
@@ -525,9 +535,9 @@ export const MOCK_PURCHASE_ORDERS: PurchaseOrder[] = [
 ];
 
 /**
- * Mock merchandise entries (Historial de Entradas)
+ * Seed merchandise entries (Historial de Entradas)
  */
-export const MOCK_MERCHANDISE_ENTRIES: MerchandiseEntry[] = [
+const SEED_MERCHANDISE_ENTRIES: MerchandiseEntry[] = [
   {
     id: 'ENT-001',
     purchaseOrderId: 'OC-03566',
@@ -648,9 +658,9 @@ export const MOCK_MERCHANDISE_ENTRIES: MerchandiseEntry[] = [
 ];
 
 /**
- * Mock cost history entries for products
+ * Seed cost history entries for products
  */
-export const MOCK_COST_HISTORY: ProductCostHistoryEntry[] = [
+const SEED_COST_HISTORY: ProductCostHistoryEntry[] = [
   // JW Red cost history
   {
     id: 'COST-001',
@@ -711,51 +721,322 @@ export const MOCK_COST_HISTORY: ProductCostHistoryEntry[] = [
   },
 ];
 
-// ============================================
-// Helper Functions
-// ============================================
+// ============================================================================
+// STORE INFRASTRUCTURE — Purchase Orders
+// ============================================================================
+
+let _purchaseOrders: PurchaseOrder[] = SEED_PURCHASE_ORDERS;
+let _purchaseOrdersInit = false;
+const { subscribe: subscribePurchaseOrders, notify: _notifyPurchaseOrders } = createSubscribers();
+
+function ensurePurchaseOrdersInitialized(): void {
+  if (typeof window === 'undefined' || _purchaseOrdersInit) return;
+  _purchaseOrders = loadCollection<PurchaseOrder>('purchase_orders', SEED_PURCHASE_ORDERS);
+  _purchaseOrdersInit = true;
+}
+
+export function getPurchaseOrdersData(): PurchaseOrder[] {
+  ensurePurchaseOrdersInitialized();
+  return _purchaseOrders;
+}
+
+export { subscribePurchaseOrders };
+
+// Backward-compatible export
+export const MOCK_PURCHASE_ORDERS: PurchaseOrder[] = new Proxy(SEED_PURCHASE_ORDERS as PurchaseOrder[], {
+  get(_target, prop, receiver) {
+    ensurePurchaseOrdersInitialized();
+    return Reflect.get(_purchaseOrders, prop, receiver);
+  },
+});
+
+// CRUD
+export function addPurchaseOrder(order: PurchaseOrder): void {
+  ensurePurchaseOrdersInitialized();
+  _purchaseOrders = [..._purchaseOrders, order];
+  saveCollection('purchase_orders', _purchaseOrders);
+  _notifyPurchaseOrders();
+}
+
+export function updatePurchaseOrder(id: string, updates: Partial<PurchaseOrder>): void {
+  ensurePurchaseOrdersInitialized();
+  _purchaseOrders = _purchaseOrders.map((po) =>
+    po.id === id ? { ...po, ...updates } : po
+  );
+  saveCollection('purchase_orders', _purchaseOrders);
+  _notifyPurchaseOrders();
+}
+
+export function removePurchaseOrder(id: string): void {
+  ensurePurchaseOrdersInitialized();
+  _purchaseOrders = _purchaseOrders.filter((po) => po.id !== id);
+  saveCollection('purchase_orders', _purchaseOrders);
+  _notifyPurchaseOrders();
+}
+
+// ============================================================================
+// STORE INFRASTRUCTURE — Suppliers
+// ============================================================================
+
+let _suppliers: Supplier[] = SEED_SUPPLIERS;
+let _suppliersInit = false;
+const { subscribe: subscribeSuppliers, notify: _notifySuppliers } = createSubscribers();
+
+function ensureSuppliersInitialized(): void {
+  if (typeof window === 'undefined' || _suppliersInit) return;
+  _suppliers = loadCollection<Supplier>('suppliers', SEED_SUPPLIERS);
+  _suppliersInit = true;
+}
+
+export function getSuppliersData(): Supplier[] {
+  ensureSuppliersInitialized();
+  return _suppliers;
+}
+
+export { subscribeSuppliers };
+
+// Backward-compatible export
+export const MOCK_SUPPLIERS: Supplier[] = new Proxy(SEED_SUPPLIERS as Supplier[], {
+  get(_target, prop, receiver) {
+    ensureSuppliersInitialized();
+    return Reflect.get(_suppliers, prop, receiver);
+  },
+});
+
+// CRUD
+export function addSupplier(supplier: Supplier): void {
+  ensureSuppliersInitialized();
+  _suppliers = [..._suppliers, supplier];
+  saveCollection('suppliers', _suppliers);
+  _notifySuppliers();
+}
+
+export function updateSupplier(id: string, updates: Partial<Supplier>): void {
+  ensureSuppliersInitialized();
+  _suppliers = _suppliers.map((s) =>
+    s.id === id ? { ...s, ...updates } : s
+  );
+  saveCollection('suppliers', _suppliers);
+  _notifySuppliers();
+}
+
+export function removeSupplier(id: string): void {
+  ensureSuppliersInitialized();
+  _suppliers = _suppliers.filter((s) => s.id !== id);
+  saveCollection('suppliers', _suppliers);
+  _notifySuppliers();
+}
+
+// ============================================================================
+// STORE INFRASTRUCTURE — Bodegas
+// ============================================================================
+
+let _bodegas: Bodega[] = SEED_BODEGAS;
+let _bodegasInit = false;
+const { subscribe: subscribeBodegas, notify: _notifyBodegas } = createSubscribers();
+
+function ensureBodegasInitialized(): void {
+  if (typeof window === 'undefined' || _bodegasInit) return;
+  _bodegas = loadCollection<Bodega>('bodegas', SEED_BODEGAS);
+  _bodegasInit = true;
+}
+
+export function getBodegasData(): Bodega[] {
+  ensureBodegasInitialized();
+  return _bodegas;
+}
+
+export { subscribeBodegas };
+
+// Backward-compatible export
+export const MOCK_BODEGAS: Bodega[] = new Proxy(SEED_BODEGAS as Bodega[], {
+  get(_target, prop, receiver) {
+    ensureBodegasInitialized();
+    return Reflect.get(_bodegas, prop, receiver);
+  },
+});
+
+// CRUD
+export function addBodega(bodega: Bodega): void {
+  ensureBodegasInitialized();
+  _bodegas = [..._bodegas, bodega];
+  saveCollection('bodegas', _bodegas);
+  _notifyBodegas();
+}
+
+export function updateBodega(id: string, updates: Partial<Bodega>): void {
+  ensureBodegasInitialized();
+  _bodegas = _bodegas.map((b) =>
+    b.id === id ? { ...b, ...updates } : b
+  );
+  saveCollection('bodegas', _bodegas);
+  _notifyBodegas();
+}
+
+export function removeBodega(id: string): void {
+  ensureBodegasInitialized();
+  _bodegas = _bodegas.filter((b) => b.id !== id);
+  saveCollection('bodegas', _bodegas);
+  _notifyBodegas();
+}
+
+// ============================================================================
+// STORE INFRASTRUCTURE — Merchandise Entries
+// ============================================================================
+
+let _merchandiseEntries: MerchandiseEntry[] = SEED_MERCHANDISE_ENTRIES;
+let _merchandiseEntriesInit = false;
+const { subscribe: subscribeMerchandiseEntries, notify: _notifyMerchandiseEntries } = createSubscribers();
+
+function ensureMerchandiseEntriesInitialized(): void {
+  if (typeof window === 'undefined' || _merchandiseEntriesInit) return;
+  _merchandiseEntries = loadCollection<MerchandiseEntry>('merchandise_entries', SEED_MERCHANDISE_ENTRIES);
+  _merchandiseEntriesInit = true;
+}
+
+export function getMerchandiseEntriesData(): MerchandiseEntry[] {
+  ensureMerchandiseEntriesInitialized();
+  return _merchandiseEntries;
+}
+
+export { subscribeMerchandiseEntries };
+
+// Backward-compatible export
+export const MOCK_MERCHANDISE_ENTRIES: MerchandiseEntry[] = new Proxy(SEED_MERCHANDISE_ENTRIES as MerchandiseEntry[], {
+  get(_target, prop, receiver) {
+    ensureMerchandiseEntriesInitialized();
+    return Reflect.get(_merchandiseEntries, prop, receiver);
+  },
+});
+
+// CRUD
+export function addMerchandiseEntry(entry: MerchandiseEntry): void {
+  ensureMerchandiseEntriesInitialized();
+  _merchandiseEntries = [..._merchandiseEntries, entry];
+  saveCollection('merchandise_entries', _merchandiseEntries);
+  _notifyMerchandiseEntries();
+}
+
+export function updateMerchandiseEntry(id: string, updates: Partial<MerchandiseEntry>): void {
+  ensureMerchandiseEntriesInitialized();
+  _merchandiseEntries = _merchandiseEntries.map((e) =>
+    e.id === id ? { ...e, ...updates } : e
+  );
+  saveCollection('merchandise_entries', _merchandiseEntries);
+  _notifyMerchandiseEntries();
+}
+
+export function removeMerchandiseEntry(id: string): void {
+  ensureMerchandiseEntriesInitialized();
+  _merchandiseEntries = _merchandiseEntries.filter((e) => e.id !== id);
+  saveCollection('merchandise_entries', _merchandiseEntries);
+  _notifyMerchandiseEntries();
+}
+
+// ============================================================================
+// STORE INFRASTRUCTURE — Cost History
+// ============================================================================
+
+let _costHistory: ProductCostHistoryEntry[] = SEED_COST_HISTORY;
+let _costHistoryInit = false;
+const { subscribe: subscribeCostHistory, notify: _notifyCostHistory } = createSubscribers();
+
+function ensureCostHistoryInitialized(): void {
+  if (typeof window === 'undefined' || _costHistoryInit) return;
+  _costHistory = loadCollection<ProductCostHistoryEntry>('cost_history', SEED_COST_HISTORY);
+  _costHistoryInit = true;
+}
+
+export function getCostHistoryData(): ProductCostHistoryEntry[] {
+  ensureCostHistoryInitialized();
+  return _costHistory;
+}
+
+export { subscribeCostHistory };
+
+// Backward-compatible export
+export const MOCK_COST_HISTORY: ProductCostHistoryEntry[] = new Proxy(SEED_COST_HISTORY as ProductCostHistoryEntry[], {
+  get(_target, prop, receiver) {
+    ensureCostHistoryInitialized();
+    return Reflect.get(_costHistory, prop, receiver);
+  },
+});
+
+// CRUD
+export function addCostHistoryEntry(entry: ProductCostHistoryEntry): void {
+  ensureCostHistoryInitialized();
+  _costHistory = [..._costHistory, entry];
+  saveCollection('cost_history', _costHistory);
+  _notifyCostHistory();
+}
+
+export function updateCostHistoryEntry(id: string, updates: Partial<ProductCostHistoryEntry>): void {
+  ensureCostHistoryInitialized();
+  _costHistory = _costHistory.map((e) =>
+    e.id === id ? { ...e, ...updates } : e
+  );
+  saveCollection('cost_history', _costHistory);
+  _notifyCostHistory();
+}
+
+export function removeCostHistoryEntry(id: string): void {
+  ensureCostHistoryInitialized();
+  _costHistory = _costHistory.filter((e) => e.id !== id);
+  saveCollection('cost_history', _costHistory);
+  _notifyCostHistory();
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
 /**
  * Get purchase order by ID
  */
 export function getPurchaseOrderById(id: string): PurchaseOrder | undefined {
-  return MOCK_PURCHASE_ORDERS.find((po) => po.id === id);
+  ensurePurchaseOrdersInitialized();
+  return _purchaseOrders.find((po) => po.id === id);
 }
 
 /**
  * Get supplier by ID
  */
 export function getSupplierById(id: string): Supplier | undefined {
-  return MOCK_SUPPLIERS.find((s) => s.id === id);
+  ensureSuppliersInitialized();
+  return _suppliers.find((s) => s.id === id);
 }
 
 /**
  * Get bodega by ID
  */
 export function getBodegaById(id: string): Bodega | undefined {
-  return MOCK_BODEGAS.find((b) => b.id === id);
+  ensureBodegasInitialized();
+  return _bodegas.find((b) => b.id === id);
 }
 
 /**
  * Get merchandise entry by ID
  */
 export function getMerchandiseEntryById(id: string): MerchandiseEntry | undefined {
-  return MOCK_MERCHANDISE_ENTRIES.find((e) => e.id === id);
+  ensureMerchandiseEntriesInitialized();
+  return _merchandiseEntries.find((e) => e.id === id);
 }
 
 /**
  * Get cost history for a product
  */
 export function getProductCostHistory(productId: string): ProductCostHistoryEntry[] {
+  ensureCostHistoryInitialized();
   // In real implementation, would filter by productId
   // For now, return all for demo
-  return MOCK_COST_HISTORY;
+  return _costHistory;
 }
 
 /**
  * Calculate purchase order stats
  */
 export function getPurchaseOrderStats(): PurchaseOrderStats {
+  ensurePurchaseOrdersInitialized();
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -765,22 +1046,22 @@ export function getPurchaseOrderStats(): PurchaseOrderStats {
     'en_recepcion',
   ];
 
-  const activeOrders = MOCK_PURCHASE_ORDERS.filter((po) =>
+  const activeOrders = _purchaseOrders.filter((po) =>
     activeStatuses.includes(po.status as 'pendiente' | 'en_transito' | 'en_recepcion')
   ).length;
 
-  const inTransit = MOCK_PURCHASE_ORDERS.filter(
+  const inTransit = _purchaseOrders.filter(
     (po) => po.status === 'en_transito'
   ).length;
 
-  const receivedThisMonth = MOCK_PURCHASE_ORDERS.filter(
+  const receivedThisMonth = _purchaseOrders.filter(
     (po) =>
       po.status === 'completada' &&
       po.actualArrivalDate &&
       new Date(po.actualArrivalDate) >= monthStart
   ).length;
 
-  const valueInTransit = MOCK_PURCHASE_ORDERS
+  const valueInTransit = _purchaseOrders
     .filter((po) => po.status === 'en_transito')
     .reduce((sum, po) => sum + po.totalFOB, 0);
 
@@ -796,8 +1077,10 @@ export function getPurchaseOrderStats(): PurchaseOrderStats {
  * Get unique suppliers from orders
  */
 export function getUniqueOrderSuppliers(): Supplier[] {
-  const supplierIds = [...new Set(MOCK_PURCHASE_ORDERS.map((po) => po.supplierId))];
-  return MOCK_SUPPLIERS.filter((s) => supplierIds.includes(s.id));
+  ensurePurchaseOrdersInitialized();
+  ensureSuppliersInitialized();
+  const supplierIds = [...new Set(_purchaseOrders.map((po) => po.supplierId))];
+  return _suppliers.filter((s) => supplierIds.includes(s.id));
 }
 
 /**
@@ -826,8 +1109,9 @@ export function formatDate(dateString: string): string {
  * Get next order number
  */
 export function getNextOrderNumber(): string {
+  ensurePurchaseOrdersInitialized();
   const maxNumber = Math.max(
-    ...MOCK_PURCHASE_ORDERS.map((po) => parseInt(po.orderNumber.replace('OC-', '')))
+    ..._purchaseOrders.map((po) => parseInt(po.orderNumber.replace('OC-', '')))
   );
   return `OC-${String(maxNumber + 1).padStart(5, '0')}`;
 }

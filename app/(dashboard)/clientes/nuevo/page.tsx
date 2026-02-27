@@ -20,10 +20,10 @@ import {
   Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getUniqueCountries } from '@/lib/mock-data/clients';
+import { getUniqueCountries, addClient } from '@/lib/mock-data/clients';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
-import type { PriceLevel, PaymentTerms } from '@/lib/types/client';
+import type { Client, PriceLevel, PaymentTerms } from '@/lib/types/client';
 
 interface ContactForm {
   id: string;
@@ -154,6 +154,47 @@ export default function NuevoClientePage() {
 
     setIsSaving(true);
     setTimeout(() => {
+      const now = new Date().toISOString();
+      const newClient: Client = {
+        id: clientCode,
+        name: name.trim(),
+        tradeName: tradeName.trim() || undefined,
+        taxId: taxId.trim(),
+        taxIdType,
+        country,
+        city: city.trim() || undefined,
+        address: address.trim() || undefined,
+        priceLevel: priceLevel as PriceLevel,
+        creditLimit: creditLimit ? Number(creditLimit) : 0,
+        creditUsed: 0,
+        creditAvailable: creditLimit ? Number(creditLimit) : 0,
+        paymentTerms,
+        contacts: contacts.map((c) => ({
+          id: c.id,
+          name: c.name,
+          email: c.email,
+          phone: c.phone,
+          role: c.role || undefined,
+          isPrimary: c.isPrimary,
+        })),
+        shippingAddresses: addresses.map((a) => ({
+          id: a.id,
+          label: a.label,
+          address: a.address,
+          city: a.city,
+          country: a.country || country,
+          postalCode: a.postalCode || undefined,
+          isDefault: a.isDefault,
+        })),
+        status: 'active',
+        notes: notes.trim() || undefined,
+        createdAt: now,
+        updatedAt: now,
+        totalOrders: 0,
+        totalPurchases: 0,
+        averageOrderValue: 0,
+      };
+      addClient(newClient);
       toast.success('Cliente creado exitosamente', {
         description: `El cliente ${name} (${clientCode}) ha sido registrado.`,
       });

@@ -29,14 +29,18 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { cn } from '@/lib/utils/cn';
-import { getCountSessionById } from '@/lib/mock-data/inventory';
+import { getCountSessionById, updateCountSession, subscribeCountSessions, getCountSessionsData } from '@/lib/mock-data/inventory';
 import { MOCK_PRODUCTS } from '@/lib/mock-data/products';
+import { useStore } from '@/hooks/use-store';
 import { CountLine } from '@/lib/types/inventory';
 
 export default function ConteoSessionPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
+
+  // Reactive store subscription
+  const countSessions = useStore(subscribeCountSessions, getCountSessionsData);
 
   const session = getCountSessionById(params.id as string);
   const [lines, setLines] = useState<CountLine[]>([]);
@@ -143,6 +147,16 @@ export default function ConteoSessionPage() {
     });
 
     setLines(updatedLines);
+
+    // Persist progress to store
+    const newCountedCount = updatedLines.filter((l) => l.countedQty !== undefined).length;
+    const newDifferencesCount = updatedLines.filter((l) => l.difference !== undefined && l.difference !== 0).length;
+    updateCountSession(session.id, {
+      lines: updatedLines,
+      countedProducts: newCountedCount,
+      productsWithDifference: newDifferencesCount,
+    });
+
     setSelectedLine(null);
 
     const diff = countedQty - selectedLine.systemQty;
@@ -182,6 +196,17 @@ export default function ConteoSessionPage() {
   };
 
   const handleCompleteSession = () => {
+    updateCountSession(session.id, {
+      status: 'completado',
+      lines,
+      countedProducts: countedCount,
+      productsWithDifference: differencesCount,
+      completedAt: new Date().toISOString(),
+      completedBy: user?.id || 'USR-000',
+      completedByName: user?.name || 'Usuario',
+      adjustmentsGenerated: differencesCount,
+    });
+
     toast.success('Sesión completada', {
       description: `${differencesCount} diferencias detectadas. Se generarán ajustes automáticos.`,
     });

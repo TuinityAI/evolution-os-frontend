@@ -8,14 +8,9 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   Search,
   ArrowLeft,
@@ -46,7 +41,7 @@ export default function HistorialEntradasPage() {
   const [selectedBodega, setSelectedBodega] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<MerchandiseEntry | null>(null);
 
-  const { isOpen: isDetailOpen, onOpen: onDetailOpen, onClose: onDetailClose } = useDisclosure();
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Filter entries
   const filteredEntries = useMemo(() => {
@@ -75,7 +70,7 @@ export default function HistorialEntradasPage() {
 
   const handleViewEntry = (entry: MerchandiseEntry) => {
     setSelectedEntry(entry);
-    onDetailOpen();
+    setIsDetailOpen(true);
   };
 
   return (
@@ -324,22 +319,12 @@ export default function HistorialEntradasPage() {
       )}
 
       {/* Entry Detail Modal */}
-      <Modal isOpen={isDetailOpen} onClose={onDetailClose} size="3xl" scrollBehavior="inside">
-        <ModalContent className="bg-white">
-          <ModalHeader className="border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                <PackageCheck className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Detalle de Entrada</h2>
-                <p className="text-sm text-gray-500">
-                  Orden {selectedEntry?.purchaseOrderNumber} - {selectedEntry && formatDate(selectedEntry.date)}
-                </p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
+      <CustomModal isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} size="3xl" scrollable>
+          <CustomModalHeader onClose={() => setIsDetailOpen(false)}>
+              <PackageCheck className="h-5 w-5 text-emerald-600" />
+              Detalle de Entrada
+          </CustomModalHeader>
+          <CustomModalBody className="space-y-4">
             {selectedEntry && (
               <div className="space-y-6">
                 {/* Entry Info */}
@@ -473,24 +458,23 @@ export default function HistorialEntradasPage() {
                 )}
               </div>
             )}
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200">
-            <Button variant="light" onPress={onDetailClose}>
+          </CustomModalBody>
+          <CustomModalFooter>
+            <Button variant="light" onPress={() => setIsDetailOpen(false)}>
               Cerrar
             </Button>
             <Button
               color="primary"
               onPress={() => {
-                onDetailClose();
+                setIsDetailOpen(false);
                 router.push(`/compras/${selectedEntry?.purchaseOrderId}`);
               }}
               className="bg-brand-600"
             >
               Ver Orden Completa
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

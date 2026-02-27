@@ -4,15 +4,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
-  Switch,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
+import { Switch } from '@/components/ui/switch';
 import {
   ArrowLeft,
   Bell,
@@ -27,7 +22,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_NOTIFICATION_CONFIGS } from '@/lib/mock-data/configuration';
+import { useStore } from '@/hooks/use-store';
+import {
+  getNotificationConfigsData,
+  subscribeNotificationConfigs,
+  updateNotificationConfig,
+} from '@/lib/mock-data/configuration';
 import type { NotificationConfig, NotificationChannel } from '@/lib/types/configuration';
 
 const MODULE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -68,37 +68,35 @@ const RECIPIENT_ICONS: Record<string, React.ElementType> = {
 
 export default function NotificacionesPage() {
   const router = useRouter();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const notifications = useStore(subscribeNotificationConfigs, getNotificationConfigsData);
+
+  const [isOpen, setIsOpen] = useState(false);
 
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATION_CONFIGS);
   const [editingNotification, setEditingNotification] = useState<NotificationConfig | null>(null);
 
   const handleToggleActive = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => {
-        if (n.id === id) {
-          const newActive = !n.isActive;
-          toast.success(newActive ? 'Notificación activada' : 'Notificación desactivada', {
-            description: n.eventLabel,
-          });
-          return { ...n, isActive: newActive };
-        }
-        return n;
-      })
-    );
+    const notification = notifications.find((n) => n.id === id);
+    if (!notification) return;
+    const newActive = !notification.isActive;
+    updateNotificationConfig(id, { isActive: newActive });
+    toast.success(newActive ? 'Notificación activada' : 'Notificación desactivada', {
+      id: `toggle-notif-${id}`,
+      description: notification.eventLabel,
+    });
   };
 
   const handleEditNotification = (notification: NotificationConfig) => {
     setEditingNotification(notification);
-    onOpen();
+    setIsOpen(true);
   };
 
   const handleSaveNotification = () => {
     toast.success('Configuración de notificación actualizada', {
       description: editingNotification?.eventLabel,
     });
-    onClose();
+    setIsOpen(false);
   };
 
   return (
@@ -197,10 +195,8 @@ export default function NotificacionesPage() {
                     </td>
                     <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <Switch
-                        isSelected={notification.isActive}
-                        onValueChange={() => handleToggleActive(notification.id)}
-                        size="sm"
-                        color="success"
+                        checked={notification.isActive}
+                        onCheckedChange={() => handleToggleActive(notification.id)}
                       />
                     </td>
                     <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
@@ -247,7 +243,7 @@ export default function NotificacionesPage() {
                               <Icon className="h-4 w-4 text-gray-500" />
                               <span className="text-sm text-gray-700 dark:text-gray-300">{CHANNEL_LABELS[channel.type]}</span>
                             </div>
-                            <Switch isSelected={channel.enabled} size="sm" color="success" />
+                            <Switch defaultChecked={channel.enabled} />
                           </div>
                         );
                       })}
@@ -288,90 +284,88 @@ export default function NotificacionesPage() {
       </div>
 
       {/* Edit Notification Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="md">
-        <ModalContent className="bg-white dark:bg-[#141414]">
-          <ModalHeader className="border-b border-gray-200 dark:border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-950">
-                <Bell className="h-5 w-5 text-orange-600" />
-              </div>
+      <CustomModal isOpen={isOpen} onClose={() => setIsOpen(false)} size="md">
+        <CustomModalHeader onClose={() => setIsOpen(false)}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-950">
+              <Bell className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Editar Notificación</h2>
+              <p className="text-sm text-gray-500 dark:text-[#888888]">{editingNotification?.eventLabel}</p>
+            </div>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          {editingNotification && (
+            <div className="space-y-5">
+              <p className="text-sm text-gray-600 dark:text-gray-400">{editingNotification.description}</p>
+
+              {/* Channels */}
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Editar Notificación</h2>
-                <p className="text-sm text-gray-500 dark:text-[#888888]">{editingNotification?.eventLabel}</p>
+                <h4 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Canales</h4>
+                <div className="space-y-2">
+                  {editingNotification.channels.map((channel) => {
+                    const Icon = CHANNEL_ICONS[channel.type];
+                    return (
+                      <div
+                        key={channel.type}
+                        className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] px-4 py-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className="h-5 w-5 text-gray-500" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{CHANNEL_LABELS[channel.type]}</p>
+                            <p className="text-xs text-gray-500 dark:text-[#888888]">
+                              {channel.type === 'email' ? 'Envía un correo electrónico' :
+                               channel.type === 'in_app' ? 'Notificación dentro de la aplicación' :
+                               'Mensaje de texto SMS'}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch defaultChecked={channel.enabled} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Recipients */}
+              <div>
+                <h4 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Destinatarios</h4>
+                <div className="space-y-2">
+                  {editingNotification.recipients.map((recipient, idx) => {
+                    const Icon = RECIPIENT_ICONS[recipient.type] || User;
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] px-4 py-3"
+                      >
+                        <Icon className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{recipient.label}</span>
+                        <span className={cn(
+                          'rounded-full px-2 py-0.5 text-xs font-medium',
+                          recipient.type === 'role' ? 'bg-blue-500/10 text-blue-500' :
+                          recipient.type === 'user' ? 'bg-emerald-500/10 text-emerald-500' :
+                          'bg-amber-500/10 text-amber-500'
+                        )}>
+                          {recipient.type === 'role' ? 'Rol' : recipient.type === 'user' ? 'Usuario' : 'Custom'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            {editingNotification && (
-              <div className="space-y-5">
-                <p className="text-sm text-gray-600 dark:text-gray-400">{editingNotification.description}</p>
-
-                {/* Channels */}
-                <div>
-                  <h4 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Canales</h4>
-                  <div className="space-y-2">
-                    {editingNotification.channels.map((channel) => {
-                      const Icon = CHANNEL_ICONS[channel.type];
-                      return (
-                        <div
-                          key={channel.type}
-                          className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] px-4 py-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Icon className="h-5 w-5 text-gray-500" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">{CHANNEL_LABELS[channel.type]}</p>
-                              <p className="text-xs text-gray-500 dark:text-[#888888]">
-                                {channel.type === 'email' ? 'Envía un correo electrónico' :
-                                 channel.type === 'in_app' ? 'Notificación dentro de la aplicación' :
-                                 'Mensaje de texto SMS'}
-                              </p>
-                            </div>
-                          </div>
-                          <Switch isSelected={channel.enabled} size="sm" color="success" />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Recipients */}
-                <div>
-                  <h4 className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Destinatarios</h4>
-                  <div className="space-y-2">
-                    {editingNotification.recipients.map((recipient, idx) => {
-                      const Icon = RECIPIENT_ICONS[recipient.type] || User;
-                      return (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] px-4 py-3"
-                        >
-                          <Icon className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{recipient.label}</span>
-                          <span className={cn(
-                            'rounded-full px-2 py-0.5 text-xs font-medium',
-                            recipient.type === 'role' ? 'bg-blue-500/10 text-blue-500' :
-                            recipient.type === 'user' ? 'bg-emerald-500/10 text-emerald-500' :
-                            'bg-amber-500/10 text-amber-500'
-                          )}>
-                            {recipient.type === 'role' ? 'Rol' : recipient.type === 'user' ? 'Usuario' : 'Custom'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </ModalBody>
-          <ModalFooter className="border-t border-gray-200 dark:border-[#2a2a2a]">
-            <Button variant="light" onPress={onClose}>Cancelar</Button>
-            <Button color="primary" onPress={handleSaveNotification} className="bg-brand-600">
-              Guardar Cambios
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          )}
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsOpen(false)}>Cancelar</Button>
+          <Button color="primary" onPress={handleSaveNotification} className="bg-brand-600">
+            Guardar Cambios
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 /**
  * Mock data for Accounting (Contabilidad) module
  * Based on Document 007 specifications
+ * Store-backed: data persists in localStorage
  */
 
 import type {
@@ -23,12 +24,13 @@ import type {
   AccountingStats,
   MonthlyPLSummary,
 } from '@/lib/types/accounting';
+import { loadCollection, saveCollection, createSubscribers } from '@/lib/store/local-store';
 
 // ============================================================================
-// CHART OF ACCOUNTS (Plan de Cuentas)
+// CHART OF ACCOUNTS (Plan de Cuentas) - Seed Data
 // ============================================================================
 
-export const MOCK_ACCOUNTS: Account[] = [
+const SEED_ACCOUNTS: Account[] = [
   // ACTIVOS (1000)
   { id: 'ACC-001', code: '1000-000', name: 'ACTIVOS', type: 'activo', nature: 'deudora', level: 1, isActive: true, hasMovements: false, balance: 2850000 },
   { id: 'ACC-002', code: '1100-000', name: 'Activo Corriente', type: 'activo', nature: 'deudora', parentId: 'ACC-001', parentCode: '1000-000', level: 2, isActive: true, hasMovements: false, balance: 1950000 },
@@ -90,10 +92,10 @@ export const MOCK_ACCOUNTS: Account[] = [
 ];
 
 // ============================================================================
-// JOURNAL ENTRIES (Asientos Contables)
+// JOURNAL ENTRIES (Asientos Contables) - Seed Data
 // ============================================================================
 
-export const MOCK_JOURNAL_ENTRIES: JournalEntry[] = [
+const SEED_JOURNAL_ENTRIES: JournalEntry[] = [
   {
     id: 'JE-00001', number: 1, date: '2026-02-01T10:00:00Z',
     description: 'Venta B2B a MEDIMEX, S.A. - Pedido PED-00045',
@@ -276,10 +278,10 @@ export const MOCK_JOURNAL_ENTRIES: JournalEntry[] = [
 ];
 
 // ============================================================================
-// BANK ACCOUNTS
+// BANK ACCOUNTS - Seed Data
 // ============================================================================
 
-export const MOCK_BANK_ACCOUNTS: BankAccount[] = [
+const SEED_BANK_ACCOUNTS: BankAccount[] = [
   { id: 'BA-001', bankId: 'BK-006', bankName: 'Banco General', accountNumber: '****4521', accountType: 'corriente', currency: 'USD', currentBalance: 185000, availableBalance: 182000, lastReconciliationDate: '2026-01-31', isActive: true, color: '#003366' },
   { id: 'BA-002', bankId: 'BK-002', bankName: 'Banistmo', accountNumber: '****7834', accountType: 'corriente', currency: 'USD', currentBalance: 92000, availableBalance: 90500, lastReconciliationDate: '2026-01-31', isActive: true, color: '#E31837' },
   { id: 'BA-003', bankId: 'BK-001', bankName: 'Banesco', accountNumber: '****2190', accountType: 'corriente', currency: 'USD', currentBalance: 67500, availableBalance: 67500, lastReconciliationDate: '2026-01-31', isActive: true, color: '#00529B' },
@@ -294,10 +296,10 @@ export const MOCK_BANK_ACCOUNTS: BankAccount[] = [
 ];
 
 // ============================================================================
-// BANK MOVEMENTS
+// BANK MOVEMENTS - Seed Data
 // ============================================================================
 
-export const MOCK_BANK_MOVEMENTS: BankMovement[] = [
+const SEED_BANK_MOVEMENTS: BankMovement[] = [
   { id: 'BM-001', date: '2026-02-25T10:00:00Z', bankAccountId: 'BA-001', bankName: 'Banco General', description: 'Depósito transferencia SULTAN WHOLESALE', type: 'ingreso', amount: 50000, balance: 185000, reference: 'TRF-2026-0201-001' },
   { id: 'BM-002', date: '2026-02-24T10:00:00Z', bankAccountId: 'BA-001', bankName: 'Banco General', description: 'Pago servicios públicos', type: 'egreso', amount: 1500, balance: 135000, reference: 'PAG-2026-0224' },
   { id: 'BM-003', date: '2026-02-20T10:00:00Z', bankAccountId: 'BA-002', bankName: 'Banistmo', description: 'Depósito cobro MARIA DEL MAR PEREZ', type: 'ingreso', amount: 12000, balance: 92000, reference: 'TRF-SV-2026-0215' },
@@ -309,10 +311,10 @@ export const MOCK_BANK_MOVEMENTS: BankMovement[] = [
 ];
 
 // ============================================================================
-// MONTHLY CLOSES
+// MONTHLY CLOSES - Seed Data
 // ============================================================================
 
-export const MOCK_MONTHLY_CLOSES: MonthlyClose[] = [
+const SEED_MONTHLY_CLOSES: MonthlyClose[] = [
   {
     id: 'MC-202601', period: '2026-01', year: 2026, month: 1, monthName: 'Enero 2026',
     status: 'cerrado',
@@ -354,6 +356,261 @@ export const MOCK_MONTHLY_CLOSES: MonthlyClose[] = [
 ];
 
 // ============================================================================
+// STORE INFRASTRUCTURE - Accounts
+// ============================================================================
+
+let _accounts: Account[] = SEED_ACCOUNTS;
+let _accountsInit = false;
+const { subscribe: subscribeAccounts, notify: _notifyAccounts } = createSubscribers();
+
+function ensureAccountsInitialized(): void {
+  if (typeof window === 'undefined' || _accountsInit) return;
+  _accounts = loadCollection<Account>('accounts', SEED_ACCOUNTS);
+  _accountsInit = true;
+}
+
+export function getAccountsData(): Account[] {
+  ensureAccountsInitialized();
+  return _accounts;
+}
+
+export { subscribeAccounts };
+
+export const MOCK_ACCOUNTS: Account[] = new Proxy(SEED_ACCOUNTS as Account[], {
+  get(_target, prop, receiver) {
+    ensureAccountsInitialized();
+    return Reflect.get(_accounts, prop, receiver);
+  },
+});
+
+export function addAccount(account: Account): void {
+  ensureAccountsInitialized();
+  _accounts = [..._accounts, account];
+  saveCollection('accounts', _accounts);
+  _notifyAccounts();
+}
+
+export function updateAccount(id: string, updates: Partial<Account>): void {
+  ensureAccountsInitialized();
+  _accounts = _accounts.map((a) =>
+    a.id === id ? { ...a, ...updates } : a
+  );
+  saveCollection('accounts', _accounts);
+  _notifyAccounts();
+}
+
+export function removeAccount(id: string): void {
+  ensureAccountsInitialized();
+  _accounts = _accounts.filter((a) => a.id !== id);
+  saveCollection('accounts', _accounts);
+  _notifyAccounts();
+}
+
+// ============================================================================
+// STORE INFRASTRUCTURE - Journal Entries
+// ============================================================================
+
+let _journalEntries: JournalEntry[] = SEED_JOURNAL_ENTRIES;
+let _journalEntriesInit = false;
+const { subscribe: subscribeJournalEntries, notify: _notifyJournalEntries } = createSubscribers();
+
+function ensureJournalEntriesInitialized(): void {
+  if (typeof window === 'undefined' || _journalEntriesInit) return;
+  _journalEntries = loadCollection<JournalEntry>('journal_entries', SEED_JOURNAL_ENTRIES);
+  _journalEntriesInit = true;
+}
+
+export function getJournalEntriesData(): JournalEntry[] {
+  ensureJournalEntriesInitialized();
+  return _journalEntries;
+}
+
+export { subscribeJournalEntries };
+
+export const MOCK_JOURNAL_ENTRIES: JournalEntry[] = new Proxy(SEED_JOURNAL_ENTRIES as JournalEntry[], {
+  get(_target, prop, receiver) {
+    ensureJournalEntriesInitialized();
+    return Reflect.get(_journalEntries, prop, receiver);
+  },
+});
+
+export function addJournalEntry(entry: JournalEntry): void {
+  ensureJournalEntriesInitialized();
+  _journalEntries = [..._journalEntries, entry];
+  saveCollection('journal_entries', _journalEntries);
+  _notifyJournalEntries();
+}
+
+export function updateJournalEntry(id: string, updates: Partial<JournalEntry>): void {
+  ensureJournalEntriesInitialized();
+  _journalEntries = _journalEntries.map((e) =>
+    e.id === id ? { ...e, ...updates } : e
+  );
+  saveCollection('journal_entries', _journalEntries);
+  _notifyJournalEntries();
+}
+
+export function removeJournalEntry(id: string): void {
+  ensureJournalEntriesInitialized();
+  _journalEntries = _journalEntries.filter((e) => e.id !== id);
+  saveCollection('journal_entries', _journalEntries);
+  _notifyJournalEntries();
+}
+
+// ============================================================================
+// STORE INFRASTRUCTURE - Bank Accounts
+// ============================================================================
+
+let _bankAccounts: BankAccount[] = SEED_BANK_ACCOUNTS;
+let _bankAccountsInit = false;
+const { subscribe: subscribeBankAccounts, notify: _notifyBankAccounts } = createSubscribers();
+
+function ensureBankAccountsInitialized(): void {
+  if (typeof window === 'undefined' || _bankAccountsInit) return;
+  _bankAccounts = loadCollection<BankAccount>('bank_accounts', SEED_BANK_ACCOUNTS);
+  _bankAccountsInit = true;
+}
+
+export function getBankAccountsData(): BankAccount[] {
+  ensureBankAccountsInitialized();
+  return _bankAccounts;
+}
+
+export { subscribeBankAccounts };
+
+export const MOCK_BANK_ACCOUNTS: BankAccount[] = new Proxy(SEED_BANK_ACCOUNTS as BankAccount[], {
+  get(_target, prop, receiver) {
+    ensureBankAccountsInitialized();
+    return Reflect.get(_bankAccounts, prop, receiver);
+  },
+});
+
+export function addBankAccount(bankAccount: BankAccount): void {
+  ensureBankAccountsInitialized();
+  _bankAccounts = [..._bankAccounts, bankAccount];
+  saveCollection('bank_accounts', _bankAccounts);
+  _notifyBankAccounts();
+}
+
+export function updateBankAccount(id: string, updates: Partial<BankAccount>): void {
+  ensureBankAccountsInitialized();
+  _bankAccounts = _bankAccounts.map((b) =>
+    b.id === id ? { ...b, ...updates } : b
+  );
+  saveCollection('bank_accounts', _bankAccounts);
+  _notifyBankAccounts();
+}
+
+export function removeBankAccount(id: string): void {
+  ensureBankAccountsInitialized();
+  _bankAccounts = _bankAccounts.filter((b) => b.id !== id);
+  saveCollection('bank_accounts', _bankAccounts);
+  _notifyBankAccounts();
+}
+
+// ============================================================================
+// STORE INFRASTRUCTURE - Bank Movements
+// ============================================================================
+
+let _bankMovements: BankMovement[] = SEED_BANK_MOVEMENTS;
+let _bankMovementsInit = false;
+const { subscribe: subscribeBankMovements, notify: _notifyBankMovements } = createSubscribers();
+
+function ensureBankMovementsInitialized(): void {
+  if (typeof window === 'undefined' || _bankMovementsInit) return;
+  _bankMovements = loadCollection<BankMovement>('bank_movements', SEED_BANK_MOVEMENTS);
+  _bankMovementsInit = true;
+}
+
+export function getBankMovementsData(): BankMovement[] {
+  ensureBankMovementsInitialized();
+  return _bankMovements;
+}
+
+export { subscribeBankMovements };
+
+export const MOCK_BANK_MOVEMENTS: BankMovement[] = new Proxy(SEED_BANK_MOVEMENTS as BankMovement[], {
+  get(_target, prop, receiver) {
+    ensureBankMovementsInitialized();
+    return Reflect.get(_bankMovements, prop, receiver);
+  },
+});
+
+export function addBankMovement(movement: BankMovement): void {
+  ensureBankMovementsInitialized();
+  _bankMovements = [..._bankMovements, movement];
+  saveCollection('bank_movements', _bankMovements);
+  _notifyBankMovements();
+}
+
+export function updateBankMovement(id: string, updates: Partial<BankMovement>): void {
+  ensureBankMovementsInitialized();
+  _bankMovements = _bankMovements.map((m) =>
+    m.id === id ? { ...m, ...updates } : m
+  );
+  saveCollection('bank_movements', _bankMovements);
+  _notifyBankMovements();
+}
+
+export function removeBankMovement(id: string): void {
+  ensureBankMovementsInitialized();
+  _bankMovements = _bankMovements.filter((m) => m.id !== id);
+  saveCollection('bank_movements', _bankMovements);
+  _notifyBankMovements();
+}
+
+// ============================================================================
+// STORE INFRASTRUCTURE - Monthly Closes
+// ============================================================================
+
+let _monthlyCloses: MonthlyClose[] = SEED_MONTHLY_CLOSES;
+let _monthlyClosesInit = false;
+const { subscribe: subscribeMonthlyCloses, notify: _notifyMonthlyCloses } = createSubscribers();
+
+function ensureMonthlyClosesInitialized(): void {
+  if (typeof window === 'undefined' || _monthlyClosesInit) return;
+  _monthlyCloses = loadCollection<MonthlyClose>('monthly_closes', SEED_MONTHLY_CLOSES);
+  _monthlyClosesInit = true;
+}
+
+export function getMonthlyClosesData(): MonthlyClose[] {
+  ensureMonthlyClosesInitialized();
+  return _monthlyCloses;
+}
+
+export { subscribeMonthlyCloses };
+
+export const MOCK_MONTHLY_CLOSES: MonthlyClose[] = new Proxy(SEED_MONTHLY_CLOSES as MonthlyClose[], {
+  get(_target, prop, receiver) {
+    ensureMonthlyClosesInitialized();
+    return Reflect.get(_monthlyCloses, prop, receiver);
+  },
+});
+
+export function addMonthlyClose(close: MonthlyClose): void {
+  ensureMonthlyClosesInitialized();
+  _monthlyCloses = [..._monthlyCloses, close];
+  saveCollection('monthly_closes', _monthlyCloses);
+  _notifyMonthlyCloses();
+}
+
+export function updateMonthlyClose(id: string, updates: Partial<MonthlyClose>): void {
+  ensureMonthlyClosesInitialized();
+  _monthlyCloses = _monthlyCloses.map((c) =>
+    c.id === id ? { ...c, ...updates } : c
+  );
+  saveCollection('monthly_closes', _monthlyCloses);
+  _notifyMonthlyCloses();
+}
+
+export function removeMonthlyClose(id: string): void {
+  ensureMonthlyClosesInitialized();
+  _monthlyCloses = _monthlyCloses.filter((c) => c.id !== id);
+  saveCollection('monthly_closes', _monthlyCloses);
+  _notifyMonthlyCloses();
+}
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -361,9 +618,10 @@ export const MOCK_MONTHLY_CLOSES: MonthlyClose[] = [
  * Build account tree from flat list
  */
 export function getAccountTree(): Account[] {
-  const topLevel = MOCK_ACCOUNTS.filter(a => a.level === 1);
+  ensureAccountsInitialized();
+  const topLevel = _accounts.filter(a => a.level === 1);
   const buildTree = (parent: Account): Account => {
-    const children = MOCK_ACCOUNTS.filter(a => a.parentId === parent.id);
+    const children = _accounts.filter(a => a.parentId === parent.id);
     return {
       ...parent,
       children: children.length > 0 ? children.map(buildTree) : undefined,
@@ -376,14 +634,16 @@ export function getAccountTree(): Account[] {
  * Get account by ID
  */
 export function getAccountById(id: string): Account | undefined {
-  return MOCK_ACCOUNTS.find(a => a.id === id);
+  ensureAccountsInitialized();
+  return _accounts.find(a => a.id === id);
 }
 
 /**
  * Get account by code
  */
 export function getAccountByCode(code: string): Account | undefined {
-  return MOCK_ACCOUNTS.find(a => a.code === code);
+  ensureAccountsInitialized();
+  return _accounts.find(a => a.code === code);
 }
 
 /**
@@ -396,7 +656,8 @@ export function getJournalEntries(filters?: {
   dateFrom?: string;
   dateTo?: string;
 }): JournalEntry[] {
-  let entries = [...MOCK_JOURNAL_ENTRIES];
+  ensureJournalEntriesInitialized();
+  let entries = [..._journalEntries];
 
   if (!filters) return entries;
 
@@ -428,10 +689,11 @@ export function getJournalEntries(filters?: {
  * Get ledger entries for a specific account
  */
 export function getLedgerEntries(accountId: string): LedgerEntry[] {
+  ensureJournalEntriesInitialized();
   const entries: LedgerEntry[] = [];
   let runningBalance = 0;
 
-  const sortedJE = [...MOCK_JOURNAL_ENTRIES]
+  const sortedJE = [..._journalEntries]
     .filter(je => je.status !== 'anulado')
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -459,7 +721,8 @@ export function getLedgerEntries(accountId: string): LedgerEntry[] {
  * Get trial balance
  */
 export function getTrialBalance(): TrialBalanceLine[] {
-  return MOCK_ACCOUNTS
+  ensureAccountsInitialized();
+  return _accounts
     .filter(a => a.level === 3 && a.hasMovements)
     .map(a => ({
       accountCode: a.code,
@@ -475,11 +738,12 @@ export function getTrialBalance(): TrialBalanceLine[] {
  * Get accounting stats for dashboard
  */
 export function getAccountingStats(): AccountingStats {
+  ensureBankAccountsInitialized();
   return {
     monthlyRevenue: 285000,
     monthlyExpenses: 65000,
     netIncome: 220000,
-    totalBankBalance: MOCK_BANK_ACCOUNTS.filter(ba => ba.isActive).reduce((sum, ba) => sum + ba.currentBalance, 0),
+    totalBankBalance: _bankAccounts.filter(ba => ba.isActive).reduce((sum, ba) => sum + ba.currentBalance, 0),
     grossMarginPercent: 40.5,
     cxcRotation: 32,
     averageCollectionDays: 28,

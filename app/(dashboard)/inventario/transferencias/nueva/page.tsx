@@ -20,9 +20,10 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { cn } from '@/lib/utils/cn';
-import { MOCK_WAREHOUSES, isB2BtoB2CTransfer, DEFAULT_TRANSFER_INFLATION_FACTOR } from '@/lib/mock-data/warehouses';
+import { MOCK_WAREHOUSES, isB2BtoB2CTransfer, DEFAULT_TRANSFER_INFLATION_FACTOR, subscribeWarehouses, getWarehousesData } from '@/lib/mock-data/warehouses';
 import { MOCK_PRODUCTS, getProductById } from '@/lib/mock-data/products';
-import { calculateConversion, generateNextTransferId } from '@/lib/mock-data/inventory';
+import { calculateConversion, generateNextTransferId, addTransfer } from '@/lib/mock-data/inventory';
+import { useStore } from '@/hooks/use-store';
 
 interface TransferLine {
   productId: string;
@@ -38,6 +39,9 @@ export default function NuevaTransferenciaPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canViewCosts = checkPermission('canViewCosts');
+
+  // Reactive store subscription
+  const warehouses = useStore(subscribeWarehouses, getWarehousesData);
 
   const [sourceWarehouseId, setSourceWarehouseId] = useState('WH-001');
   const [destWarehouseId, setDestWarehouseId] = useState('WH-002');
@@ -90,6 +94,45 @@ export default function NuevaTransferenciaPage() {
       return;
     }
     const transferId = generateNextTransferId();
+    const sourceWarehouse = warehouses.find((w) => w.id === sourceWarehouseId);
+    const destWarehouse = warehouses.find((w) => w.id === destWarehouseId);
+
+    addTransfer({
+      id: transferId,
+      createdAt: new Date().toISOString(),
+      createdBy: 'USR-000',
+      createdByName: 'Usuario',
+      sourceWarehouseId,
+      sourceWarehouseName: sourceWarehouse?.name || '',
+      sourceWarehouseType: sourceWarehouse?.type || 'B2B',
+      destWarehouseId,
+      destWarehouseName: destWarehouse?.name || '',
+      destWarehouseType: destWarehouse?.type || 'B2C',
+      observation,
+      lines: lines.map((l, idx) => {
+        const product = getProductById(l.productId);
+        const conversion = product ? calculateConversion(product, l.quantityCases) : null;
+        return {
+          id: `TRL-NEW-${idx}`,
+          productId: l.productId,
+          productReference: l.productReference,
+          productDescription: l.productDescription,
+          sourceStock: l.sourceStock,
+          quantityCases: l.quantityCases,
+          unitsPerCase: l.unitsPerCase,
+          resultingUnits: l.quantityCases * l.unitsPerCase,
+          realCostCIF: l.costCIF,
+          transferCost: isB2BtoB2C ? l.costCIF * DEFAULT_TRANSFER_INFLATION_FACTOR : l.costCIF,
+          totalValue: l.quantityCases * l.costCIF,
+        };
+      }),
+      totalCases,
+      totalUnits,
+      totalValue,
+      inflationFactor: isB2BtoB2C ? DEFAULT_TRANSFER_INFLATION_FACTOR : 1,
+      status: 'enviada',
+    });
+
     toast.success('Transferencia creada', {
       description: `La transferencia ${transferId} ha sido enviada.`,
     });
@@ -129,7 +172,7 @@ export default function NuevaTransferenciaPage() {
                 variant="bordered"
                 classNames={{ trigger: 'bg-white' }}
               >
-                {MOCK_WAREHOUSES.map((w) => (
+                {warehouses.map((w) => (
                   <SelectItem key={w.id}>{w.name} ({w.type})</SelectItem>
                 ))}
               </Select>
@@ -142,7 +185,7 @@ export default function NuevaTransferenciaPage() {
                 variant="bordered"
                 classNames={{ trigger: 'bg-white' }}
               >
-                {MOCK_WAREHOUSES.filter((w) => w.id !== sourceWarehouseId).map((w) => (
+                {warehouses.filter((w) => w.id !== sourceWarehouseId).map((w) => (
                   <SelectItem key={w.id}>{w.name} ({w.type})</SelectItem>
                 ))}
               </Select>

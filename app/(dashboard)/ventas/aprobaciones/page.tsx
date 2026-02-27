@@ -1,18 +1,14 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useStore } from '@/hooks/use-store';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
   Textarea,
-  useDisclosure,
 } from '@heroui/react';
+import { CustomModal, CustomModalHeader, CustomModalBody, CustomModalFooter } from '@/components/ui/custom-modal';
 import {
   ThumbsUp,
   XCircle,
@@ -27,7 +23,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  MOCK_SALES_ORDERS,
+  getSalesOrdersData,
+  subscribeSalesOrders,
+  updateSalesOrder,
   formatCurrency,
   formatDate,
 } from '@/lib/mock-data/sales-orders';
@@ -37,6 +35,7 @@ import { useAuth } from '@/lib/contexts/auth-context';
 
 export default function AprobacionesPage() {
   const router = useRouter();
+  const salesOrders = useStore(subscribeSalesOrders, getSalesOrdersData);
   const { checkPermission, user } = useAuth();
   const canApproveOrders = checkPermission('canApproveOrders');
   const canViewMargins = checkPermission('canViewMargins');
@@ -45,15 +44,15 @@ export default function AprobacionesPage() {
   const [approvalNotes, setApprovalNotes] = useState('');
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
 
-  const { isOpen: isApproveOpen, onOpen: onApproveOpen, onClose: onApproveClose } = useDisclosure();
-  const { isOpen: isRejectOpen, onOpen: onRejectOpen, onClose: onRejectClose } = useDisclosure();
+  const [isApproveOpen, setIsApproveOpen] = useState(false);
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
 
   // Get orders pending approval
   const pendingOrders = useMemo(() => {
-    return MOCK_SALES_ORDERS.filter(
+    return salesOrders.filter(
       (order) => order.status === 'pedido' && order.requiresApproval
     ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  }, []);
+  }, [salesOrders]);
 
   // Stats
   const totalPendingValue = pendingOrders.reduce((sum, order) => sum + order.total, 0);
@@ -76,31 +75,33 @@ export default function AprobacionesPage() {
   const handleApproveClick = (order: SalesOrder) => {
     setSelectedOrder(order);
     setApprovalNotes('');
-    onApproveOpen();
+    setIsApproveOpen(true);
   };
 
   const handleRejectClick = (order: SalesOrder) => {
     setSelectedOrder(order);
     setApprovalNotes('');
-    onRejectOpen();
+    setIsRejectOpen(true);
   };
 
   const handleApprove = () => {
     if (selectedOrder) {
+      updateSalesOrder(selectedOrder.id, { status: 'aprobado', approvedBy: user?.id, approvedByName: user?.name, approvalDate: new Date().toISOString() });
       toast.success('Pedido aprobado', {
         description: `El pedido ${selectedOrder.orderNumber} ha sido aprobado y está listo para empacar.`,
       });
-      onApproveClose();
+      setIsApproveOpen(false);
       setSelectedOrder(null);
     }
   };
 
   const handleReject = () => {
     if (selectedOrder) {
+      updateSalesOrder(selectedOrder.id, { status: 'cancelado', internalNotes: approvalNotes });
       toast.error('Pedido rechazado', {
         description: `El pedido ${selectedOrder.orderNumber} ha sido rechazado.`,
       });
-      onRejectClose();
+      setIsRejectOpen(false);
       setSelectedOrder(null);
     }
   };
@@ -349,9 +350,9 @@ export default function AprobacionesPage() {
       )}
 
       {/* Approve Modal */}
-      <Modal isOpen={isApproveOpen} onClose={onApproveClose} size="md">
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3 border-b border-border pb-4">
+      <CustomModal isOpen={isApproveOpen} onClose={() => setIsApproveOpen(false)} size="md">
+        <CustomModalHeader onClose={() => setIsApproveOpen(false)}>
+          <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
               <ThumbsUp className="h-5 w-5 text-emerald-500" />
             </div>
@@ -359,61 +360,61 @@ export default function AprobacionesPage() {
               <h2 className="text-lg font-semibold text-foreground">Aprobar Pedido</h2>
               <p className="text-sm text-muted-foreground">{selectedOrder?.orderNumber}</p>
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-500">
-                <AlertTriangle className="h-4 w-4 mt-0.5" />
-                <div>
-                  <p className="font-medium">Este pedido tiene margen bajo</p>
-                  <p className="opacity-80">Al aprobar, el pedido pasará a estado "Aprobado" y podrá ser empacado.</p>
-                </div>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <div className="space-y-4">
+            <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-500">
+              <AlertTriangle className="h-4 w-4 mt-0.5" />
+              <div>
+                <p className="font-medium">Este pedido tiene margen bajo</p>
+                <p className="opacity-80">Al aprobar, el pedido pasará a estado "Aprobado" y podrá ser empacado.</p>
               </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Cliente:</span>
-                  <p className="font-medium text-foreground">{selectedOrder?.customerName}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Total:</span>
-                  <p className="font-mono font-medium text-foreground">{formatCurrency(selectedOrder?.total || 0)}</p>
-                </div>
-                {canViewMargins && (
-                  <div>
-                    <span className="text-muted-foreground">Margen:</span>
-                    <p className="font-mono font-medium text-red-500">
-                      {selectedOrder?.marginPercent?.toFixed(1)}%
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <Textarea
-                label="Notas de aprobación (opcional)"
-                placeholder="Agregar comentarios..."
-                value={approvalNotes}
-                onChange={(e) => setApprovalNotes(e.target.value)}
-                variant="bordered"
-                minRows={2}
-              />
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-border pt-4">
-            <Button variant="light" onPress={onApproveClose}>
-              Cancelar
-            </Button>
-            <Button color="success" onPress={handleApprove}>
-              Aprobar Pedido
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Cliente:</span>
+                <p className="font-medium text-foreground">{selectedOrder?.customerName}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Total:</span>
+                <p className="font-mono font-medium text-foreground">{formatCurrency(selectedOrder?.total || 0)}</p>
+              </div>
+              {canViewMargins && (
+                <div>
+                  <span className="text-muted-foreground">Margen:</span>
+                  <p className="font-mono font-medium text-red-500">
+                    {selectedOrder?.marginPercent?.toFixed(1)}%
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <Textarea
+              label="Notas de aprobación (opcional)"
+              placeholder="Agregar comentarios..."
+              value={approvalNotes}
+              onChange={(e) => setApprovalNotes(e.target.value)}
+              variant="bordered"
+              minRows={2}
+            />
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsApproveOpen(false)}>
+            Cancelar
+          </Button>
+          <Button color="success" onPress={handleApprove}>
+            Aprobar Pedido
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
 
       {/* Reject Modal */}
-      <Modal isOpen={isRejectOpen} onClose={onRejectClose} size="md">
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3 border-b border-border pb-4">
+      <CustomModal isOpen={isRejectOpen} onClose={() => setIsRejectOpen(false)} size="md">
+        <CustomModalHeader onClose={() => setIsRejectOpen(false)}>
+          <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
               <XCircle className="h-5 w-5 text-red-500" />
             </div>
@@ -421,40 +422,40 @@ export default function AprobacionesPage() {
               <h2 className="text-lg font-semibold text-foreground">Rechazar Pedido</h2>
               <p className="text-sm text-muted-foreground">{selectedOrder?.orderNumber}</p>
             </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Cliente:</span>
-                  <p className="font-medium text-foreground">{selectedOrder?.customerName}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Total:</span>
-                  <p className="font-mono font-medium text-foreground">{formatCurrency(selectedOrder?.total || 0)}</p>
-                </div>
+          </div>
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-4">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Cliente:</span>
+                <p className="font-medium text-foreground">{selectedOrder?.customerName}</p>
               </div>
-
-              <Textarea
-                label="Motivo del rechazo *"
-                placeholder="Explica el motivo del rechazo..."
-                value={approvalNotes}
-                onChange={(e) => setApprovalNotes(e.target.value)}
-                variant="bordered"
-                minRows={3}
-              />
+              <div>
+                <span className="text-muted-foreground">Total:</span>
+                <p className="font-mono font-medium text-foreground">{formatCurrency(selectedOrder?.total || 0)}</p>
+              </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-border pt-4">
-            <Button variant="light" onPress={onRejectClose}>
-              Cancelar
-            </Button>
-            <Button color="danger" onPress={handleReject} isDisabled={!approvalNotes.trim()}>
-              Rechazar Pedido
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+
+            <Textarea
+              label="Motivo del rechazo *"
+              placeholder="Explica el motivo del rechazo..."
+              value={approvalNotes}
+              onChange={(e) => setApprovalNotes(e.target.value)}
+              variant="bordered"
+              minRows={3}
+            />
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsRejectOpen(false)}>
+            Cancelar
+          </Button>
+          <Button color="danger" onPress={handleReject} isDisabled={!approvalNotes.trim()}>
+            Rechazar Pedido
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

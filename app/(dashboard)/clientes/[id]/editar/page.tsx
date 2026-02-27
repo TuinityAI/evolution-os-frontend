@@ -20,7 +20,7 @@ import {
   Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClientById, getUniqueCountries } from '@/lib/mock-data/clients';
+import { getClientById, getUniqueCountries, updateClient } from '@/lib/mock-data/clients';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
 import type { PriceLevel, PaymentTerms } from '@/lib/types/client';
@@ -178,6 +178,40 @@ export default function EditarClientePage() {
 
     setIsSaving(true);
     setTimeout(() => {
+      updateClient(clientId, {
+        name: name.trim(),
+        tradeName: tradeName.trim() || undefined,
+        taxId: taxId.trim(),
+        taxIdType,
+        country,
+        city: city.trim() || undefined,
+        address: address.trim() || undefined,
+        priceLevel: priceLevel as PriceLevel,
+        creditLimit: creditLimit ? Number(creditLimit) : 0,
+        creditAvailable: creditLimit
+          ? Number(creditLimit) - (client?.creditUsed ?? 0)
+          : 0,
+        paymentTerms,
+        contacts: contacts.map((c) => ({
+          id: c.id,
+          name: c.name,
+          email: c.email,
+          phone: c.phone,
+          role: c.role || undefined,
+          isPrimary: c.isPrimary,
+        })),
+        shippingAddresses: addresses.map((a) => ({
+          id: a.id,
+          label: a.label,
+          address: a.address,
+          city: a.city,
+          country: a.country || country,
+          postalCode: a.postalCode || undefined,
+          isDefault: a.isDefault,
+        })),
+        notes: notes.trim() || undefined,
+        updatedAt: new Date().toISOString(),
+      });
       toast.success('Cliente actualizado exitosamente', {
         description: `Los datos de ${name} han sido actualizados.`,
       });
