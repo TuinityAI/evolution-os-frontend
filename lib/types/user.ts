@@ -52,4 +52,27 @@ export type PermissionKey =
   | 'canProcessReturns'
   | 'canApplyDiscounts'
   | 'canOverridePriceLevel'
-  | 'canManageClients';
+  | 'canManageClients'
+  // Clientes & Cuentas por Cobrar
+  | 'canAccessCxC'
+  | 'canRegisterPayments'
+  | 'canApproveAnnulments'
+  | 'canViewAging'
+  | 'canSendStatements'
+  // Contabilidad
+  | 'canAccessContabilidad'
+  | 'canCreateManualEntries'
+  | 'canApproveEntries'
+  | 'canViewFinancialStatements'
+  | 'canReconcileBank'
+  | 'canCloseMonthlyPeriod'
+  | 'canCloseAnnualPeriod'
+  | 'canAccessTreasury'
+  | 'canViewBankBalances'
+  // Configuración
+  | 'canAccessConfiguracion'
+  | 'canManageRoles'
+  | 'canManageCatalogs'
+  | 'canViewAuditLog'
+  // Historial
+  | 'canViewHistorial';

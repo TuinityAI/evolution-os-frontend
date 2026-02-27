@@ -36,6 +36,29 @@ export const PERMISSIONS: Record<PermissionKey, UserRole[]> = {
   canApplyDiscounts: ['gerencia', 'compras'],
   canOverridePriceLevel: ['gerencia'],
   canManageClients: ['gerencia', 'contabilidad'],
+  // Clientes & Cuentas por Cobrar permissions
+  canAccessCxC: ['gerencia', 'contabilidad'],
+  canRegisterPayments: ['gerencia', 'contabilidad'],
+  canApproveAnnulments: ['gerencia'],
+  canViewAging: ['gerencia', 'contabilidad'],
+  canSendStatements: ['gerencia', 'contabilidad'],
+  // Contabilidad permissions
+  canAccessContabilidad: ['gerencia', 'contabilidad'],
+  canCreateManualEntries: ['contabilidad'],
+  canApproveEntries: ['gerencia'],
+  canViewFinancialStatements: ['gerencia', 'contabilidad'],
+  canReconcileBank: ['contabilidad'],
+  canCloseMonthlyPeriod: ['contabilidad'],
+  canCloseAnnualPeriod: ['gerencia'],
+  canAccessTreasury: ['gerencia', 'contabilidad'],
+  canViewBankBalances: ['gerencia', 'contabilidad'],
+  // Configuración permissions
+  canAccessConfiguracion: ['gerencia'],
+  canManageRoles: ['gerencia'],
+  canManageCatalogs: ['gerencia', 'contabilidad', 'compras'],
+  canViewAuditLog: ['gerencia'],
+  // Historial
+  canViewHistorial: ['gerencia'],
 };
 
 /**
@@ -66,5 +89,7 @@ export const ROLE_COLORS: Record<UserRole, { bg: string; text: string }> = {
  * Check if a role has a specific permission
  */
 export function hasPermission(role: UserRole, permission: PermissionKey): boolean {
-  return PERMISSIONS[permission].includes(role);
+  const allowedRoles = PERMISSIONS[permission];
+  if (!allowedRoles) return false;
+  return allowedRoles.includes(role);
 }

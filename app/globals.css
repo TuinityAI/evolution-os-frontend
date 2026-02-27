@@ -199,27 +199,29 @@ h6 { font-size: 0.875rem; line-height: 1.5; }
    FOCUS STATES
    ═══════════════════════════════════════════════ */
 /* Default focus for non-input elements (buttons, links, etc.) */
-:focus-visible {
+:focus-visible:not(input):not(textarea):not(select) {
   outline: 2px solid var(--brand-400);
   outline-offset: 2px;
 }
 
-/* Remove default focus outline for inputs - use box-shadow instead to respect border-radius */
+/* Remove all focus outlines and box-shadows from native inputs */
+input:focus,
 input:focus-visible,
+textarea:focus,
 textarea:focus-visible,
+select:focus,
 select:focus-visible,
 [data-slot="input"]:focus-visible,
 [data-slot="inner-wrapper"]:focus-within,
 [role="combobox"]:focus-visible {
   outline: none !important;
+  box-shadow: none !important;
 }
 
 /* HeroUI Input wrapper focus state - clean border ring that follows rounded corners */
 [data-slot="input-wrapper"]:focus-within,
 [data-slot="base"]:has(input:focus),
-[data-slot="base"]:has(textarea:focus),
-div:has(> input:focus),
-div:has(> textarea:focus) {
+[data-slot="base"]:has(textarea:focus) {
   outline: none !important;
   box-shadow: 0 0 0 2px var(--brand-400) !important;
   border-color: var(--brand-400) !important;

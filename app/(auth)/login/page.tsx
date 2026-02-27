@@ -16,16 +16,16 @@ const MAP_DOTS = [
   // North America
   { start: panamaCoords, end: { lat: 49.0, lng: -74.0 } }, // New York, USA
   // South America
-  { start: panamaCoords, end: { lat: -15.0, lng: -47.0 } }, // Brazil
-  { start: panamaCoords, end: { lat: -30.0, lng: -60.0 } }, // Argentina
+  { start: panamaCoords, end: { lat: 5.0, lng: -74.0 } }, // Colombia (Bogotá)
+  { start: panamaCoords, end: { lat: -34.0, lng: -58.0 } }, // Argentina (Buenos Aires)
   // Europe
   { start: panamaCoords, end: { lat: 50.0, lng: -3.0 } }, // Spain
   { start: panamaCoords, end: { lat: 56.0, lng: 10.0 } }, // Northern Europe
   // Asia
-  { start: panamaCoords, end: { lat: 45.0, lng: 140.0 } }, // Japan
-  { start: panamaCoords, end: { lat: 42.0, lng: 120.0 } }, // China
+  { start: panamaCoords, end: { lat: 37.0, lng: 127.0 } }, // South Korea (Seoul)
+  { start: panamaCoords, end: { lat: 28.0, lng: 77.0 } }, // India (New Delhi)
   // Africa
-  { start: panamaCoords, end: { lat: -20.0, lng: 25.0 } }, // South Africa
+  { start: panamaCoords, end: { lat: -25.0, lng: 28.0 } }, // South Africa (Pretoria)
   // Oceania
   { start: panamaCoords, end: { lat: -28.0, lng: 150.0 } }, // Australia
 ];
@@ -75,7 +75,7 @@ export default function LoginPage() {
           className="w-full max-w-sm"
         >
           {/* Glassmorphism Card */}
-          <div className="rounded-2xl border border-white/30 bg-white/20 p-6 shadow-xl backdrop-blur-md">
+          <div className="rounded-2xl border border-white/30 bg-white/20 px-6 pb-6 pt-8 shadow-xl backdrop-blur-md">
             {/* Logo */}
             <div className="mb-6 text-center">
               <motion.div
@@ -94,7 +94,7 @@ export default function LoginPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
-                className="text-xs text-gray-500"
+                className="text-xs text-gray-600"
               >
                 Sistema de Gestión Comercial
               </motion.p>
@@ -109,7 +109,7 @@ export default function LoginPage() {
               className="space-y-3"
             >
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                <label className="mb-1.5 block text-xs font-medium text-gray-800">
                   Correo electrónico
                 </label>
                 <div className="relative">
@@ -119,14 +119,14 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="tu@evolution.com"
-                    className="h-10 w-full rounded-lg border border-white/40 bg-white/60 pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 backdrop-blur-sm focus:border-blue-500 focus:bg-white/80 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="h-10 w-full rounded-lg border-2 border-white/40 bg-white/60 pl-10 pr-4 text-sm text-gray-800 outline-none placeholder:text-gray-400 backdrop-blur-sm focus:border-blue-500 focus:bg-white/80"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-700">
+                <label className="mb-1.5 block text-xs font-medium text-gray-800">
                   Contraseña
                 </label>
                 <div className="relative">
@@ -136,7 +136,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="h-10 w-full rounded-lg border border-white/40 bg-white/60 pl-10 pr-10 text-sm text-gray-800 placeholder:text-gray-400 backdrop-blur-sm focus:border-blue-500 focus:bg-white/80 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="h-10 w-full rounded-lg border-2 border-white/40 bg-white/60 pl-10 pr-10 text-sm text-gray-800 outline-none placeholder:text-gray-400 backdrop-blur-sm focus:border-blue-500 focus:bg-white/80"
                   />
                   <button
                     type="button"
@@ -162,14 +162,16 @@ export default function LoginPage() {
                 </motion.p>
               )}
 
-              <Button
-                type="submit"
-                className="mt-2 w-full bg-gray-800 font-semibold text-white hover:bg-gray-700"
-                size="md"
-                isLoading={isSubmitting}
-              >
-                Iniciar Sesión
-              </Button>
+              <div className="mt-2 flex justify-center">
+                <Button
+                  type="submit"
+                  className="w-3/4 rounded-full bg-gray-800 text-sm font-semibold text-white hover:bg-blue-600"
+                  size="sm"
+                  isLoading={isSubmitting}
+                >
+                  Iniciar Sesión
+                </Button>
+              </div>
             </motion.form>
           </div>
 
@@ -178,13 +180,13 @@ export default function LoginPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
-            className="mt-4 flex items-center justify-center gap-2"
+            className="mt-6 flex items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/20 px-5 py-2 shadow-lg backdrop-blur-md"
           >
             <span className="text-xs text-gray-400">Powered by</span>
             <img
               src="/tuinity-logo.svg"
               alt="Tuinity"
-              className="h-9 w-auto"
+              className="h-9 w-auto brightness-75 contrast-225"
             />
           </motion.div>
         </motion.div>

@@ -33,6 +33,10 @@ import {
   TrendingDown,
   Percent,
   RotateCcw,
+  Landmark,
+  Receipt,
+  CircleDollarSign,
+  CreditCard,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils/cn';
@@ -149,6 +153,30 @@ const RECENT_ACTIVITY = [
   { id: 4, action: 'Producto bajo mínimo', description: 'WHISKY JOHNNIE WALKER BLACK - Stock: 30 cajas', time: 'Hace 3 horas', type: 'alert' },
   { id: 5, action: 'Transferencia confirmada', description: 'TR-00002 recibida en Tienda PTY', time: 'Hace 4 horas', type: 'transfer' },
   { id: 6, action: 'Ajuste aprobado', description: 'AJ-00002 aprobado por Javier', time: 'Hace 5 horas', type: 'adjustment' },
+];
+
+// CxC & Finance Quick View
+const CXC_SUMMARY = {
+  totalPending: 285400,
+  current: 142700,
+  overdue30: 68200,
+  overdue60: 42500,
+  overdue90: 32000,
+  collectedThisMonth: 124800,
+  collectionTarget: 200000,
+};
+
+const BANK_BALANCES = [
+  { name: 'Banesco', balance: 245800, color: 'bg-blue-500' },
+  { name: 'Banco General', balance: 189200, color: 'bg-emerald-500' },
+  { name: 'BAC', balance: 156700, color: 'bg-red-500' },
+  { name: 'Banistmo', balance: 98400, color: 'bg-violet-500' },
+];
+
+const OVERDUE_CLIENTS = [
+  { name: 'LICORES DEL ISTMO PA', amount: 8750, days: 95 },
+  { name: 'DISTRIBUIDORA EL SOL HN', amount: 6200, days: 67 },
+  { name: 'IMPORT EXPORT CARIBE', amount: 4800, days: 45 },
 ];
 
 const CALENDAR_EVENTS = [
@@ -608,6 +636,169 @@ export default function DashboardPage() {
         </>
       )}
 
+      {/* Section: Finanzas */}
+      {checkPermission('canAccessCxC') && (
+        <>
+          <p className="text-xs font-medium uppercase tracking-wider text-text-muted">Finanzas y Cobranzas</p>
+          <div className="-mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {/* CxC Overview */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.42 }}
+              className="lg:col-span-2"
+            >
+              <Card className="border border-border-default bg-surface-main shadow-sm">
+                <CardHeader className="flex items-center justify-between px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-warning-bg">
+                      <Receipt className="h-5 w-5 text-warning" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-text-primary">Cuentas por Cobrar</h3>
+                      <p className="text-xs text-text-muted">Resumen de cartera</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="light"
+                    onPress={() => router.push('/clientes/cxc')}
+                  >
+                    Ver CxC
+                  </Button>
+                </CardHeader>
+                <Divider />
+                <CardBody className="p-5">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <div>
+                      <p className="text-xs text-text-muted">Total Pendiente</p>
+                      <p className="mt-1 text-xl font-bold text-text-primary">{formatCurrency(CXC_SUMMARY.totalPending)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-text-muted">Corriente</p>
+                      <p className="mt-1 text-xl font-bold text-success">{formatCurrency(CXC_SUMMARY.current)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-text-muted">Vencido 30-60</p>
+                      <p className="mt-1 text-xl font-bold text-warning">{formatCurrency(CXC_SUMMARY.overdue30)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-text-muted">Vencido 60+</p>
+                      <p className="mt-1 text-xl font-bold text-danger">{formatCurrency(CXC_SUMMARY.overdue60 + CXC_SUMMARY.overdue90)}</p>
+                    </div>
+                  </div>
+                  {/* Aging bar */}
+                  <div className="mt-4 flex h-3 overflow-hidden rounded-full">
+                    <div className="bg-success" style={{ width: `${(CXC_SUMMARY.current / CXC_SUMMARY.totalPending) * 100}%` }} />
+                    <div className="bg-warning" style={{ width: `${(CXC_SUMMARY.overdue30 / CXC_SUMMARY.totalPending) * 100}%` }} />
+                    <div className="bg-orange-500" style={{ width: `${(CXC_SUMMARY.overdue60 / CXC_SUMMARY.totalPending) * 100}%` }} />
+                    <div className="bg-danger" style={{ width: `${(CXC_SUMMARY.overdue90 / CXC_SUMMARY.totalPending) * 100}%` }} />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs text-text-muted">
+                    <div className="flex items-center gap-4">
+                      <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-success" />Corriente</span>
+                      <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-warning" />30d</span>
+                      <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-500" />60d</span>
+                      <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-danger" />90+d</span>
+                    </div>
+                  </div>
+                  {/* Cobros del mes progress */}
+                  <div className="mt-4 rounded-lg bg-surface-secondary p-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-text-secondary">Cobros del mes</span>
+                      <span className="font-semibold text-text-primary">{formatCurrency(CXC_SUMMARY.collectedThisMonth)} / {formatCurrency(CXC_SUMMARY.collectionTarget)}</span>
+                    </div>
+                    <Progress
+                      value={(CXC_SUMMARY.collectedThisMonth / CXC_SUMMARY.collectionTarget) * 100}
+                      color="success"
+                      size="sm"
+                      className="mt-2"
+                    />
+                  </div>
+                </CardBody>
+              </Card>
+            </motion.div>
+
+            {/* Bank Balances + Overdue Alerts */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.47 }}
+              className="space-y-6"
+            >
+              {/* Bank Balances */}
+              {checkPermission('canViewBankBalances') && (
+                <Card className="border border-border-default bg-surface-main shadow-sm">
+                  <CardHeader className="flex items-center justify-between px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-info-bg">
+                        <Landmark className="h-5 w-5 text-info" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-text-primary">Saldos Bancarios</h3>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="light"
+                      onPress={() => router.push('/contabilidad/tesoreria')}
+                    >
+                      Ver
+                    </Button>
+                  </CardHeader>
+                  <Divider />
+                  <CardBody className="p-0">
+                    <ul className="divide-y divide-border-default">
+                      {BANK_BALANCES.map((bank) => (
+                        <li key={bank.name} className="flex items-center justify-between px-5 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className={cn('h-2.5 w-2.5 rounded-full', bank.color)} />
+                            <span className="text-sm text-text-secondary">{bank.name}</span>
+                          </div>
+                          <span className="text-sm font-semibold text-text-primary">{formatCurrency(bank.balance)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="border-t border-border-default bg-surface-secondary px-5 py-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-text-secondary">Total</span>
+                        <span className="text-sm font-bold text-text-primary">{formatCurrency(BANK_BALANCES.reduce((s, b) => s + b.balance, 0))}</span>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+              )}
+
+              {/* Overdue Alerts */}
+              <Card className="border border-border-default bg-surface-main shadow-sm">
+                <CardHeader className="px-5 py-3">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-danger" />
+                    <h3 className="text-sm font-semibold text-text-primary">Alertas de Morosidad</h3>
+                  </div>
+                </CardHeader>
+                <Divider />
+                <CardBody className="p-0">
+                  <ul className="divide-y divide-border-default">
+                    {OVERDUE_CLIENTS.map((client) => (
+                      <li key={client.name} className="px-5 py-2.5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-text-primary line-clamp-1">{client.name}</p>
+                            <p className="text-xs text-danger">{client.days} días vencido</p>
+                          </div>
+                          <span className="text-sm font-semibold text-danger">{formatCurrency(client.amount)}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </CardBody>
+              </Card>
+            </motion.div>
+          </div>
+        </>
+      )}
+
       {/* Section: Logística */}
       <p className="text-xs font-medium uppercase tracking-wider text-text-muted">Logística y Productos</p>
 
@@ -906,7 +1097,7 @@ export default function DashboardPage() {
           <Card className="border border-border-default bg-surface-main shadow-sm">
             <CardHeader className="flex items-center justify-between px-5 py-4">
               <h3 className="text-base font-semibold text-text-primary">Actividad Reciente</h3>
-              <button className="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Ver todo</button>
+              <button onClick={() => router.push('/historial')} className="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Ver todo</button>
             </CardHeader>
             <Divider />
             <CardBody className="p-0">
@@ -992,6 +1183,20 @@ export default function DashboardPage() {
               >
                 <ClipboardList className="h-4 w-4" />
                 Conteo Físico
+              </button>
+              <button
+                onClick={() => router.push('/clientes/cxc/cobro')}
+                className="flex w-full items-center gap-3 rounded-lg border border-border-default px-4 py-3 text-left text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
+              >
+                <CircleDollarSign className="h-4 w-4" />
+                Registrar Cobro
+              </button>
+              <button
+                onClick={() => router.push('/clientes/nuevo')}
+                className="flex w-full items-center gap-3 rounded-lg border border-border-default px-4 py-3 text-left text-sm font-medium text-text-primary transition-colors hover:bg-surface-secondary"
+              >
+                <Users className="h-4 w-4" />
+                Nuevo Cliente
               </button>
             </CardBody>
           </Card>

@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
-    "dev:clean": "rimraf .next && next dev --webpack",
+    "dev": "next dev --turbopack",
+    "dev:clean": "rimraf .next && next dev --turbopack",
     "build": "next build",
     "build:clean": "rimraf .next && next build",
     "start": "next start",

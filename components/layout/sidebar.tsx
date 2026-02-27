@@ -12,6 +12,8 @@ import {
   Store,
   Ship,
   Users,
+  Calculator,
+  History,
   BarChart3,
   Settings,
   ChevronRight,
@@ -76,6 +78,18 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Clientes',
     href: '/clientes',
     icon: <Users className="h-5 w-5" />,
+  },
+  {
+    label: 'Contabilidad',
+    href: '/contabilidad',
+    icon: <Calculator className="h-5 w-5" />,
+    permission: 'canAccessContabilidad',
+  },
+  {
+    label: 'Historial',
+    href: '/historial',
+    icon: <History className="h-5 w-5" />,
+    permission: 'canViewHistorial',
   },
   {
     label: 'Reportes',

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ChatWidget } from '@/components/chat';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { SidebarProvider, useSidebar } from '@/lib/contexts/sidebar-context';
@@ -67,6 +68,7 @@ function DashboardContent({ children }: DashboardLayoutProps) {
             transition={{ duration: 0.15 }}
             className="p-6"
           >
+            <Breadcrumbs />
             {children}
           </motion.div>
         </AnimatePresence>
