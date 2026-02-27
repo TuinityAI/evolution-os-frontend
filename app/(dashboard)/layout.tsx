@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { KeyboardShortcuts } from '@/components/ui/keyboard-shortcuts';
 import { ChatWidget } from '@/components/chat';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { SidebarProvider, useSidebar } from '@/lib/contexts/sidebar-context';
@@ -73,6 +74,9 @@ function DashboardContent({ children }: DashboardLayoutProps) {
           </motion.div>
         </AnimatePresence>
       </motion.main>
+
+      {/* Keyboard Shortcuts (global listener + help modal) */}
+      <KeyboardShortcuts />
 
       {/* Chat Widget */}
       <ChatWidget />

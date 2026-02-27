@@ -26,6 +26,7 @@ import {
   UserPlus,
   FileText,
   Zap,
+  Keyboard,
   Command,
   CornerDownLeft,
   ArrowUpDown,
@@ -77,6 +78,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   UserPlus,
   FileText,
   Zap,
+  Keyboard,
 };
 
 const CATEGORY_ICON: Record<SearchItemType, React.ComponentType<{ className?: string }>> = {
@@ -129,6 +131,7 @@ const SEARCH_ITEMS: SearchItem[] = [
   { id: 'act-2', type: 'action', title: 'Registrar Cobro', subtitle: 'Cuentas por cobrar', icon: 'CircleDollarSign', href: '/clientes/cxc/cobro' },
   { id: 'act-3', type: 'action', title: 'Nuevo Ajuste', subtitle: 'Ajuste de inventario', icon: 'ClipboardEdit', href: '/inventario/ajustes/nuevo' },
   { id: 'act-4', type: 'action', title: 'Nuevo Cliente', subtitle: 'Registrar cliente', icon: 'UserPlus', href: '/clientes/nuevo' },
+  { id: 'act-5', type: 'action', title: 'Atajos de Teclado', subtitle: 'Ver todos los atajos · Ctrl+/', icon: 'Keyboard', href: '__shortcuts__' },
 ];
 
 // Order in which categories appear
@@ -229,7 +232,12 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const navigateTo = useCallback(
     (item: SearchItem) => {
       onClose();
-      router.push(item.href);
+      if (item.href === '__shortcuts__') {
+        // Open keyboard shortcuts help modal
+        setTimeout(() => window.dispatchEvent(new CustomEvent('open-shortcuts-help')), 100);
+      } else {
+        router.push(item.href);
+      }
     },
     [onClose, router],
   );
@@ -409,9 +417,17 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                 </kbd>
                 Cerrar
               </span>
-              <span className="ml-auto flex items-center gap-1">
-                <Command className="h-3 w-3" />
-                <span>K</span>
+              <span className="ml-auto flex items-center gap-2">
+                <span className="flex items-center gap-1 opacity-60">
+                  <Keyboard className="h-3 w-3" />
+                  <kbd className="font-mono text-[10px] border border-[#333] rounded px-1 py-0.5">
+                    Ctrl /
+                  </kbd>
+                </span>
+                <span className="flex items-center gap-1">
+                  <Command className="h-3 w-3" />
+                  <span>K</span>
+                </span>
               </span>
             </div>
           </motion.div>

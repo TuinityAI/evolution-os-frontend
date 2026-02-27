@@ -18,6 +18,7 @@ import {
   User,
   Settings,
   Check,
+  Keyboard,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { CommandPalette } from '@/components/ui/command-palette';
@@ -45,6 +46,13 @@ export function Header() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Listen for toggle-notifications event (from Ctrl+Shift+N shortcut)
+  useEffect(() => {
+    const handler = () => setIsNotificationsOpen((prev) => !prev);
+    window.addEventListener('toggle-notifications', handler);
+    return () => window.removeEventListener('toggle-notifications', handler);
   }, []);
 
   // Group users by role for the switcher
@@ -148,6 +156,15 @@ export function Header() {
               ))}
             </DropdownMenu>
           </Dropdown>
+
+          {/* Keyboard Shortcuts */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-shortcuts-help'))}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-[#2a2a2a] hover:text-white"
+            title="Atajos de teclado (Ctrl+/)"
+          >
+            <Keyboard className="h-4 w-4" />
+          </button>
 
           {/* Theme Toggle */}
           <ThemeToggle />
