@@ -8,7 +8,7 @@ export type { Product, ProductGroup } from '@/lib/types/product';
  * Mock products for Evolution OS prototype.
  * Real data extracted from Dynamo POS.
  */
-const SEED_PRODUCTS: Product[] = [
+export const SEED_PRODUCTS: Product[] = [
   {
     id: 'EVL-00001',
     reference: 'EVL-00001',

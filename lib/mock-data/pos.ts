@@ -19,15 +19,18 @@ import type {
   POSProductRanking,
 } from '@/lib/types/pos';
 
-import { MOCK_PRODUCTS } from '@/lib/mock-data/products';
+import { MOCK_PRODUCTS, SEED_PRODUCTS } from '@/lib/mock-data/products';
 import { loadCollection, saveCollection, loadSingleton, saveSingleton, createSubscribers } from '@/lib/store/local-store';
 
 // ============================================
 // HELPER: Quick product lookup
+// Uses SEED_PRODUCTS (static array) for module-level initialization
+// to avoid Proxy/localStorage issues during server-side rendering.
+// Falls back to MOCK_PRODUCTS (live data) at runtime.
 // ============================================
 
 function getProduct(id: string) {
-  return MOCK_PRODUCTS.find((p) => p.id === id)!;
+  return SEED_PRODUCTS.find((p) => p.id === id)!;
 }
 
 /** Round to 2 decimals */
