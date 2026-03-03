@@ -21,6 +21,8 @@ import {
   MapPin,
   XCircle,
   Circle,
+  Layers,
+  ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
@@ -114,11 +116,23 @@ const TIMELINE_ICONS: Record<string, typeof FileText> = {
   cancelado: AlertCircle,
 };
 
+type MercanciaView = 'producto' | 'arancelaria' | 'rubro';
+
+// Extract rubro (product group) from merchandise description
+// Descriptions typically start with the category: "WHISKY JOHNNIE...", "RON DIPLOMATICO...", etc.
+function extractRubroFromDescription(description: string): string {
+  const first = description.split(' ')[0]?.toUpperCase() ?? 'OTROS';
+  const KNOWN_RUBROS = ['WHISKY', 'RON', 'VODKA', 'TEQUILA', 'LICOR', 'VINO', 'GINEBRA', 'CERVEZA', 'SNACKS', 'CHAMPAGNE', 'COGNAC', 'BRANDY'];
+  return KNOWN_RUBROS.includes(first) ? first : 'OTROS';
+}
+
 export default function ExpedientDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { checkPermission } = useAuth();
   const [activeTab, setActiveTab] = useState<TabKey>('resumen');
+  const [mercanciaView, setMercanciaView] = useState<MercanciaView>('producto');
+  const [expandedRubros, setExpandedRubros] = useState<Set<string>>(new Set());
 
   const id = params.id as string;
 
@@ -165,6 +179,44 @@ export default function ExpedientDetailPage() {
   const statusConfig = SHIPMENT_STATUS_CONFIG[expedient.status];
   const dmc = dmcs[0];
   const merchandiseLines = dmc?.merchandiseLines ?? [];
+
+  // Group merchandise lines by rubro
+  const groupedByRubro = useMemo(() => {
+    const groups: Record<string, {
+      lines: typeof merchandiseLines;
+      totalCases: number;
+      totalNetWeight: number;
+      totalGrossWeight: number;
+      totalVolume: number;
+      totalValue: number;
+    }> = {};
+    for (const line of merchandiseLines) {
+      const rubro = extractRubroFromDescription(line.description);
+      if (!groups[rubro]) {
+        groups[rubro] = { lines: [], totalCases: 0, totalNetWeight: 0, totalGrossWeight: 0, totalVolume: 0, totalValue: 0 };
+      }
+      groups[rubro].lines.push(line);
+      groups[rubro].totalCases += line.numberOfCases;
+      groups[rubro].totalNetWeight += line.netWeightKg;
+      groups[rubro].totalGrossWeight += line.grossWeightKg;
+      groups[rubro].totalVolume += line.volumeM3;
+      groups[rubro].totalValue += line.valueFOB;
+    }
+    return groups;
+  }, [merchandiseLines]);
+
+  const toggleRubro = (rubro: string) => {
+    setExpandedRubros((prev) => {
+      const next = new Set(prev);
+      if (next.has(rubro)) next.delete(rubro);
+      else next.add(rubro);
+      return next;
+    });
+  };
+
+  const expandAllRubros = () => {
+    setExpandedRubros(new Set(Object.keys(groupedByRubro)));
+  };
 
   return (
     <div className="space-y-5">
@@ -352,97 +404,242 @@ export default function ExpedientDetailPage() {
           )}
 
           {activeTab === 'mercancia' && (
-            <div className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414]">
-              {merchandiseLines.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
-                          Arancel
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
-                          Descripcion
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
-                          Cajas
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
-                          Peso Neto (kg)
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
-                          Peso Bruto (kg)
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
-                          Volumen (m3)
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
-                          Valor FOB
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
-                      {merchandiseLines.map((line, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">
-                          <td className="px-4 py-3 font-mono text-sm text-gray-900 dark:text-white">
-                            {line.tariffCode}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate">
-                            {line.description}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">
-                            {line.numberOfCases}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">
-                            {formatNumber(line.netWeightKg)}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">
-                            {formatNumber(line.grossWeightKg)}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">
-                            {formatNumber(line.volumeM3)}
-                          </td>
-                          <td className="px-4 py-3 text-right font-mono text-sm font-medium text-gray-900 dark:text-white">
-                            {formatCurrency(line.valueFOB)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t-2 border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
-                        <td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white" colSpan={2}>
-                          Totales
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">
-                          {expedient.totalCases}
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">
-                          {formatNumber(expedient.totalNetWeightKg)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">
-                          {formatNumber(expedient.totalGrossWeightKg)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">
-                          {formatNumber(expedient.totalVolumeM3)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-sm font-bold text-sky-700 dark:text-sky-300">
-                          {formatCurrency(expedient.totalValueFOB)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <FileText className="mb-3 h-10 w-10 text-gray-300 dark:text-gray-600" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    No hay DMC generada
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-[#888888]">
-                    Genera una DMC para ver las lineas de mercancia
-                  </p>
+            <div className="space-y-3">
+              {/* View toggle buttons */}
+              {merchandiseLines.length > 0 && (
+                <div className="flex items-center gap-2">
+                  {(['producto', 'arancelaria', 'rubro'] as MercanciaView[]).map((view) => (
+                    <button
+                      key={view}
+                      onClick={() => {
+                        setMercanciaView(view);
+                        if (view === 'rubro') expandAllRubros();
+                      }}
+                      className={cn(
+                        'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                        mercanciaView === view
+                          ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400'
+                          : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 dark:bg-[#141414] dark:text-gray-400 dark:border-[#2a2a2a] dark:hover:bg-[#1a1a1a]'
+                      )}
+                    >
+                      {view === 'rubro' && <Layers className="h-3.5 w-3.5" />}
+                      {view === 'producto' && <Package className="h-3.5 w-3.5" />}
+                      {view === 'arancelaria' && <FileText className="h-3.5 w-3.5" />}
+                      {view === 'producto' ? 'Por producto' : view === 'arancelaria' ? 'Por arancelaria' : 'Agrupar por Rubro'}
+                    </button>
+                  ))}
                 </div>
               )}
+
+              <div className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414]">
+                {merchandiseLines.length > 0 ? (
+                  <>
+                    {/* Rubro grouped view */}
+                    {mercanciaView === 'rubro' ? (
+                      <div className="divide-y divide-gray-200 dark:divide-[#2a2a2a]">
+                        {Object.entries(groupedByRubro)
+                          .sort(([, a], [, b]) => b.totalValue - a.totalValue)
+                          .map(([rubro, group]) => {
+                            const isExpanded = expandedRubros.has(rubro);
+                            return (
+                              <div key={rubro}>
+                                {/* Rubro header */}
+                                <button
+                                  onClick={() => toggleRubro(rubro)}
+                                  className="flex w-full items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <motion.div
+                                      animate={{ rotate: isExpanded ? 180 : 0 }}
+                                      transition={{ duration: 0.2 }}
+                                    >
+                                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                                    </motion.div>
+                                    <span className="inline-flex rounded-md bg-sky-100 dark:bg-sky-950/40 px-2 py-0.5 text-xs font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wider">
+                                      {rubro}
+                                    </span>
+                                    <span className="text-xs text-gray-500 dark:text-[#888]">
+                                      {group.lines.length} {group.lines.length === 1 ? 'producto' : 'productos'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-6 text-xs">
+                                    <span className="text-gray-500 dark:text-[#888]">
+                                      {group.totalCases} cajas
+                                    </span>
+                                    <span className="text-gray-500 dark:text-[#888]">
+                                      {formatNumber(group.totalNetWeight)} kg
+                                    </span>
+                                    <span className="text-gray-500 dark:text-[#888]">
+                                      {formatNumber(group.totalVolume)} m{'\u00B3'}
+                                    </span>
+                                    <span className="font-mono font-semibold text-sky-700 dark:text-sky-300">
+                                      {formatCurrency(group.totalValue)}
+                                    </span>
+                                  </div>
+                                </button>
+
+                                {/* Expanded products */}
+                                <AnimatePresence>
+                                  {isExpanded && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: 'auto', opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      transition={{ duration: 0.2 }}
+                                      className="overflow-hidden"
+                                    >
+                                      <table className="w-full">
+                                        <thead>
+                                          <tr className="border-t border-gray-100 dark:border-[#2a2a2a] bg-gray-50/50 dark:bg-[#1a1a1a]/50">
+                                            <th className="px-4 py-2 pl-12 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-[#666]">Arancel</th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-[#666]">Descripcion</th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-[#666]">Cajas</th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-[#666]">Peso Neto</th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-[#666]">Vol m3</th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-[#666]">FOB</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50 dark:divide-[#1a1a1a]">
+                                          {group.lines.map((line, idx) => (
+                                            <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-[#1a1a1a]/50">
+                                              <td className="px-4 py-2 pl-12 font-mono text-xs text-gray-600 dark:text-gray-400">{line.tariffCode}</td>
+                                              <td className="px-4 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-xs truncate">{line.description}</td>
+                                              <td className="px-4 py-2 text-right text-xs text-gray-900 dark:text-white">{line.numberOfCases}</td>
+                                              <td className="px-4 py-2 text-right text-xs text-gray-900 dark:text-white">{formatNumber(line.netWeightKg)}</td>
+                                              <td className="px-4 py-2 text-right text-xs text-gray-900 dark:text-white">{formatNumber(line.volumeM3)}</td>
+                                              <td className="px-4 py-2 text-right font-mono text-xs font-medium text-gray-900 dark:text-white">{formatCurrency(line.valueFOB)}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                        <tfoot>
+                                          <tr className="border-t border-gray-200 dark:border-[#2a2a2a] bg-gray-50/80 dark:bg-[#1a1a1a]/80">
+                                            <td className="px-4 py-2 pl-12 text-xs font-semibold text-gray-700 dark:text-gray-300" colSpan={2}>
+                                              Subtotal {rubro}
+                                            </td>
+                                            <td className="px-4 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-300">{group.totalCases}</td>
+                                            <td className="px-4 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-300">{formatNumber(group.totalNetWeight)}</td>
+                                            <td className="px-4 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-300">{formatNumber(group.totalVolume)}</td>
+                                            <td className="px-4 py-2 text-right font-mono text-xs font-bold text-sky-600 dark:text-sky-400">{formatCurrency(group.totalValue)}</td>
+                                          </tr>
+                                        </tfoot>
+                                      </table>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            );
+                          })}
+
+                        {/* Grand total */}
+                        <div className="bg-gray-50 dark:bg-[#1a1a1a] px-4 py-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">Totales</span>
+                            <div className="flex items-center gap-6 text-xs">
+                              <span className="font-semibold text-gray-900 dark:text-white">{expedient.totalCases} cajas</span>
+                              <span className="font-semibold text-gray-900 dark:text-white">{formatNumber(expedient.totalNetWeightKg)} kg</span>
+                              <span className="font-semibold text-gray-900 dark:text-white">{formatNumber(expedient.totalVolumeM3)} m{'\u00B3'}</span>
+                              <span className="font-mono font-bold text-sky-700 dark:text-sky-300">{formatCurrency(expedient.totalValueFOB)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Default flat table view (producto / arancelaria) */
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
+                              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
+                                Arancel
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
+                                Descripcion
+                              </th>
+                              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
+                                Cajas
+                              </th>
+                              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
+                                Peso Neto (kg)
+                              </th>
+                              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
+                                Peso Bruto (kg)
+                              </th>
+                              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
+                                Volumen (m3)
+                              </th>
+                              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">
+                                Valor FOB
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
+                            {(mercanciaView === 'arancelaria'
+                              ? [...merchandiseLines].sort((a, b) => a.tariffCode.localeCompare(b.tariffCode))
+                              : merchandiseLines
+                            ).map((line, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">
+                                <td className="px-4 py-3 font-mono text-sm text-gray-900 dark:text-white">
+                                  {line.tariffCode}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate">
+                                  {line.description}
+                                </td>
+                                <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">
+                                  {line.numberOfCases}
+                                </td>
+                                <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">
+                                  {formatNumber(line.netWeightKg)}
+                                </td>
+                                <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">
+                                  {formatNumber(line.grossWeightKg)}
+                                </td>
+                                <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">
+                                  {formatNumber(line.volumeM3)}
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-sm font-medium text-gray-900 dark:text-white">
+                                  {formatCurrency(line.valueFOB)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t-2 border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
+                              <td className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white" colSpan={2}>
+                                Totales
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">
+                                {expedient.totalCases}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">
+                                {formatNumber(expedient.totalNetWeightKg)}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">
+                                {formatNumber(expedient.totalGrossWeightKg)}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">
+                                {formatNumber(expedient.totalVolumeM3)}
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono text-sm font-bold text-sky-700 dark:text-sky-300">
+                                {formatCurrency(expedient.totalValueFOB)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16">
+                    <FileText className="mb-3 h-10 w-10 text-gray-300 dark:text-gray-600" />
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      No hay DMC generada
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-[#888888]">
+                      Genera una DMC para ver las lineas de mercancia
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

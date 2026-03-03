@@ -80,15 +80,19 @@ export interface ApprovalFlow {
   escalateTo?: string;              // Role/user for escalation
 }
 
-// Approval step
+// Approval step (extended for F5 cascade approvals)
 export interface ApprovalStep {
   id: string;
   order: number;
   approverRole: UserRole;
   approverLabel: string;
+  approverUserId?: string;        // Specific user (e.g., "USR-003" for Jackie)
+  approverUserName?: string;      // Display name
   isRequired: boolean;
   canSkip: boolean;
-  timeoutHours?: number;
+  timeoutHours?: number;          // Hours before escalation to next step
+  escalationTimeoutHours?: number; // F5: explicit escalation timeout
+  notifyAlways?: string[];        // F5: user IDs always notified (e.g., Javier)
 }
 
 // Master catalog

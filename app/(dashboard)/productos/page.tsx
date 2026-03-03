@@ -88,7 +88,9 @@ export default function ProductosPage() {
         !searchQuery ||
         product.description.toLowerCase().includes(searchLower) ||
         product.brand.toLowerCase().includes(searchLower) ||
-        product.reference.toLowerCase().includes(searchLower);
+        product.reference.toLowerCase().includes(searchLower) ||
+        (product.barcode && product.barcode.toLowerCase().includes(searchLower)) ||
+        (product.barcodes?.some(b => b.code.toLowerCase().includes(searchLower)));
 
       let matchesStockFilter = true;
       if (stockFilter === 'inStock') {

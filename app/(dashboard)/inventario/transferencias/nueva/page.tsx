@@ -16,6 +16,8 @@ import {
   Trash2,
   Package,
   AlertTriangle,
+  Layers,
+  ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
@@ -31,6 +33,7 @@ interface TransferLine {
   productReference: string;
   sourceStock: number;
   quantityCases: number;
+  looseUnits: number;
   unitsPerCase: number;
   costCIF: number;
 }
@@ -47,6 +50,7 @@ export default function NuevaTransferenciaPage() {
   const [destWarehouseId, setDestWarehouseId] = useState('WH-002');
   const [observation, setObservation] = useState('');
   const [lines, setLines] = useState<TransferLine[]>([]);
+  const [allowPartialCases, setAllowPartialCases] = useState(false);
 
   const isB2BtoB2C = isB2BtoB2CTransfer(sourceWarehouseId, destWarehouseId);
 
@@ -64,6 +68,7 @@ export default function NuevaTransferenciaPage() {
       productReference: product.reference,
       sourceStock: product.stock.existence,
       quantityCases: 1,
+      looseUnits: 0,
       unitsPerCase: product.unitsPerCase,
       costCIF: product.costCIF,
     }]);
@@ -79,14 +84,34 @@ export default function NuevaTransferenciaPage() {
     setLines(newLines);
   };
 
+  const handleUpdateLooseUnits = (index: number, units: number) => {
+    const newLines = [...lines];
+    newLines[index].looseUnits = Math.min(units, newLines[index].unitsPerCase - 1);
+    setLines(newLines);
+  };
+
+  // Get total units for a line (whole cases * unitsPerCase + loose units)
+  const getLineTotalUnits = (line: TransferLine) => {
+    return line.quantityCases * line.unitsPerCase + (allowPartialCases ? line.looseUnits : 0);
+  };
+
+  // Get effective decimal cases for a line
+  const getLineEffectiveCases = (line: TransferLine) => {
+    if (!allowPartialCases) return line.quantityCases;
+    return line.quantityCases + (line.looseUnits / line.unitsPerCase);
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
   };
 
   // Calculate totals
-  const totalCases = lines.reduce((sum, l) => sum + l.quantityCases, 0);
-  const totalUnits = lines.reduce((sum, l) => sum + (l.quantityCases * l.unitsPerCase), 0);
-  const totalValue = lines.reduce((sum, l) => sum + (l.quantityCases * l.costCIF), 0);
+  const totalCases = lines.reduce((sum, l) => sum + getLineEffectiveCases(l), 0);
+  const totalUnits = lines.reduce((sum, l) => sum + getLineTotalUnits(l), 0);
+  const totalValue = lines.reduce((sum, l) => {
+    const costPerUnit = l.costCIF / l.unitsPerCase;
+    return sum + getLineTotalUnits(l) * costPerUnit;
+  }, 0);
 
   const handleSubmit = () => {
     if (lines.length === 0) {
@@ -111,19 +136,21 @@ export default function NuevaTransferenciaPage() {
       observation,
       lines: lines.map((l, idx) => {
         const product = getProductById(l.productId);
-        const conversion = product ? calculateConversion(product, l.quantityCases) : null;
+        const lineUnits = getLineTotalUnits(l);
+        const costPerUnit = l.costCIF / l.unitsPerCase;
+        const lineTotalValue = lineUnits * costPerUnit;
         return {
           id: `TRL-NEW-${idx}`,
           productId: l.productId,
           productReference: l.productReference,
           productDescription: l.productDescription,
           sourceStock: l.sourceStock,
-          quantityCases: l.quantityCases,
+          quantityCases: getLineEffectiveCases(l),
           unitsPerCase: l.unitsPerCase,
-          resultingUnits: l.quantityCases * l.unitsPerCase,
+          resultingUnits: lineUnits,
           realCostCIF: l.costCIF,
           transferCost: isB2BtoB2C ? l.costCIF * DEFAULT_TRANSFER_INFLATION_FACTOR : l.costCIF,
-          totalValue: l.quantityCases * l.costCIF,
+          totalValue: lineTotalValue,
         };
       }),
       totalCases,
@@ -220,82 +247,132 @@ export default function NuevaTransferenciaPage() {
 
         {/* Products Section */}
         <div className="p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Productos a Transferir</h2>
-            <button
-              onClick={handleAddProduct}
-              className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
-            >
-              <Plus className="h-4 w-4" />
-              Agregar Producto
-            </button>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Productos a Transferir</h2>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setAllowPartialCases(!allowPartialCases)}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                  allowPartialCases
+                    ? 'border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-400'
+                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-[#2a2a2a] dark:bg-[#141414] dark:text-gray-400 dark:hover:bg-[#1a1a1a]'
+                )}
+              >
+                <Layers className="h-4 w-4" />
+                Permitir cajas parciales
+              </button>
+              <button
+                onClick={handleAddProduct}
+                className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-[#1a1a1a] dark:text-gray-300 dark:hover:bg-[#2a2a2a]"
+              >
+                <Plus className="h-4 w-4" />
+                Agregar Producto
+              </button>
+            </div>
           </div>
 
           {lines.length > 0 ? (
-            <div className="overflow-hidden rounded-lg border border-gray-200">
+            <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-[#2a2a2a]">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Producto</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Stock</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Cajas</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Und/Caja</th>
-                    {isB2BtoB2C && (
-                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Unidades</th>
+                  <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Producto</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Stock</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Cajas</th>
+                    {allowPartialCases && (
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Und. sueltas</th>
                     )}
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Und/Caja</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Total Und.</th>
                     {canViewCosts && (
-                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Valor</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Valor</th>
                     )}
-                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500"></th>
+                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
                   {lines.map((line, index) => {
                     const product = getProductById(line.productId);
                     const conversion = product ? calculateConversion(product, line.quantityCases) : null;
+                    const lineTotalUnits = getLineTotalUnits(line);
+                    const effectiveCases = getLineEffectiveCases(line);
+                    const costPerUnit = line.costCIF / line.unitsPerCase;
+                    const lineValue = lineTotalUnits * costPerUnit;
 
                     return (
-                      <tr key={line.productId} className="hover:bg-gray-50">
+                      <tr key={line.productId} className="group hover:bg-gray-50 dark:hover:bg-[#1a1a1a]">
                         <td className="px-4 py-3">
                           <div>
-                            <p className="text-sm font-medium text-gray-900">{line.productDescription}</p>
-                            <p className="text-xs text-gray-500">{line.productReference}</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{line.productDescription}</p>
+                            <p className="text-xs text-gray-500 dark:text-[#888]">{line.productReference}</p>
+                            {/* Conversion preview */}
+                            <div className="mt-1.5 space-y-0.5">
+                              <p className="text-xs text-brand-600 dark:text-brand-400">
+                                {allowPartialCases && line.looseUnits > 0
+                                  ? `${line.quantityCases} cajas + ${line.looseUnits} und. sueltas = ${lineTotalUnits} botellas`
+                                  : `${effectiveCases % 1 !== 0 ? effectiveCases.toFixed(1) : effectiveCases} ${effectiveCases === 1 ? 'caja' : 'cajas'} \u00D7 ${line.unitsPerCase} und/caja = ${lineTotalUnits} botellas`
+                                }
+                              </p>
+                              {canViewCosts && (
+                                <p className="text-xs text-gray-400 dark:text-[#666]">
+                                  Costo por unidad: {formatCurrency(costPerUnit)}
+                                  {isB2BtoB2C && (
+                                    <span className="ml-1 text-blue-500">
+                                      (inflado: {formatCurrency(costPerUnit * DEFAULT_TRANSFER_INFLATION_FACTOR)})
+                                    </span>
+                                  )}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className="text-sm text-gray-600">{line.sourceStock}</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">{line.sourceStock}</span>
                         </td>
                         <td className="px-4 py-3">
                           <Input
                             type="number"
-                            min={1}
+                            min={0}
                             max={line.sourceStock}
                             value={line.quantityCases.toString()}
                             onChange={(e) => handleUpdateQty(index, parseInt(e.target.value) || 0)}
                             variant="bordered"
                             size="sm"
-                            classNames={{ base: 'w-20 ml-auto', inputWrapper: 'bg-white', input: 'text-right' }}
+                            classNames={{ base: 'w-20 ml-auto', inputWrapper: 'bg-white dark:bg-[#141414]', input: 'text-right' }}
                           />
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="text-sm text-gray-600">{line.unitsPerCase}</span>
-                        </td>
-                        {isB2BtoB2C && (
-                          <td className="px-4 py-3 text-right">
-                            <span className="text-sm font-semibold text-blue-600">{conversion?.totalUnits || 0}</span>
+                        {allowPartialCases && (
+                          <td className="px-4 py-3">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={line.unitsPerCase - 1}
+                              value={line.looseUnits.toString()}
+                              onChange={(e) => handleUpdateLooseUnits(index, parseInt(e.target.value) || 0)}
+                              variant="bordered"
+                              size="sm"
+                              classNames={{ base: 'w-20 ml-auto', inputWrapper: 'bg-white dark:bg-[#141414]', input: 'text-right' }}
+                            />
                           </td>
                         )}
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">{line.unitsPerCase}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{lineTotalUnits}</span>
+                        </td>
                         {canViewCosts && (
                           <td className="px-4 py-3 text-right">
-                            <span className="font-mono text-sm text-gray-700">
-                              {formatCurrency(isB2BtoB2C ? (conversion?.totalTransferCost || 0) : line.quantityCases * line.costCIF)}
+                            <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
+                              {formatCurrency(isB2BtoB2C ? lineValue * DEFAULT_TRANSFER_INFLATION_FACTOR : lineValue)}
                             </span>
                           </td>
                         )}
                         <td className="px-4 py-3 text-center">
                           <button
                             onClick={() => handleRemoveLine(index)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -323,28 +400,52 @@ export default function NuevaTransferenciaPage() {
 
           {/* Summary */}
           {lines.length > 0 && (
-            <div className="mt-6 flex items-center justify-between rounded-lg bg-gray-50 p-4">
-              <div className="flex gap-8">
-                <div>
-                  <p className="text-xs text-gray-500">Total Cajas</p>
-                  <p className="text-lg font-semibold text-gray-900">{totalCases}</p>
-                </div>
-                {isB2BtoB2C && (
-                  <div>
-                    <p className="text-xs text-gray-500">Total Unidades</p>
-                    <p className="text-lg font-semibold text-blue-600">{totalUnits}</p>
-                  </div>
-                )}
-                {canViewCosts && (
-                  <div>
-                    <p className="text-xs text-gray-500">Valor Total</p>
-                    <p className="text-lg font-semibold text-gray-900">{formatCurrency(totalValue)}</p>
-                  </div>
-                )}
+            <div className="mt-6 space-y-3">
+              {/* Total preview line */}
+              <div className="flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2.5 dark:border-brand-800 dark:bg-brand-950/20">
+                <Layers className="h-4 w-4 text-brand-600 dark:text-brand-400" />
+                <p className="text-sm font-medium text-brand-800 dark:text-brand-300">
+                  Total: {totalCases % 1 !== 0 ? totalCases.toFixed(1) : totalCases} cajas ({totalUnits} unidades)
+                  {canViewCosts && (
+                    <span className="ml-1">
+                      <ArrowRight className="inline h-3.5 w-3.5 mx-1" />
+                      Costo transferencia: {formatCurrency(isB2BtoB2C ? totalValue * DEFAULT_TRANSFER_INFLATION_FACTOR : totalValue)}
+                    </span>
+                  )}
+                </p>
               </div>
-              <div className="flex gap-3">
-                <Button variant="light" onPress={() => router.back()}>Cancelar</Button>
-                <Button color="primary" onPress={handleSubmit} className="bg-brand-600">Enviar Transferencia</Button>
+
+              <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-[#1a1a1a] p-4">
+                <div className="flex gap-8">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-[#888]">Total Cajas</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {totalCases % 1 !== 0 ? totalCases.toFixed(1) : totalCases}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-[#888]">Total Unidades</p>
+                    <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">{totalUnits}</p>
+                  </div>
+                  {canViewCosts && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-[#888]">Valor Total</p>
+                      <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatCurrency(totalValue)}</p>
+                    </div>
+                  )}
+                  {canViewCosts && isB2BtoB2C && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-[#888]">Valor Inflado</p>
+                      <p className="text-lg font-semibold text-brand-600 dark:text-brand-400">
+                        {formatCurrency(totalValue * DEFAULT_TRANSFER_INFLATION_FACTOR)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="light" onPress={() => router.back()}>Cancelar</Button>
+                  <Button color="primary" onPress={handleSubmit} className="bg-brand-600">Enviar Transferencia</Button>
+                </div>
               </div>
             </div>
           )}

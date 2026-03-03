@@ -40,10 +40,28 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils/cn';
+import { SEED_PRODUCTS } from '@/lib/mock-data/products';
+import { getUpcomingExpiryAlerts, getExpiryStats } from '@/lib/mock-data/expiry-batches';
+import { EXPIRY_ALERT_CONFIG } from '@/lib/types/expiry';
 
 // ============================================
 // MOCK DATA - Business Intelligence
 // ============================================
+
+// F1: Reorder point alerts computed from SEED_PRODUCTS (SSR-safe)
+const REORDER_POINT_ALERTS = SEED_PRODUCTS
+  .filter((p) => p.reorderPoint != null && p.stock.available <= p.reorderPoint)
+  .map((p) => ({
+    id: p.id,
+    product: p.description,
+    reference: p.reference,
+    current: p.stock.available,
+    reorderPoint: p.reorderPoint!,
+    severity: p.stock.available === 0 ? 'critical' as const : p.stock.available <= Math.floor(p.reorderPoint! * 0.5) ? 'warning' as const : 'medium' as const,
+  }))
+  .sort((a, b) => a.current - b.current);
+
+const REORDER_POINT_COUNT = REORDER_POINT_ALERTS.length;
 
 const STATS = [
   {
@@ -74,13 +92,13 @@ const STATS = [
     href: '/ventas',
   },
   {
-    label: 'Productos Bajo Mínimo',
-    value: '18',
-    change: '3 sin stock',
+    label: 'Bajo Punto Reorden',
+    value: String(REORDER_POINT_COUNT),
+    change: `${SEED_PRODUCTS.filter(p => p.stock.available === 0).length} sin stock`,
     changeType: 'negative' as const,
     icon: AlertTriangle,
     color: 'danger',
-    href: '/inventario?filter=low_stock',
+    href: '/inventario?filter=below_reorder',
   },
 ];
 
@@ -196,6 +214,12 @@ export default function DashboardPage() {
   const router = useRouter();
   const canViewCosts = checkPermission('canViewCosts');
   const canApproveAdjustments = checkPermission('canApproveAdjustments');
+  const canViewInventoryAlerts = checkPermission('canViewInventoryAlerts');
+  const canViewExpiryAlerts = checkPermission('canViewExpiryAlerts');
+
+  // F4: Expiry data
+  const expiryStats = canViewExpiryAlerts ? getExpiryStats() : null;
+  const upcomingExpiryAlerts = canViewExpiryAlerts ? getUpcomingExpiryAlerts().slice(0, 5) : [];
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -595,6 +619,23 @@ export default function DashboardPage() {
                 </Button>
               </CardHeader>
               <Divider />
+              {/* F1: Reorder Point Summary */}
+              {canViewInventoryAlerts && REORDER_POINT_COUNT > 0 && (
+                <div className="mx-5 mt-4 mb-2 flex items-center justify-between rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                      {REORDER_POINT_COUNT} producto{REORDER_POINT_COUNT !== 1 ? 's' : ''} bajo punto de reorden
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => router.push('/inventario?filter=below_reorder')}
+                    className="text-xs font-medium text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 transition-colors"
+                  >
+                    Ver Inventario
+                  </button>
+                </div>
+              )}
               <CardBody className="p-0">
                 <ul className="divide-y divide-border-default">
                   {INVENTORY_ALERTS.map((alert) => (
@@ -628,12 +669,115 @@ export default function DashboardPage() {
                       </div>
                     </li>
                   ))}
+                  {/* F1: Reorder point alert items */}
+                  {canViewInventoryAlerts && REORDER_POINT_ALERTS.slice(0, 5).map((alert) => (
+                    <li key={`rp-${alert.id}`} className="px-5 py-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            'flex h-8 w-8 items-center justify-center rounded-full',
+                            alert.severity === 'critical' ? 'bg-danger-bg text-danger' :
+                            alert.severity === 'warning' ? 'bg-warning-bg text-warning' :
+                            'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400'
+                          )}>
+                            <Package className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-text-primary line-clamp-1">{alert.product}</p>
+                            <p className="text-xs text-text-muted">{alert.reference}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Chip
+                            color={alert.severity === 'critical' ? 'danger' : 'warning'}
+                            variant="flat"
+                            size="sm"
+                          >
+                            {alert.current}/{alert.reorderPoint}
+                          </Chip>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
                 </ul>
               </CardBody>
             </Card>
           </motion.div>
         </div>
         </>
+      )}
+
+      {/* F4: Expiry Alerts Widget */}
+      {canViewExpiryAlerts && expiryStats && (expiryStats.expired > 0 || expiryStats.critical > 0 || expiryStats.warning > 0) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.42 }}
+        >
+          <Card className="border border-border-default bg-surface-main shadow-sm">
+            <CardHeader className="flex items-center justify-between px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/10">
+                  <Clock className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-text-primary">Próximos a Vencer</h3>
+                  <p className="text-xs text-text-muted">Lotes con fecha de vencimiento cercana</p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="light"
+                onPress={() => router.push('/inventario')}
+              >
+                Ver inventario
+              </Button>
+            </CardHeader>
+            <Divider />
+            {/* Stats row */}
+            <div className="grid grid-cols-3 divide-x divide-border-default border-b border-border-default">
+              <div className="px-5 py-3 text-center">
+                <p className="text-xl font-bold text-red-600 dark:text-red-400">{expiryStats.expired}</p>
+                <p className="text-xs text-text-muted">Vencidos</p>
+              </div>
+              <div className="px-5 py-3 text-center">
+                <p className="text-xl font-bold text-red-500">{expiryStats.critical}</p>
+                <p className="text-xs text-text-muted">Críticos (&lt;30d)</p>
+              </div>
+              <div className="px-5 py-3 text-center">
+                <p className="text-xl font-bold text-amber-500">{expiryStats.warning}</p>
+                <p className="text-xs text-text-muted">Advertencia (30-60d)</p>
+              </div>
+            </div>
+            <CardBody className="p-0">
+              <ul className="divide-y divide-border-default">
+                {upcomingExpiryAlerts.map((alert) => {
+                  const config = EXPIRY_ALERT_CONFIG[alert.alertLevel];
+                  return (
+                    <li key={alert.batch.id} className="px-5 py-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={cn('flex h-8 w-8 items-center justify-center rounded-full', config.bg)}>
+                            <Clock className={cn('h-4 w-4', config.text)} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-text-primary line-clamp-1">{alert.batch.productDescription}</p>
+                            <p className="text-xs text-text-muted">Lote: {alert.batch.batchNumber} &middot; {alert.batch.quantity} uds</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium', config.bg, config.text)}>
+                            {alert.label}
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardBody>
+          </Card>
+        </motion.div>
       )}
 
       {/* Section: Finanzas */}

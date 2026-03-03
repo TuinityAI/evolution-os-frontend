@@ -18,9 +18,11 @@ import {
   MapPin,
   CreditCard,
   Save,
+  Globe,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getUniqueCountries, addClient } from '@/lib/mock-data/clients';
+import { getUniqueCountries, addClient, generateClientCode, getCountryISO } from '@/lib/mock-data/clients';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
 import type { Client, PriceLevel, PaymentTerms } from '@/lib/types/client';
@@ -47,16 +49,12 @@ interface AddressForm {
 const PRICE_LEVELS: PriceLevel[] = ['A', 'B', 'C', 'D', 'E'];
 const TAX_ID_TYPES = ['RUC', 'NIT', 'EIN', 'VAT', 'CNPJ', 'RTN', 'CRIB', 'Cedula'];
 
-function generateId() {
-  return `CLI-${String(Math.floor(Math.random() * 99999)).padStart(5, '0')}`;
-}
-
 export default function NuevoClientePage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canManageClients = checkPermission('canManageClients');
 
-  const [clientCode] = useState(generateId());
+  const [clientCode, setClientCode] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [paymentType, setPaymentType] = useState<'contado' | 'credito'>('contado');
 
@@ -86,6 +84,20 @@ export default function NuevoClientePage() {
   ]);
 
   const countries = getUniqueCountries();
+
+  const handleCountryChange = (selectedCountry: string) => {
+    setCountry(selectedCountry);
+    if (selectedCountry) {
+      const code = generateClientCode(selectedCountry);
+      setClientCode(code);
+      toast.info('Codigo de cliente generado', {
+        id: 'client-code-generated',
+        description: `Codigo asignado: ${code}`,
+      });
+    } else {
+      setClientCode('');
+    }
+  };
 
   const addContact = () => {
     setContacts((prev) => [
@@ -132,8 +144,8 @@ export default function NuevoClientePage() {
       toast.error('Campo requerido', { description: 'El RUC / Tax ID es obligatorio.' });
       return;
     }
-    if (!country) {
-      toast.error('Campo requerido', { description: 'El pais es obligatorio.' });
+    if (!country || !clientCode) {
+      toast.error('Campo requerido', { description: 'El pais es obligatorio para generar el codigo de cliente.' });
       return;
     }
     if (!priceLevel) {
@@ -155,8 +167,10 @@ export default function NuevoClientePage() {
     setIsSaving(true);
     setTimeout(() => {
       const now = new Date().toISOString();
+      const countryIso = getCountryISO(country);
       const newClient: Client = {
         id: clientCode,
+        countryCode: countryIso,
         name: name.trim(),
         tradeName: tradeName.trim() || undefined,
         taxId: taxId.trim(),
@@ -234,7 +248,11 @@ export default function NuevoClientePage() {
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Nuevo Cliente</h1>
             <p className="text-sm text-gray-500 dark:text-[#888888]">
-              Codigo asignado: <span className="font-mono font-medium text-gray-900 dark:text-white">{clientCode}</span>
+              {clientCode ? (
+                <>Codigo asignado: <span className="font-mono font-medium text-gray-900 dark:text-white">{clientCode}</span></>
+              ) : (
+                <>Seleccione un pais para generar el codigo</>
+              )}
             </p>
           </div>
         </div>
@@ -328,13 +346,28 @@ export default function NuevoClientePage() {
                 placeholder="Seleccionar pais..."
                 variant="bordered"
                 selectedKeys={country ? [country] : []}
-                onSelectionChange={(keys) => setCountry(Array.from(keys)[0] as string)}
+                onSelectionChange={(keys) => handleCountryChange(Array.from(keys)[0] as string)}
               >
                 {countries.map((c) => (
                   <SelectItem key={c}>{c}</SelectItem>
                 ))}
               </Select>
             </div>
+            {clientCode && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Codigo de Cliente
+                </label>
+                <div className="flex h-10 items-center rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] px-3">
+                  <Globe className="mr-2 h-4 w-4 text-blue-500" />
+                  <span className="font-mono font-semibold text-gray-900 dark:text-white">{clientCode}</span>
+                </div>
+                <p className="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-[#888888]">
+                  <Info className="h-3 w-3" />
+                  Codigo auto-generado basado en pais
+                </p>
+              </div>
+            )}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Ciudad

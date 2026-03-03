@@ -36,6 +36,10 @@ import {
   X,
   Calendar,
   FileText,
+  Sparkles,
+  Check,
+  XCircle,
+  Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
@@ -48,7 +52,11 @@ import {
   getAdjustmentsData,
 } from '@/lib/mock-data/inventory';
 import { MOCK_WAREHOUSES, subscribeWarehouses, getWarehousesData } from '@/lib/mock-data/warehouses';
-import { PRODUCT_GROUPS } from '@/lib/mock-data/products';
+import { PRODUCT_GROUPS, SEED_PRODUCTS, updateProduct } from '@/lib/mock-data/products';
+import { generateRecommendations, getRecommendationStats } from '@/lib/utils/reorder-recommendation';
+import type { ReorderRecommendation } from '@/lib/utils/reorder-recommendation';
+import { getNearestExpiry } from '@/lib/mock-data/expiry-batches';
+import { EXPIRY_ALERT_CONFIG } from '@/lib/types/expiry';
 import { useStore } from '@/hooks/use-store';
 import type { InventoryItem, InventoryStockFilter } from '@/lib/types/inventory';
 
@@ -73,6 +81,9 @@ export default function InventarioPage() {
   const canCreateAdjustments = checkPermission('canCreateAdjustments');
   const canCreateTransfers = checkPermission('canCreateTransfers');
   const canCreateCountSessions = checkPermission('canCreateCountSessions');
+  const canViewInventoryAlerts = checkPermission('canViewInventoryAlerts');
+  const canAcceptReorderRecommendations = checkPermission('canAcceptReorderRecommendations');
+  const canViewExpiryAlerts = checkPermission('canViewExpiryAlerts');
 
   // Reactive store subscriptions
   const warehouses = useStore(subscribeWarehouses, getWarehousesData);
@@ -90,6 +101,64 @@ export default function InventarioPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [stockRange, setStockRange] = useState({ min: '', max: '' });
   const [showOnlyWithAlerts, setShowOnlyWithAlerts] = useState(false);
+
+  // F2: Reorder Recommendations
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+  const [recommendations, setRecommendations] = useState<ReorderRecommendation[]>([]);
+  const [adjustingId, setAdjustingId] = useState<string | null>(null);
+  const [adjustValue, setAdjustValue] = useState('');
+
+  const recommendationStats = useMemo(() => getRecommendationStats(recommendations), [recommendations]);
+
+  const handleOpenRecommendations = () => {
+    const recs = generateRecommendations(SEED_PRODUCTS);
+    setRecommendations(recs);
+    setIsReorderModalOpen(true);
+  };
+
+  const handleAcceptRecommendation = (rec: ReorderRecommendation) => {
+    updateProduct(rec.productId, { reorderPoint: rec.recommendedReorderPoint });
+    setRecommendations((prev) =>
+      prev.map((r) => r.productId === rec.productId ? { ...r, status: 'accepted' as const, currentReorderPoint: rec.recommendedReorderPoint, difference: 0 } : r)
+    );
+    toast.success(`Punto de reorden actualizado a ${rec.recommendedReorderPoint}`, { id: `reorder-accept-${rec.productId}` });
+  };
+
+  const handleAdjustRecommendation = (rec: ReorderRecommendation) => {
+    if (adjustingId === rec.productId) {
+      const val = parseInt(adjustValue, 10);
+      if (!isNaN(val) && val >= 0) {
+        updateProduct(rec.productId, { reorderPoint: val });
+        setRecommendations((prev) =>
+          prev.map((r) => r.productId === rec.productId ? { ...r, status: 'adjusted' as const, currentReorderPoint: val, difference: rec.recommendedReorderPoint - val } : r)
+        );
+        toast.success(`Punto de reorden ajustado a ${val}`, { id: `reorder-adjust-${rec.productId}` });
+      }
+      setAdjustingId(null);
+      setAdjustValue('');
+    } else {
+      setAdjustingId(rec.productId);
+      setAdjustValue(String(rec.recommendedReorderPoint));
+    }
+  };
+
+  const handleRejectRecommendation = (rec: ReorderRecommendation) => {
+    setRecommendations((prev) =>
+      prev.map((r) => r.productId === rec.productId ? { ...r, status: 'rejected' as const } : r)
+    );
+    toast.info('Recomendación rechazada', { id: `reorder-reject-${rec.productId}` });
+  };
+
+  const handleAcceptAll = () => {
+    const pending = recommendations.filter((r) => r.status === 'pending');
+    pending.forEach((rec) => {
+      updateProduct(rec.productId, { reorderPoint: rec.recommendedReorderPoint });
+    });
+    setRecommendations((prev) =>
+      prev.map((r) => r.status === 'pending' ? { ...r, status: 'accepted' as const, currentReorderPoint: r.recommendedReorderPoint, difference: 0 } : r)
+    );
+    toast.success(`${pending.length} puntos de reorden actualizados`, { id: 'reorder-accept-all' });
+  };
 
   // Get data
   const stats = getInventoryStats();
@@ -132,12 +201,15 @@ export default function InventarioPage() {
   // Get stock status for an item
   const getStockStatus = (item: InventoryItem) => {
     if (item.available === 0) {
-      return { label: 'Sin Stock', color: 'bg-red-500', textColor: 'text-red-600' };
+      return { label: 'Sin Stock', color: 'bg-red-500', textColor: 'text-red-600', badge: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400' };
+    }
+    if (item.reorderPoint != null && item.available <= item.reorderPoint) {
+      return { label: 'Bajo Reorden', color: 'bg-amber-500', textColor: 'text-amber-600', badge: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400' };
     }
     if (item.available <= item.minimumQty) {
-      return { label: 'Stock Bajo', color: 'bg-amber-500', textColor: 'text-amber-600' };
+      return { label: 'Stock Bajo', color: 'bg-amber-500', textColor: 'text-amber-600', badge: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400' };
     }
-    return { label: 'En Stock', color: 'bg-emerald-500', textColor: 'text-emerald-600' };
+    return { label: 'En Stock', color: 'bg-emerald-500', textColor: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' };
   };
 
   // Format currency
@@ -214,6 +286,15 @@ export default function InventarioPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {canAcceptReorderRecommendations && (
+            <button
+              onClick={handleOpenRecommendations}
+              className="flex h-9 items-center gap-2 rounded-lg border border-purple-300 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/30 px-3 text-sm font-medium text-purple-700 dark:text-purple-300 transition-colors hover:bg-purple-100 dark:hover:bg-purple-950/50"
+            >
+              <Sparkles className="h-4 w-4" />
+              Recomendaciones IA
+            </button>
+          )}
           {canCreateCountSessions && (
             <button
               onClick={handleNewCount}
@@ -245,10 +326,11 @@ export default function InventarioPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-7">
         {[
           { label: 'Con Stock', value: stats.productsWithStock, icon: TrendingUp, color: 'emerald', filter: 'in_stock' as InventoryStockFilter },
           { label: 'Bajo Mínimo', value: stats.belowMinimum, icon: AlertTriangle, color: 'amber', filter: 'low_stock' as InventoryStockFilter },
+          ...(canViewInventoryAlerts ? [{ label: 'Bajo Pto. Reorden', value: stats.belowReorderPoint, icon: Package, color: stats.belowReorderPoint > 0 ? 'amber' : 'emerald', filter: 'below_reorder' as InventoryStockFilter }] : []),
           { label: 'Sin Stock', value: stats.outOfStock, icon: AlertCircle, color: 'red', filter: 'out_of_stock' as InventoryStockFilter },
           { label: 'Estancados 4+', value: stats.stagnant4Months, icon: Clock, color: 'orange', filter: 'stagnant' as InventoryStockFilter },
           ...(canViewCosts ? [{ label: 'Valor Total', value: formatCurrency(stats.totalValue), icon: DollarSign, color: 'blue', filter: 'all' as InventoryStockFilter, isValue: true }] : []),
@@ -439,6 +521,12 @@ export default function InventarioPage() {
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Separado</th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Disponible</th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Mínimo</th>
+                {canViewInventoryAlerts && (
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Pto. Reorden</th>
+                )}
+                {canViewExpiryAlerts && (
+                  <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Venc. Próximo</th>
+                )}
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Últ. Compra</th>
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Últ. Venta</th>
                 {canViewCosts && (
@@ -498,13 +586,50 @@ export default function InventarioPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className={cn('text-sm font-semibold', stockStatus.textColor)}>
-                        {item.available}
-                      </span>
+                      <div className="flex items-center justify-end gap-2">
+                        <span className={cn('text-sm font-semibold', stockStatus.textColor)}>
+                          {item.available}
+                        </span>
+                        {canViewInventoryAlerts && stockStatus.label !== 'En Stock' && (
+                          <span className={cn('inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium', stockStatus.badge)}>
+                            {stockStatus.label}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className="text-sm text-gray-600 dark:text-gray-400">{item.minimumQty}</span>
                     </td>
+                    {canViewInventoryAlerts && (
+                      <td className="px-4 py-3 text-right">
+                        <span className={cn(
+                          'text-sm',
+                          item.reorderPoint != null ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-[#444444]'
+                        )}>
+                          {item.reorderPoint ?? '-'}
+                        </span>
+                      </td>
+                    )}
+                    {canViewExpiryAlerts && (() => {
+                      const expiry = getNearestExpiry(item.productId);
+                      if (!expiry) {
+                        return (
+                          <td className="px-4 py-3 text-center">
+                            <span className="text-gray-300 dark:text-[#444444]">-</span>
+                          </td>
+                        );
+                      }
+                      const config = EXPIRY_ALERT_CONFIG[expiry.alertLevel];
+                      return (
+                        <td className="px-4 py-3 text-center">
+                          <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium', config.bg, config.text)}>
+                            {expiry.daysUntilExpiry < 0
+                              ? 'Vencido'
+                              : `${expiry.daysUntilExpiry} días`}
+                          </span>
+                        </td>
+                      );
+                    })()}
                     <td className="px-4 py-3 text-center">
                       <span className="text-xs text-gray-500 dark:text-[#888888]">{formatDate(item.lastPurchaseDate)}</span>
                     </td>
@@ -531,11 +656,13 @@ export default function InventarioPage() {
                               'flex h-6 w-6 items-center justify-center rounded-full',
                               alert.type === 'out_of_stock' && 'bg-red-100 dark:bg-red-950',
                               alert.type === 'low_stock' && 'bg-amber-100 dark:bg-amber-950',
+                              alert.type === 'reorder_point' && 'bg-amber-100 dark:bg-amber-950',
                               (alert.type === 'stagnant_4m' || alert.type === 'stagnant_6m') && 'bg-orange-100 dark:bg-orange-950'
                             )}
                           >
                             {alert.type === 'out_of_stock' && <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />}
                             {alert.type === 'low_stock' && <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />}
+                            {alert.type === 'reorder_point' && <Package className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />}
                             {(alert.type === 'stagnant_4m' || alert.type === 'stagnant_6m') && <Clock className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />}
                           </span>
                         ))}
@@ -680,6 +807,177 @@ export default function InventarioPage() {
               Aplicar filtros
             </Button>
           </CustomModalFooter>
+      </CustomModal>
+
+      {/* F2: Reorder Recommendations Modal */}
+      <CustomModal isOpen={isReorderModalOpen} onClose={() => setIsReorderModalOpen(false)} size="3xl" scrollable>
+        <CustomModalHeader onClose={() => setIsReorderModalOpen(false)}>
+          <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          Recomendaciones de Punto de Reorden
+        </CustomModalHeader>
+        <CustomModalBody>
+          {/* Stats Summary */}
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/30 p-3">
+              <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{recommendationStats.needsIncrease}</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-500">Necesitan aumento</p>
+            </div>
+            <div className="rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 p-3">
+              <p className="text-xl font-bold text-red-700 dark:text-red-400">{recommendationStats.needsDecrease}</p>
+              <p className="text-xs text-red-600 dark:text-red-500">Necesitan reducción</p>
+            </div>
+            <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-3">
+              <p className="text-xl font-bold text-gray-700 dark:text-gray-300">{recommendationStats.noChange}</p>
+              <p className="text-xs text-gray-500 dark:text-[#888888]">Sin cambio</p>
+            </div>
+            <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 p-3">
+              <p className="text-xl font-bold text-amber-700 dark:text-amber-400">{recommendationStats.notSet}</p>
+              <p className="text-xs text-amber-600 dark:text-amber-500">Sin configurar</p>
+            </div>
+          </div>
+
+          {/* Recommendations Table */}
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-[#2a2a2a]">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
+                  <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Producto</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Grupo</th>
+                  <th className="px-3 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Mínimo Actual</th>
+                  <th className="px-3 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Recomendado</th>
+                  <th className="px-3 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Diferencia</th>
+                  <th className="px-3 py-2.5 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Confianza</th>
+                  <th className="px-3 py-2.5 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
+                {recommendations.map((rec) => (
+                  <tr
+                    key={rec.productId}
+                    className={cn(
+                      'transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]',
+                      rec.status === 'rejected' && 'opacity-50'
+                    )}
+                  >
+                    <td className="px-3 py-2.5">
+                      <div className={cn(rec.status === 'rejected' && 'line-through')}>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">{rec.productDescription}</p>
+                        <p className="text-xs text-gray-500 dark:text-[#888888]">{rec.productReference}</p>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={cn('text-sm text-gray-600 dark:text-gray-400', rec.status === 'rejected' && 'line-through')}>{rec.group}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <span className={cn('text-sm font-medium', rec.currentReorderPoint != null ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-[#444444]')}>
+                        {rec.currentReorderPoint ?? '-'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">{rec.recommendedReorderPoint}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <span className={cn(
+                        'text-sm font-semibold',
+                        rec.difference > 0 && 'text-emerald-600 dark:text-emerald-400',
+                        rec.difference < 0 && 'text-red-600 dark:text-red-400',
+                        rec.difference === 0 && 'text-gray-400 dark:text-[#666666]'
+                      )}>
+                        {rec.difference > 0 ? `+${rec.difference}` : rec.difference === 0 ? '0' : rec.difference}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <span className={cn(
+                        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
+                        rec.confidence === 'alta' && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+                        rec.confidence === 'media' && 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
+                        rec.confidence === 'baja' && 'bg-gray-100 text-gray-600 dark:bg-[#1a1a1a] dark:text-[#888888]'
+                      )}>
+                        {rec.confidence}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      {rec.status === 'pending' ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleAcceptRecommendation(rec)}
+                            className="flex h-7 items-center gap-1 rounded-md bg-emerald-100 dark:bg-emerald-950 px-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 transition-colors hover:bg-emerald-200 dark:hover:bg-emerald-900"
+                            title="Aceptar"
+                          >
+                            <Check className="h-3 w-3" />
+                            Aceptar
+                          </button>
+                          {adjustingId === rec.productId ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                value={adjustValue}
+                                onChange={(e) => setAdjustValue(e.target.value)}
+                                className="h-7 w-16 rounded-md border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-2 text-xs text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none"
+                                autoFocus
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleAdjustRecommendation(rec); if (e.key === 'Escape') { setAdjustingId(null); setAdjustValue(''); } }}
+                              />
+                              <button
+                                onClick={() => handleAdjustRecommendation(rec)}
+                                className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-400 transition-colors hover:bg-brand-200 dark:hover:bg-brand-900"
+                              >
+                                <Check className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleAdjustRecommendation(rec)}
+                              className="flex h-7 items-center gap-1 rounded-md bg-amber-100 dark:bg-amber-950 px-2 text-xs font-medium text-amber-700 dark:text-amber-400 transition-colors hover:bg-amber-200 dark:hover:bg-amber-900"
+                              title="Ajustar"
+                            >
+                              <Pencil className="h-3 w-3" />
+                              Ajustar
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleRejectRecommendation(rec)}
+                            className="flex h-7 items-center gap-1 rounded-md bg-red-100 dark:bg-red-950 px-2 text-xs font-medium text-red-700 dark:text-red-400 transition-colors hover:bg-red-200 dark:hover:bg-red-900"
+                            title="Rechazar"
+                          >
+                            <XCircle className="h-3 w-3" />
+                            Rechazar
+                          </button>
+                        </div>
+                      ) : (
+                        <span className={cn(
+                          'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
+                          rec.status === 'accepted' && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+                          rec.status === 'adjusted' && 'bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-400',
+                          rec.status === 'rejected' && 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'
+                        )}>
+                          {rec.status === 'accepted' && 'Aceptado'}
+                          {rec.status === 'adjusted' && 'Ajustado'}
+                          {rec.status === 'rejected' && 'Rechazado'}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button
+            variant="light"
+            onPress={() => setIsReorderModalOpen(false)}
+          >
+            Cerrar
+          </Button>
+          <Button
+            color="primary"
+            className="bg-brand-600"
+            onPress={handleAcceptAll}
+            isDisabled={recommendations.filter((r) => r.status === 'pending').length === 0}
+          >
+            Aceptar Todas ({recommendations.filter((r) => r.status === 'pending').length})
+          </Button>
+        </CustomModalFooter>
       </CustomModal>
     </div>
   );

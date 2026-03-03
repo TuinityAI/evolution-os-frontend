@@ -28,7 +28,8 @@ type NotificationType =
   | 'traffic'
   | 'system'
   | 'credit'
-  | 'overdue';
+  | 'overdue'
+  | 'escalation';
 
 interface Notification {
   id: string;
@@ -54,6 +55,16 @@ const MOCK_NOTIFICATIONS: Notification[] = [
     time: 'Hace 5 min',
     isRead: false,
     icon: 'ShoppingCart',
+    href: '/ventas',
+  },
+  {
+    id: 'n-esc-1',
+    type: 'escalation',
+    title: 'Pedido escalado a Gerencia',
+    description: 'Pedido PED-00005 escalado a Gerencia (sin respuesta de Jackie en 24h)',
+    time: 'Hace 10 min',
+    isRead: false,
+    icon: 'AlertTriangle',
     href: '/ventas',
   },
   {
@@ -85,6 +96,26 @@ const MOCK_NOTIFICATIONS: Notification[] = [
     isRead: true,
     icon: 'AlertTriangle',
     href: '/inventario',
+  },
+  {
+    id: 'n9',
+    type: 'inventory',
+    title: 'Bajo punto de reorden',
+    description: 'Producto WHISKY BLACK & WHITE está por debajo del punto mínimo (0 cajas, mínimo: 30)',
+    time: 'Hace 30 min',
+    isRead: false,
+    icon: 'AlertTriangle',
+    href: '/inventario?filter=below_reorder',
+  },
+  {
+    id: 'n10',
+    type: 'inventory',
+    title: 'Stock bajo punto de reorden',
+    description: 'Producto JOHNNIE WALKER BLACK tiene stock bajo (30 disponibles, mínimo: 20)',
+    time: 'Hace 1 hora',
+    isRead: false,
+    icon: 'AlertTriangle',
+    href: '/inventario?filter=below_reorder',
   },
   {
     id: 'n5',
@@ -152,6 +183,7 @@ const TYPE_COLOR_MAP: Record<NotificationType, string> = {
   system: 'text-violet-400',
   credit: 'text-red-400',
   overdue: 'text-red-400',
+  escalation: 'text-orange-400',
 };
 
 // ---------------------------------------------------------------------------

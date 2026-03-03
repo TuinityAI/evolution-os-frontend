@@ -95,6 +95,18 @@ function calculateAlerts(product: Product, extData: ExtendedProductData): Invent
     });
   }
 
+  // Reorder point alert (F1)
+  if (product.reorderPoint != null && product.stock.available > 0 && product.stock.available <= product.reorderPoint) {
+    alerts.push({
+      type: 'reorder_point',
+      severity: 'warning',
+      message: `Bajo punto de reorden (${product.stock.available} disponible, mínimo: ${product.reorderPoint})`,
+      productId: product.id,
+      actionLabel: 'Crear OC',
+      actionHref: `/compras/nueva?product=${product.id}`,
+    });
+  }
+
   // Stagnant products (Regla de Javier)
   const lastMovement = extData.lastSaleDate || extData.lastPurchaseDate;
   if (lastMovement) {
@@ -151,6 +163,7 @@ export function getInventoryItems(filters?: InventoryFilters): InventoryItem[] {
       reserved: product.stock.reserved,
       available: product.stock.available,
       minimumQty: product.minimumQty,
+      reorderPoint: product.reorderPoint,
       unitsPerCase: product.unitsPerCase,
       lastPurchaseDate: extData.lastPurchaseDate,
       lastSaleDate: extData.lastSaleDate,
@@ -191,6 +204,9 @@ export function getInventoryItems(filters?: InventoryFilters): InventoryItem[] {
           break;
         case 'arriving':
           if (item.arriving === 0) return false;
+          break;
+        case 'below_reorder':
+          if (!item.reorderPoint || item.available > item.reorderPoint) return false;
           break;
       }
     }
@@ -804,6 +820,7 @@ export function getInventoryStats(): InventoryStats {
 
   const productsWithStock = items.filter((i) => i.available > i.minimumQty).length;
   const belowMinimum = items.filter((i) => i.available > 0 && i.available <= i.minimumQty).length;
+  const belowReorderPoint = items.filter((i) => i.reorderPoint != null && i.available <= i.reorderPoint).length;
   const outOfStock = items.filter((i) => i.available === 0).length;
   const stagnant4Months = items.filter((i) =>
     i.alerts.some((a) => a.type === 'stagnant_4m' || a.type === 'stagnant_6m')
@@ -815,6 +832,7 @@ export function getInventoryStats(): InventoryStats {
   return {
     productsWithStock,
     belowMinimum,
+    belowReorderPoint,
     outOfStock,
     stagnant4Months,
     stagnant6Months,

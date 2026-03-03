@@ -54,6 +54,8 @@ const SEED_CLIENTS: Client[] = [
     ],
     salesRepId: 'USR-001',
     salesRepName: 'Javier Lange',
+    kycStatus: 'approved',
+    kycExpiresAt: '2026-12-15T00:00:00Z',
     status: 'active',
     createdAt: '2020-03-15T10:00:00Z',
     updatedAt: '2026-02-24T08:30:00Z',
@@ -107,6 +109,8 @@ const SEED_CLIENTS: Client[] = [
     ],
     salesRepId: 'USR-003',
     salesRepName: 'Margarita Morelos',
+    kycStatus: 'expired',
+    kycExpiresAt: '2025-11-01T00:00:00Z',
     status: 'active',
     createdAt: '2019-06-20T10:00:00Z',
     updatedAt: '2026-02-24T09:00:00Z',
@@ -195,6 +199,7 @@ const SEED_CLIENTS: Client[] = [
     ],
     salesRepId: 'USR-001',
     salesRepName: 'Javier Lange',
+    kycStatus: 'pending',
     status: 'active',
     createdAt: '2018-11-05T10:00:00Z',
     updatedAt: '2026-02-20T14:00:00Z',
@@ -842,6 +847,62 @@ export function checkCreditForOrder(
     message: `Crédito disponible: $${(client.creditLimit - newBalance).toLocaleString()}`,
     newBalance,
   };
+}
+
+// ============================================================================
+// F8 — Auto-generated client codes by country
+// ============================================================================
+
+const COUNTRY_ISO_MAP: Record<string, string> = {
+  'Colombia': 'CO',
+  'Venezuela': 'VE',
+  'Panamá': 'PA',
+  'Panama': 'PA',
+  'El Salvador': 'SV',
+  'Costa Rica': 'CR',
+  'Honduras': 'HN',
+  'Guatemala': 'GT',
+  'Nicaragua': 'NI',
+  'México': 'MX',
+  'Mexico': 'MX',
+  'República Dominicana': 'DO',
+  'Republica Dominicana': 'DO',
+  'Curazao': 'CW',
+  'Curacao': 'CW',
+  'Aruba': 'AW',
+  'Jamaica': 'JM',
+  'Trinidad y Tobago': 'TT',
+  'San Andrés': 'CO', // Uses Colombia ISO
+  'Estados Unidos': 'US',
+  'Chile': 'CL',
+  'Perú': 'PE',
+  'Peru': 'PE',
+  'Ecuador': 'EC',
+};
+
+/**
+ * Generates a new client code in {ISO}-{SEQ} format.
+ * Example: CO-0001, VE-0002
+ */
+export function generateClientCode(country: string): string {
+  const iso = COUNTRY_ISO_MAP[country] || country.slice(0, 2).toUpperCase();
+  const clients = getClientsData();
+  const prefix = `${iso}-`;
+  const existing = clients
+    .filter((c) => c.id.startsWith(prefix))
+    .map((c) => {
+      const seq = parseInt(c.id.replace(prefix, ''), 10);
+      return isNaN(seq) ? 0 : seq;
+    });
+  const nextSeq = existing.length > 0 ? Math.max(...existing) + 1 : 1;
+  return `${iso}-${String(nextSeq).padStart(4, '0')}`;
+}
+
+/**
+ * Gets ISO code for a country name
+ */
+export function getCountryISO(country: string): string {
+  return COUNTRY_ISO_MAP[country] || country.slice(0, 2).toUpperCase();
 }
 
 // Re-export types for convenience

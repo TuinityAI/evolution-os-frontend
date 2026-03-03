@@ -25,6 +25,8 @@ import {
   Edit,
   DollarSign,
   Receipt,
+  Globe,
+  Shield,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -33,10 +35,14 @@ import {
   getClientStats,
   getCreditStatus,
   getUniqueCountries,
+  generateClientCode,
+  getCountryISO,
 } from '@/lib/mock-data/clients';
 import { getCxCStats } from '@/lib/mock-data/accounts-receivable';
 import { formatCurrency, formatDate } from '@/lib/mock-data/sales-orders';
 import type { Client, PriceLevel, ClientStatus } from '@/lib/types/client';
+import { KYC_STATUS_CONFIG } from '@/lib/types/kyc';
+import type { KYCStatus } from '@/lib/types/kyc';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
 
@@ -60,6 +66,7 @@ export default function ClientesPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canManageClients = checkPermission('canManageClients');
+  const canViewKYC = checkPermission('canViewKYCStatus');
 
   const clients = useStore(subscribeClients, getClientsData);
 
@@ -278,7 +285,15 @@ export default function ClientesPage() {
                             <p className="font-medium text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-[#00D1B2]">
                               {client.name}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-[#888888]">{client.id}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-xs text-gray-500 dark:text-[#888888] font-mono">{client.id}</p>
+                              {client.countryCode && (
+                                <span className="inline-flex items-center gap-0.5 rounded bg-blue-500/10 px-1 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400">
+                                  <Globe className="h-2.5 w-2.5" />
+                                  {client.countryCode}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -324,14 +339,54 @@ export default function ClientesPage() {
                         </p>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={cn(
-                          'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
-                          statusConfig.bg,
-                          statusConfig.text
-                        )}>
-                          <StatusIcon className="h-3 w-3" />
-                          {statusConfig.label}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={cn(
+                            'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
+                            statusConfig.bg,
+                            statusConfig.text
+                          )}>
+                            <StatusIcon className="h-3 w-3" />
+                            {statusConfig.label}
+                          </span>
+                          {canViewKYC && client.paymentTerms !== 'contado' && (() => {
+                            const clientKycStatus: KYCStatus = client.kycStatus || 'not_required';
+                            // Determine the display badge
+                            let badgeLabel = '';
+                            let badgeBg = '';
+                            let badgeText = '';
+                            if (clientKycStatus === 'approved') {
+                              badgeLabel = 'KYC Aprobado';
+                              badgeBg = 'bg-emerald-500/10';
+                              badgeText = 'text-emerald-500';
+                            } else if (clientKycStatus === 'pending' || clientKycStatus === 'in_review') {
+                              badgeLabel = 'KYC Pendiente';
+                              badgeBg = 'bg-amber-500/10';
+                              badgeText = 'text-amber-500';
+                            } else if (clientKycStatus === 'expired') {
+                              badgeLabel = 'KYC Vencido';
+                              badgeBg = 'bg-red-500/10';
+                              badgeText = 'text-red-500';
+                            } else if (clientKycStatus === 'rejected') {
+                              badgeLabel = 'KYC Rechazado';
+                              badgeBg = 'bg-red-500/10';
+                              badgeText = 'text-red-600';
+                            } else {
+                              badgeLabel = 'KYC Requerido';
+                              badgeBg = 'bg-gray-500/10';
+                              badgeText = 'text-gray-500';
+                            }
+                            return (
+                              <span className={cn(
+                                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                                badgeBg,
+                                badgeText
+                              )}>
+                                <Shield className="h-2.5 w-2.5" />
+                                {badgeLabel}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>

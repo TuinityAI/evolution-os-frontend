@@ -21,6 +21,12 @@ import {
   AlertCircle,
   TrendingUp,
   TrendingDown,
+  Calculator,
+  AlertTriangle,
+  CheckCircle,
+  DollarSign,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -31,8 +37,12 @@ import {
 import type { PurchaseOrderStatus } from '@/lib/types/purchase-order';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { printPurchaseOrder } from '@/lib/utils/print-utils';
+import { prorateCosts, formatCostCurrency } from '@/lib/utils/cost-proration';
+import type { ProrationResult } from '@/lib/utils/cost-proration';
+import type { ExpenseBreakdown } from '@/lib/types/purchase-order';
+import { SEED_PRODUCTS } from '@/lib/mock-data/products';
 
 // Status badge colors
 const STATUS_CONFIG: Record<PurchaseOrderStatus, { bg: string; text: string; dot: string; label: string }> = {
@@ -48,12 +58,35 @@ export default function OrderDetailPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canViewCosts = checkPermission('canViewCosts');
+  const canProrateCosts = checkPermission('canProrateCosts');
 
   const orderId = params.id as string;
   const order = getPurchaseOrderById(orderId);
 
   const [expensePercentage, setExpensePercentage] = useState('15');
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
+
+  // F11: Cost Proration state
+  const [prorationOpen, setProrationOpen] = useState(false);
+  const [prorationExpenses, setProrationExpenses] = useState({
+    freight: '',
+    insurance: '',
+    customs: '',
+    handling: '',
+    other: '',
+  });
+  const [prorationResult, setProrationResult] = useState<ProrationResult | null>(null);
+  const [isProrationApplied, setIsProrationApplied] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  // Build previous costs map from SEED_PRODUCTS for cost increase comparison
+  const previousCostsMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    SEED_PRODUCTS.forEach((p) => {
+      if (p.costCIF) map[p.id] = p.costCIF;
+    });
+    return map;
+  }, []);
 
   if (!order) {
     return (
@@ -406,6 +439,484 @@ export default function OrderDetailPage() {
           </div>
         </motion.div>
       )}
+
+      {/* F11: Prorrateo de Costos Section */}
+      {canProrateCosts &&
+        (order.status === 'en_recepcion' || order.status === 'completada') && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="overflow-hidden rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414]"
+        >
+          {/* Collapsible Header */}
+          <button
+            onClick={() => setProrationOpen(!prorationOpen)}
+            className="flex w-full items-center justify-between border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] px-4 py-3 transition-colors hover:bg-gray-100 dark:hover:bg-[#222]"
+          >
+            <div className="flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-brand-600" />
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Prorrateo de Costos</h2>
+              {(order.costProrated || isProrationApplied) && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle className="h-3 w-3" />
+                  Prorrateo Aplicado
+                </span>
+              )}
+              {prorationResult?.hasAlerts && !order.costProrated && !isProrationApplied && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-900/30 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="h-3 w-3" />
+                  Alertas de costo
+                </span>
+              )}
+            </div>
+            {prorationOpen ? (
+              <ChevronUp className="h-4 w-4 text-gray-500" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-gray-500" />
+            )}
+          </button>
+
+          {/* Collapsible Content */}
+          {prorationOpen && (
+            <div className="p-4 space-y-5">
+              {/* Already prorated: read-only view */}
+              {(order.costProrated || isProrationApplied) ? (
+                <>
+                  {/* Read-only results */}
+                  <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-3">
+                    <div className="flex items-center gap-2 text-sm text-emerald-800 dark:text-emerald-300">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>
+                        El prorrateo fue aplicado
+                        {order.proratedAt && ` el ${formatDate(order.proratedAt)}`}
+                        {order.proratedBy && ` por ${order.proratedBy}`}
+                        {isProrationApplied && !order.proratedAt && ' exitosamente'}
+                        .
+                      </span>
+                    </div>
+                  </div>
+
+                  {prorationResult && (
+                    <>
+                      {/* Summary cards */}
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-3">
+                          <p className="mb-1 text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Total FOB</p>
+                          <p className="font-mono text-lg font-bold text-gray-900 dark:text-white">
+                            {formatCostCurrency(prorationResult.totalFOB)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-3">
+                          <p className="mb-1 text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Total Gastos</p>
+                          <p className="font-mono text-lg font-bold text-gray-900 dark:text-white">
+                            {formatCostCurrency(prorationResult.totalExpenses)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-3">
+                          <p className="mb-1 text-xs font-medium uppercase text-emerald-700 dark:text-emerald-400">Total CIF</p>
+                          <p className="font-mono text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                            {formatCostCurrency(prorationResult.totalCIF)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Results table (read-only) */}
+                      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-[#2a2a2a]">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
+                              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Producto</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Qty</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">FOB Total</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Gastos Asignados</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">CIF Total</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">CIF Unitario</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
+                            {prorationResult.lines.map((line) => (
+                              <tr key={line.lineId} className={cn(
+                                'transition-colors',
+                                line.hasAlert
+                                  ? 'bg-amber-50/50 dark:bg-amber-900/10'
+                                  : 'hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                              )}>
+                                <td className="px-3 py-2">
+                                  <p className="text-sm text-gray-900 dark:text-white">{line.productDescription}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">{line.productReference}</p>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <span className="text-sm font-medium text-gray-900 dark:text-white">{line.quantity}</span>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <span className="font-mono text-sm text-gray-900 dark:text-white">{formatCostCurrency(line.totalFOB)}</span>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <span className="font-mono text-sm text-gray-900 dark:text-white">{formatCostCurrency(line.expenseShare)}</span>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">{formatCostCurrency(line.totalCIF)}</span>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">{formatCostCurrency(line.unitCostCIF)}</span>
+                                    {line.hasAlert && (
+                                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Alerts for read-only view */}
+                      {prorationResult.hasAlerts && (
+                        <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                            <div>
+                              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                                Alerta de incremento de costo ({'>'}10%)
+                              </p>
+                              <ul className="mt-1.5 space-y-1">
+                                {prorationResult.alerts.map((alert) => (
+                                  <li key={alert.productReference} className="text-xs text-amber-700 dark:text-amber-400">
+                                    <span className="font-medium">{alert.productReference}</span> — {alert.productDescription}:
+                                    {' '}{formatCostCurrency(alert.previousCost)} {'→'} {formatCostCurrency(alert.newCost)}
+                                    {' '}(+{alert.increasePercent.toFixed(1)}%)
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Expense Inputs */}
+                  <div>
+                    <h3 className="mb-3 text-sm font-medium text-gray-900 dark:text-white">Gastos de internación</h3>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                      {([
+                        { key: 'freight' as const, label: 'Flete' },
+                        { key: 'insurance' as const, label: 'Seguro' },
+                        { key: 'customs' as const, label: 'Aduana' },
+                        { key: 'handling' as const, label: 'Manejo' },
+                        { key: 'other' as const, label: 'Otros' },
+                      ]).map(({ key, label }) => (
+                        <div key={key}>
+                          <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">{label}</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                              <DollarSign className="h-3.5 w-3.5" />
+                            </span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="0.00"
+                              value={prorationExpenses[key]}
+                              onChange={(e) =>
+                                setProrationExpenses((prev) => ({ ...prev, [key]: e.target.value }))
+                              }
+                              className={cn(
+                                'w-full rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] py-2 pl-8 pr-3 text-right font-mono text-sm',
+                                'text-gray-900 dark:text-white placeholder:text-gray-400',
+                                'focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500',
+                                'transition-colors'
+                              )}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Expense total */}
+                    <div className="mt-3 flex items-center justify-between rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] px-4 py-2">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Gastos:</span>
+                      <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
+                        {formatCostCurrency(
+                          (parseFloat(prorationExpenses.freight) || 0) +
+                          (parseFloat(prorationExpenses.insurance) || 0) +
+                          (parseFloat(prorationExpenses.customs) || 0) +
+                          (parseFloat(prorationExpenses.handling) || 0) +
+                          (parseFloat(prorationExpenses.other) || 0)
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Calculate Button */}
+                  <div className="flex justify-end">
+                    <Button
+                      color="primary"
+                      className="bg-brand-600"
+                      startContent={<Calculator className="h-4 w-4" />}
+                      onPress={() => {
+                        const expenses: ExpenseBreakdown = {
+                          freight: parseFloat(prorationExpenses.freight) || 0,
+                          insurance: parseFloat(prorationExpenses.insurance) || 0,
+                          customs: parseFloat(prorationExpenses.customs) || 0,
+                          handling: parseFloat(prorationExpenses.handling) || 0,
+                          other: parseFloat(prorationExpenses.other) || 0,
+                          total:
+                            (parseFloat(prorationExpenses.freight) || 0) +
+                            (parseFloat(prorationExpenses.insurance) || 0) +
+                            (parseFloat(prorationExpenses.customs) || 0) +
+                            (parseFloat(prorationExpenses.handling) || 0) +
+                            (parseFloat(prorationExpenses.other) || 0),
+                        };
+
+                        if (expenses.total <= 0) {
+                          toast.error('Ingrese al menos un gasto', {
+                            description: 'Debe ingresar valores mayores a 0 en los gastos de internación.',
+                          });
+                          return;
+                        }
+
+                        const result = prorateCosts(order.lines, expenses, previousCostsMap);
+                        setProrationResult(result);
+
+                        if (result.hasAlerts) {
+                          toast.warning('Alerta de costos', {
+                            description: `${result.alerts.length} producto(s) con incremento mayor al 10%.`,
+                          });
+                        } else {
+                          toast.success('Prorrateo calculado', {
+                            description: 'Revise los resultados antes de aplicar.',
+                          });
+                        }
+                      }}
+                    >
+                      Calcular Prorrateo
+                    </Button>
+                  </div>
+
+                  {/* Results Table (after calculation) */}
+                  {prorationResult && (
+                    <>
+                      {/* Summary cards */}
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-3">
+                          <p className="mb-1 text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Total FOB</p>
+                          <p className="font-mono text-lg font-bold text-gray-900 dark:text-white">
+                            {formatCostCurrency(prorationResult.totalFOB)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-3">
+                          <p className="mb-1 text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Total Gastos</p>
+                          <p className="font-mono text-lg font-bold text-gray-900 dark:text-white">
+                            {formatCostCurrency(prorationResult.totalExpenses)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-3">
+                          <p className="mb-1 text-xs font-medium uppercase text-emerald-700 dark:text-emerald-400">Total CIF</p>
+                          <p className="font-mono text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                            {formatCostCurrency(prorationResult.totalCIF)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Alert Banner */}
+                      {prorationResult.hasAlerts && (
+                        <div className={cn(
+                          'rounded-lg border p-4',
+                          prorationResult.alerts.some((a) => a.increasePercent > 25)
+                            ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20'
+                            : 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20'
+                        )}>
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className={cn(
+                              'mt-0.5 h-4 w-4 shrink-0',
+                              prorationResult.alerts.some((a) => a.increasePercent > 25)
+                                ? 'text-red-600 dark:text-red-400'
+                                : 'text-amber-600 dark:text-amber-400'
+                            )} />
+                            <div>
+                              <p className={cn(
+                                'text-sm font-medium',
+                                prorationResult.alerts.some((a) => a.increasePercent > 25)
+                                  ? 'text-red-800 dark:text-red-300'
+                                  : 'text-amber-800 dark:text-amber-300'
+                              )}>
+                                Alerta: {prorationResult.alerts.length} producto(s) con incremento de costo {'>'}10%
+                              </p>
+                              <ul className="mt-1.5 space-y-1">
+                                {prorationResult.alerts.map((alert) => (
+                                  <li key={alert.productReference} className={cn(
+                                    'text-xs',
+                                    prorationResult.alerts.some((a) => a.increasePercent > 25)
+                                      ? 'text-red-700 dark:text-red-400'
+                                      : 'text-amber-700 dark:text-amber-400'
+                                  )}>
+                                    <span className="font-medium">{alert.productReference}</span> — {alert.productDescription}:
+                                    {' '}{formatCostCurrency(alert.previousCost)} {'→'} {formatCostCurrency(alert.newCost)}
+                                    {' '}
+                                    <span className="font-semibold">(+{alert.increasePercent.toFixed(1)}%)</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Results table */}
+                      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-[#2a2a2a]">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
+                              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Producto</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Qty</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">FOB Total</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Gastos Asignados</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">CIF Total</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">CIF Unitario</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
+                            {prorationResult.lines.map((line) => (
+                              <tr key={line.lineId} className={cn(
+                                'transition-colors',
+                                line.hasAlert
+                                  ? 'bg-amber-50/50 dark:bg-amber-900/10'
+                                  : 'hover:bg-gray-50 dark:hover:bg-[#1a1a1a]'
+                              )}>
+                                <td className="px-3 py-2">
+                                  <p className="text-sm text-gray-900 dark:text-white">{line.productDescription}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">{line.productReference}</p>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <span className="text-sm font-medium text-gray-900 dark:text-white">{line.quantity}</span>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <span className="font-mono text-sm text-gray-900 dark:text-white">{formatCostCurrency(line.totalFOB)}</span>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <span className="font-mono text-sm text-gray-900 dark:text-white">{formatCostCurrency(line.expenseShare)}</span>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">{formatCostCurrency(line.totalCIF)}</span>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">{formatCostCurrency(line.unitCostCIF)}</span>
+                                    {line.hasAlert && (
+                                      <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                                        +{line.costIncrease?.toFixed(1)}%
+                                      </span>
+                                    )}
+                                  </div>
+                                  {line.previousCostCIF && (
+                                    <p className="text-xs text-gray-400 dark:text-gray-500 font-mono">
+                                      ant: {formatCostCurrency(line.previousCostCIF)}
+                                    </p>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t-2 border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
+                              <td className="px-3 py-2 text-right text-sm font-medium text-gray-700 dark:text-gray-300" colSpan={2}>
+                                Totales:
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">{formatCostCurrency(prorationResult.totalFOB)}</span>
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">{formatCostCurrency(prorationResult.totalExpenses)}</span>
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                <span className="font-mono text-sm font-bold text-emerald-700 dark:text-emerald-400">{formatCostCurrency(prorationResult.totalCIF)}</span>
+                              </td>
+                              <td className="px-3 py-2"></td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+
+                      {/* Apply Button */}
+                      <div className="flex justify-end">
+                        <Button
+                          color="success"
+                          startContent={<CheckCircle className="h-4 w-4" />}
+                          onPress={() => setIsConfirmOpen(true)}
+                        >
+                          Aplicar Prorrateo
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* Proration Confirmation Modal */}
+      <CustomModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} size="md">
+        <CustomModalHeader onClose={() => setIsConfirmOpen(false)}>
+          <Calculator className="h-5 w-5 text-brand-600" />
+          Confirmar Prorrateo
+        </CustomModalHeader>
+        <CustomModalBody className="space-y-3">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            Está a punto de aplicar el prorrateo de costos a esta orden. Esta acción asignará los gastos
+            de internación proporcionalmente a cada línea de producto.
+          </p>
+          {prorationResult && (
+            <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a] p-3 space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500 dark:text-gray-400">Total FOB:</span>
+                <span className="font-mono font-medium text-gray-900 dark:text-white">{formatCostCurrency(prorationResult.totalFOB)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500 dark:text-gray-400">Total Gastos:</span>
+                <span className="font-mono font-medium text-gray-900 dark:text-white">{formatCostCurrency(prorationResult.totalExpenses)}</span>
+              </div>
+              <div className="flex justify-between text-sm border-t border-gray-200 dark:border-[#2a2a2a] pt-1.5">
+                <span className="font-medium text-gray-700 dark:text-gray-300">Total CIF:</span>
+                <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">{formatCostCurrency(prorationResult.totalCIF)}</span>
+              </div>
+            </div>
+          )}
+          {prorationResult?.hasAlerts && (
+            <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3">
+              <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>{prorationResult.alerts.length} producto(s) con incremento de costo mayor al 10%.</span>
+              </div>
+            </div>
+          )}
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button variant="light" onPress={() => setIsConfirmOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            color="success"
+            startContent={<CheckCircle className="h-4 w-4" />}
+            onPress={() => {
+              setIsProrationApplied(true);
+              setIsConfirmOpen(false);
+              toast.success('Prorrateo aplicado exitosamente', {
+                id: 'proration-applied',
+                description: `Los costos CIF han sido asignados a ${order.lines.length} líneas de producto.`,
+              });
+            }}
+          >
+            Confirmar y Aplicar
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
 
       {/* Notes Section */}
       {order.notes && (

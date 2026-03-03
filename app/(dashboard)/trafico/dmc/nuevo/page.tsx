@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { ArrowLeft, FileText, Ship, Package, Plus, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, FileText, Ship, Package, Plus, Trash2, Layers, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
@@ -50,6 +50,13 @@ function formatNumber(value: number, decimals = 2): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(value);
+}
+
+// Extract rubro (product group) from merchandise description
+function extractRubroFromDescription(description: string): string {
+  const first = description.split(' ')[0]?.toUpperCase() ?? 'OTROS';
+  const KNOWN_RUBROS = ['WHISKY', 'RON', 'VODKA', 'TEQUILA', 'LICOR', 'VINO', 'GINEBRA', 'CERVEZA', 'SNACKS', 'CHAMPAGNE', 'COGNAC', 'BRANDY'];
+  return KNOWN_RUBROS.includes(first) ? first : 'OTROS';
 }
 
 const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1';
@@ -125,6 +132,8 @@ export default function NuevaDMCPage() {
   );
 
   const [notes, setNotes] = useState('');
+  const [showRubroGrouping, setShowRubroGrouping] = useState(false);
+  const [expandedRubros, setExpandedRubros] = useState<Set<string>>(new Set());
 
   // Calculated totals
   const totals = useMemo(() => {
@@ -140,6 +149,44 @@ export default function NuevaDMCPage() {
       { packages: 0, cases: 0, netWeight: 0, grossWeight: 0, volume: 0, valueFOB: 0 }
     );
   }, [lines]);
+
+  // Group lines by rubro for the grouping view
+  const groupedByRubro = useMemo(() => {
+    const groups: Record<string, {
+      lineIndices: number[];
+      totalCases: number;
+      totalNetWeight: number;
+      totalGrossWeight: number;
+      totalVolume: number;
+      totalValue: number;
+    }> = {};
+    lines.forEach((line, idx) => {
+      const rubro = line.description ? extractRubroFromDescription(line.description) : 'OTROS';
+      if (!groups[rubro]) {
+        groups[rubro] = { lineIndices: [], totalCases: 0, totalNetWeight: 0, totalGrossWeight: 0, totalVolume: 0, totalValue: 0 };
+      }
+      groups[rubro].lineIndices.push(idx);
+      groups[rubro].totalCases += line.numberOfCases;
+      groups[rubro].totalNetWeight += line.netWeightKg;
+      groups[rubro].totalGrossWeight += line.grossWeightKg;
+      groups[rubro].totalVolume += line.volumeM3;
+      groups[rubro].totalValue += line.valueFOB;
+    });
+    return groups;
+  }, [lines]);
+
+  const toggleRubro = (rubro: string) => {
+    setExpandedRubros((prev) => {
+      const next = new Set(prev);
+      if (next.has(rubro)) next.delete(rubro);
+      else next.add(rubro);
+      return next;
+    });
+  };
+
+  const expandAllRubros = () => {
+    setExpandedRubros(new Set(Object.keys(groupedByRubro)));
+  };
 
   const updateLine = (index: number, field: keyof DMCMerchandiseLine, value: string | number) => {
     setLines((prev) =>
@@ -427,14 +474,119 @@ export default function NuevaDMCPage() {
               <Package className="h-4 w-4" />
               Mercancia
             </h3>
-            <button
-              onClick={addLine}
-              className="flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-sky-700 transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Agregar linea
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setShowRubroGrouping(!showRubroGrouping);
+                  if (!showRubroGrouping) expandAllRubros();
+                }}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
+                  showRubroGrouping
+                    ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400'
+                    : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-[#2a2a2a] dark:bg-[#141414] dark:text-gray-400 dark:hover:bg-[#1a1a1a]'
+                )}
+              >
+                <Layers className="h-3.5 w-3.5" />
+                Agrupar por Rubro
+              </button>
+              <button
+                onClick={addLine}
+                className="flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-sky-700 transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Agregar linea
+              </button>
+            </div>
           </div>
+
+          {/* Rubro grouping summary (shown above table when active) */}
+          <AnimatePresence>
+            {showRubroGrouping && Object.keys(groupedByRubro).length > 0 && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="mb-4 overflow-hidden"
+              >
+                <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] divide-y divide-gray-100 dark:divide-[#2a2a2a]">
+                  {Object.entries(groupedByRubro)
+                    .filter(([rubro]) => rubro !== 'OTROS' || groupedByRubro['OTROS']?.lineIndices.some(i => lines[i].description))
+                    .sort(([, a], [, b]) => b.totalValue - a.totalValue)
+                    .map(([rubro, group]) => {
+                      const isExpanded = expandedRubros.has(rubro);
+                      return (
+                        <div key={rubro}>
+                          <button
+                            onClick={() => toggleRubro(rubro)}
+                            className="flex w-full items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <motion.div
+                                animate={{ rotate: isExpanded ? 180 : 0 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+                              </motion.div>
+                              <span className="inline-flex rounded bg-sky-100 dark:bg-sky-950/40 px-1.5 py-0.5 text-[10px] font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wider">
+                                {rubro}
+                              </span>
+                              <span className="text-[10px] text-gray-500 dark:text-[#888]">
+                                {group.lineIndices.length} {group.lineIndices.length === 1 ? 'linea' : 'lineas'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-[10px]">
+                              <span className="text-gray-500 dark:text-[#888]">{group.totalCases} cajas</span>
+                              <span className="text-gray-500 dark:text-[#888]">{formatNumber(group.totalNetWeight)} kg</span>
+                              <span className="text-gray-500 dark:text-[#888]">{formatNumber(group.totalVolume)} m{'\u00B3'}</span>
+                              <span className="font-mono font-semibold text-sky-700 dark:text-sky-300">{formatCurrency(group.totalValue)}</span>
+                            </div>
+                          </button>
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.15 }}
+                                className="overflow-hidden bg-gray-50/50 dark:bg-[#1a1a1a]/50"
+                              >
+                                {group.lineIndices.map((lineIdx) => {
+                                  const line = lines[lineIdx];
+                                  return (
+                                    <div key={lineIdx} className="flex items-center justify-between px-3 py-1.5 pl-9 text-[10px]">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-mono text-gray-500 dark:text-[#666]">{line.tariffCode || '---'}</span>
+                                        <span className="text-gray-700 dark:text-gray-300 truncate max-w-[250px]">{line.description || 'Sin descripcion'}</span>
+                                      </div>
+                                      <div className="flex items-center gap-4">
+                                        <span className="text-gray-600 dark:text-gray-400">{line.numberOfCases} cajas</span>
+                                        <span className="font-mono text-gray-600 dark:text-gray-400">{formatCurrency(line.valueFOB)}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  {/* Grand totals in grouping view */}
+                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-[#1a1a1a]">
+                    <span className="text-[10px] font-semibold text-gray-900 dark:text-white">TOTAL</span>
+                    <div className="flex items-center gap-4 text-[10px]">
+                      <span className="font-semibold text-gray-900 dark:text-white">{totals.cases} cajas</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{formatNumber(totals.netWeight)} kg</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{formatNumber(totals.volume)} m{'\u00B3'}</span>
+                      <span className="font-mono font-bold text-sky-700 dark:text-sky-300">{formatCurrency(totals.valueFOB)}</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -465,79 +617,187 @@ export default function NuevaDMCPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-[#2a2a2a]">
-                {lines.map((line, idx) => (
-                  <tr key={idx}>
-                    <td className="px-2 py-2">
-                      <input
-                        type="text"
-                        value={line.tariffCode}
-                        onChange={(e) => updateLine(idx, 'tariffCode', e.target.value)}
-                        placeholder="0000000000"
-                        className={cn(inputClass, 'w-28 font-mono text-xs')}
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="text"
-                        value={line.description}
-                        onChange={(e) => updateLine(idx, 'description', e.target.value)}
-                        placeholder="Descripcion del producto"
-                        className={cn(inputClass, 'min-w-[200px] text-xs')}
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={line.numberOfCases || ''}
-                        onChange={(e) => updateLine(idx, 'numberOfCases', Number(e.target.value))}
-                        className={cn(inputClass, 'w-20 text-right text-xs')}
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={line.netWeightKg || ''}
-                        onChange={(e) => updateLine(idx, 'netWeightKg', Number(e.target.value))}
-                        className={cn(inputClass, 'w-24 text-right text-xs')}
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={line.grossWeightKg || ''}
-                        onChange={(e) => updateLine(idx, 'grossWeightKg', Number(e.target.value))}
-                        className={cn(inputClass, 'w-24 text-right text-xs')}
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={line.volumeM3 || ''}
-                        onChange={(e) => updateLine(idx, 'volumeM3', Number(e.target.value))}
-                        className={cn(inputClass, 'w-20 text-right text-xs')}
-                        step="0.1"
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        type="number"
-                        value={line.valueFOB || ''}
-                        onChange={(e) => updateLine(idx, 'valueFOB', Number(e.target.value))}
-                        className={cn(inputClass, 'w-28 text-right text-xs')}
-                        step="0.01"
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <button
-                        onClick={() => removeLine(idx)}
-                        disabled={lines.length <= 1}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {showRubroGrouping ? (
+                  /* Grouped view: render lines grouped by rubro with group headers */
+                  Object.entries(groupedByRubro)
+                    .sort(([, a], [, b]) => b.totalValue - a.totalValue)
+                    .flatMap(([rubro, group]) => [
+                      <tr key={`rubro-header-${rubro}`} className="bg-sky-50/50 dark:bg-sky-950/20">
+                        <td colSpan={8} className="px-2 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex rounded bg-sky-100 dark:bg-sky-950/40 px-1.5 py-0.5 text-[10px] font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wider">
+                              {rubro}
+                            </span>
+                            <span className="text-[10px] text-gray-400 dark:text-[#666]">
+                              {group.lineIndices.length} lineas - Subtotal: {formatCurrency(group.totalValue)}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>,
+                      ...group.lineIndices.map((idx) => {
+                        const line = lines[idx];
+                        return (
+                          <tr key={idx}>
+                            <td className="px-2 py-2">
+                              <input
+                                type="text"
+                                value={line.tariffCode}
+                                onChange={(e) => updateLine(idx, 'tariffCode', e.target.value)}
+                                placeholder="0000000000"
+                                className={cn(inputClass, 'w-28 font-mono text-xs')}
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <input
+                                type="text"
+                                value={line.description}
+                                onChange={(e) => updateLine(idx, 'description', e.target.value)}
+                                placeholder="Descripcion del producto"
+                                className={cn(inputClass, 'min-w-[200px] text-xs')}
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <input
+                                type="number"
+                                value={line.numberOfCases || ''}
+                                onChange={(e) => updateLine(idx, 'numberOfCases', Number(e.target.value))}
+                                className={cn(inputClass, 'w-20 text-right text-xs')}
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <input
+                                type="number"
+                                value={line.netWeightKg || ''}
+                                onChange={(e) => updateLine(idx, 'netWeightKg', Number(e.target.value))}
+                                className={cn(inputClass, 'w-24 text-right text-xs')}
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <input
+                                type="number"
+                                value={line.grossWeightKg || ''}
+                                onChange={(e) => updateLine(idx, 'grossWeightKg', Number(e.target.value))}
+                                className={cn(inputClass, 'w-24 text-right text-xs')}
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <input
+                                type="number"
+                                value={line.volumeM3 || ''}
+                                onChange={(e) => updateLine(idx, 'volumeM3', Number(e.target.value))}
+                                className={cn(inputClass, 'w-20 text-right text-xs')}
+                                step="0.1"
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <input
+                                type="number"
+                                value={line.valueFOB || ''}
+                                onChange={(e) => updateLine(idx, 'valueFOB', Number(e.target.value))}
+                                className={cn(inputClass, 'w-28 text-right text-xs')}
+                                step="0.01"
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <button
+                                onClick={() => removeLine(idx)}
+                                disabled={lines.length <= 1}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }),
+                      <tr key={`rubro-subtotal-${rubro}`} className="bg-gray-50/60 dark:bg-[#1a1a1a]/60">
+                        <td colSpan={2} className="px-2 py-1.5 text-[10px] font-semibold text-gray-600 dark:text-gray-400 pl-4">
+                          Subtotal {rubro}
+                        </td>
+                        <td className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-600 dark:text-gray-400">{group.totalCases}</td>
+                        <td className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-600 dark:text-gray-400">{formatNumber(group.totalNetWeight)}</td>
+                        <td className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-600 dark:text-gray-400">{formatNumber(group.totalGrossWeight)}</td>
+                        <td className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-600 dark:text-gray-400">{formatNumber(group.totalVolume)}</td>
+                        <td className="px-2 py-1.5 text-right text-[10px] font-bold text-sky-600 dark:text-sky-400">{formatCurrency(group.totalValue)}</td>
+                        <td />
+                      </tr>,
+                    ])
+                ) : (
+                  /* Default flat view */
+                  lines.map((line, idx) => (
+                    <tr key={idx}>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={line.tariffCode}
+                          onChange={(e) => updateLine(idx, 'tariffCode', e.target.value)}
+                          placeholder="0000000000"
+                          className={cn(inputClass, 'w-28 font-mono text-xs')}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={line.description}
+                          onChange={(e) => updateLine(idx, 'description', e.target.value)}
+                          placeholder="Descripcion del producto"
+                          className={cn(inputClass, 'min-w-[200px] text-xs')}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={line.numberOfCases || ''}
+                          onChange={(e) => updateLine(idx, 'numberOfCases', Number(e.target.value))}
+                          className={cn(inputClass, 'w-20 text-right text-xs')}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={line.netWeightKg || ''}
+                          onChange={(e) => updateLine(idx, 'netWeightKg', Number(e.target.value))}
+                          className={cn(inputClass, 'w-24 text-right text-xs')}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={line.grossWeightKg || ''}
+                          onChange={(e) => updateLine(idx, 'grossWeightKg', Number(e.target.value))}
+                          className={cn(inputClass, 'w-24 text-right text-xs')}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={line.volumeM3 || ''}
+                          onChange={(e) => updateLine(idx, 'volumeM3', Number(e.target.value))}
+                          className={cn(inputClass, 'w-20 text-right text-xs')}
+                          step="0.1"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="number"
+                          value={line.valueFOB || ''}
+                          onChange={(e) => updateLine(idx, 'valueFOB', Number(e.target.value))}
+                          className={cn(inputClass, 'w-28 text-right text-xs')}
+                          step="0.01"
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <button
+                          onClick={() => removeLine(idx)}
+                          disabled={lines.length <= 1}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">

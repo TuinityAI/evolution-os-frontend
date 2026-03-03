@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@heroui/react';
@@ -11,18 +12,29 @@ import {
   Trash2,
   Package,
   Barcode,
+  BarChart3,
   Ruler,
   DollarSign,
   TrendingUp,
   AlertTriangle,
   Truck,
   Printer,
+  Plus,
+  X,
+  Shield,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getProductById, PRODUCT_GROUPS } from '@/lib/mock-data/products';
+import { getProductById, updateProduct, PRODUCT_GROUPS } from '@/lib/mock-data/products';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { printReport } from '@/lib/utils/print-utils';
+import {
+  CustomModal,
+  CustomModalHeader,
+  CustomModalBody,
+  CustomModalFooter,
+} from '@/components/ui/custom-modal';
 
 // Product images mapping
 const PRODUCT_IMAGES: Record<string, string> = {
@@ -42,9 +54,23 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const { checkPermission } = useAuth();
   const canViewCosts = checkPermission('canViewCosts');
+  const canManageBarcodes = checkPermission('canManageBarcodes');
+  const canConfigureBrandProtection = checkPermission('canConfigureBrandProtection');
+  const canViewProductAnalytics = checkPermission('canViewProductAnalytics');
 
   const productId = params.id as string;
   const product = getProductById(productId);
+
+  // F3 - Multiple Barcodes state
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+  const [newBarcodeCode, setNewBarcodeCode] = useState('');
+  const [newBarcodeLabel, setNewBarcodeLabel] = useState('Caja');
+
+  // F14 - Brand Protection state
+  const [brandProtectionEnabled, setBrandProtectionEnabled] = useState(product?.brandProtection ?? false);
+  const BRAND_PROTECTION_RATE = product?.brandProtectionRate ?? 0.05;
+
+  const BARCODE_LABEL_OPTIONS = ['Caja', 'Botella', 'Inner Pack', 'Display', 'Otro'] as const;
 
   if (!product) {
     return (
@@ -96,6 +122,65 @@ export default function ProductDetailPage() {
       description: `"${product.description}" ha sido eliminado.`,
     });
     router.push('/productos');
+  };
+
+  // F3 - Add barcode handler
+  const handleAddBarcode = () => {
+    if (!product) return;
+    const currentBarcodes = product.barcodes ?? [];
+    if (currentBarcodes.length >= 5) {
+      toast.error('Límite alcanzado', {
+        id: 'barcode-limit',
+        description: 'Solo se permiten hasta 5 códigos de barra por producto.',
+      });
+      return;
+    }
+    if (!newBarcodeCode.trim()) {
+      toast.error('Código requerido', {
+        id: 'barcode-empty',
+        description: 'Ingresa un código de barras válido.',
+      });
+      return;
+    }
+    const updatedBarcodes = [...currentBarcodes, { code: newBarcodeCode.trim(), label: newBarcodeLabel }];
+    updateProduct(product.id, { barcodes: updatedBarcodes });
+    toast.success('Código agregado', {
+      id: 'barcode-added',
+      description: `${newBarcodeLabel}: ${newBarcodeCode.trim()}`,
+    });
+    setNewBarcodeCode('');
+    setNewBarcodeLabel('Caja');
+    setIsBarcodeModalOpen(false);
+  };
+
+  // F3 - Remove barcode handler
+  const handleRemoveBarcode = (index: number) => {
+    if (!product) return;
+    const currentBarcodes = product.barcodes ?? [];
+    const removed = currentBarcodes[index];
+    const updatedBarcodes = currentBarcodes.filter((_, i) => i !== index);
+    updateProduct(product.id, { barcodes: updatedBarcodes });
+    toast.success('Código eliminado', {
+      id: 'barcode-removed',
+      description: `${removed.label}: ${removed.code}`,
+    });
+  };
+
+  // F14 - Toggle brand protection handler
+  const handleToggleBrandProtection = () => {
+    if (!product) return;
+    const newValue = !brandProtectionEnabled;
+    setBrandProtectionEnabled(newValue);
+    updateProduct(product.id, {
+      brandProtection: newValue,
+      brandProtectionRate: BRAND_PROTECTION_RATE,
+    });
+    toast.success(newValue ? 'Protección de marca activada' : 'Protección de marca desactivada', {
+      id: 'brand-protection-toggle',
+      description: newValue
+        ? `Tasa aplicada: ${(BRAND_PROTECTION_RATE * 100).toFixed(0)}%`
+        : 'El costo CIF ya no incluye protección de marca.',
+    });
   };
 
   const handlePrint = () => {
@@ -168,12 +253,28 @@ export default function ProductDetailPage() {
                 <span className={cn('h-1.5 w-1.5 rounded-full', product.status === 'active' ? 'bg-emerald-500' : 'bg-gray-500')} />
                 {product.status === 'active' ? 'Activo' : 'Inactivo'}
               </span>
+              {/* F14 - Brand Protection Badge */}
+              {brandProtectionEnabled && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-500">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Marca Protegida
+                </span>
+              )}
             </div>
             <p className="mt-1 font-mono text-sm text-muted-foreground">{product.reference}</p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {canViewProductAnalytics && (
+            <Button
+              variant="bordered"
+              startContent={<BarChart3 className="h-4 w-4" />}
+              onPress={() => router.push(`/productos/${product.id}/analytics`)}
+            >
+              Analytics
+            </Button>
+          )}
           <Button
             variant="bordered"
             startContent={<Printer className="h-4 w-4" />}
@@ -364,6 +465,57 @@ export default function ProductDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* F3 - Multiple Barcodes Section */}
+            {(product.barcodes && product.barcodes.length > 0) || canManageBarcodes ? (
+              <div className="mt-5 border-t border-gray-200 pt-5 dark:border-[#2a2a2a]">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Códigos de Barra Adicionales
+                  </p>
+                  {canManageBarcodes && (product.barcodes ?? []).length < 5 && (
+                    <button
+                      onClick={() => setIsBarcodeModalOpen(true)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-brand-500 transition-colors hover:bg-brand-500/10"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Agregar Código
+                    </button>
+                  )}
+                </div>
+                {product.barcodes && product.barcodes.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {product.barcodes.map((bc, index) => (
+                      <span
+                        key={`${bc.code}-${index}`}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-muted/50 px-3 py-1.5 font-mono text-xs text-foreground dark:border-[#2a2a2a] dark:bg-[#141414]"
+                      >
+                        <Barcode className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-medium text-muted-foreground">{bc.label}:</span>
+                        {bc.code}
+                        {canManageBarcodes && (
+                          <button
+                            onClick={() => handleRemoveBarcode(index)}
+                            className="ml-1 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground dark:text-[#888888]">
+                    No hay códigos adicionales registrados.
+                  </p>
+                )}
+                {(product.barcodes ?? []).length >= 5 && (
+                  <p className="mt-2 text-xs text-muted-foreground dark:text-[#888888]">
+                    Se alcanzó el límite de 5 códigos de barra.
+                  </p>
+                )}
+              </div>
+            ) : null}
           </div>
 
           {/* Dimensions & Weight - if available */}
@@ -439,10 +591,132 @@ export default function ProductDetailPage() {
                   </span>
                 </div>
               </div>
+
+              {/* F14 - Brand Protection Toggle */}
+              <div className="mt-4 rounded-lg border border-gray-200 p-4 dark:border-[#2a2a2a] dark:bg-[#141414]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      'flex h-9 w-9 items-center justify-center rounded-lg',
+                      brandProtectionEnabled ? 'bg-violet-500/10' : 'bg-muted/50'
+                    )}>
+                      <Shield className={cn('h-4.5 w-4.5', brandProtectionEnabled ? 'text-violet-500' : 'text-muted-foreground')} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Protección de Marca</p>
+                      <p className="text-xs text-muted-foreground dark:text-[#888888]">
+                        Tasa: {(BRAND_PROTECTION_RATE * 100).toFixed(0)}% sobre costo CIF
+                      </p>
+                    </div>
+                  </div>
+                  {canConfigureBrandProtection ? (
+                    <button
+                      onClick={handleToggleBrandProtection}
+                      className={cn(
+                        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200',
+                        brandProtectionEnabled ? 'bg-violet-500' : 'bg-gray-300 dark:bg-gray-600'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200',
+                          brandProtectionEnabled ? 'translate-x-6' : 'translate-x-1'
+                        )}
+                      />
+                    </button>
+                  ) : (
+                    <span className={cn(
+                      'rounded-full px-2.5 py-1 text-xs font-medium',
+                      brandProtectionEnabled
+                        ? 'bg-violet-500/10 text-violet-500'
+                        : 'bg-gray-500/10 text-gray-500 dark:text-[#888888]'
+                    )}>
+                      {brandProtectionEnabled ? 'Activa' : 'Inactiva'}
+                    </span>
+                  )}
+                </div>
+                {brandProtectionEnabled && (
+                  <div className="mt-3 rounded-lg bg-violet-500/10 p-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Costo CIF Ajustado</span>
+                      <span className="font-mono font-medium text-violet-500">
+                        ${(product.costCIF * (1 + BRAND_PROTECTION_RATE)).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground dark:text-[#888888]">
+                        ${product.costCIF} + {(BRAND_PROTECTION_RATE * 100).toFixed(0)}% protección
+                      </span>
+                      <span className="font-mono text-muted-foreground dark:text-[#888888]">
+                        +${(product.costCIF * BRAND_PROTECTION_RATE).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </motion.div>
       </div>
+
+      {/* F3 - Add Barcode Modal */}
+      <CustomModal isOpen={isBarcodeModalOpen} onClose={() => setIsBarcodeModalOpen(false)} size="sm">
+        <CustomModalHeader onClose={() => setIsBarcodeModalOpen(false)}>
+          <Barcode className="h-5 w-5 text-muted-foreground" />
+          Agregar Código de Barras
+        </CustomModalHeader>
+        <CustomModalBody>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Código
+              </label>
+              <input
+                type="text"
+                value={newBarcodeCode}
+                onChange={(e) => setNewBarcodeCode(e.target.value)}
+                placeholder="Ej: 5000267014005"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-[#2a2a2a] dark:bg-[#141414]"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Etiqueta
+              </label>
+              <select
+                value={newBarcodeLabel}
+                onChange={(e) => setNewBarcodeLabel(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-foreground focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-[#2a2a2a] dark:bg-[#141414]"
+              >
+                {BARCODE_LABEL_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-muted-foreground dark:text-[#888888]">
+              Máximo 5 códigos por producto. Actualmente: {(product?.barcodes ?? []).length}/5
+            </p>
+          </div>
+        </CustomModalBody>
+        <CustomModalFooter>
+          <Button
+            variant="bordered"
+            size="sm"
+            onPress={() => setIsBarcodeModalOpen(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            color="primary"
+            size="sm"
+            onPress={handleAddBarcode}
+          >
+            Agregar
+          </Button>
+        </CustomModalFooter>
+      </CustomModal>
     </div>
   );
 }

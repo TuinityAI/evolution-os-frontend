@@ -22,7 +22,7 @@ export interface Warehouse {
 // INVENTORY ITEM (Extended product view)
 // ============================================
 
-export type AlertType = 'low_stock' | 'out_of_stock' | 'stagnant_4m' | 'stagnant_6m' | 'negative';
+export type AlertType = 'low_stock' | 'out_of_stock' | 'stagnant_4m' | 'stagnant_6m' | 'negative' | 'reorder_point';
 export type AlertSeverity = 'warning' | 'danger' | 'info';
 
 export interface InventoryAlert {
@@ -49,6 +49,7 @@ export interface InventoryItem {
   reserved: number;         // Reserved for pending orders
   available: number;        // Calculated: existence + arriving - reserved
   minimumQty: number;
+  reorderPoint?: number;       // Punto mínimo / alerta de inventario (F1)
   unitsPerCase: number;
   lastPurchaseDate?: string;
   lastSaleDate?: string;
@@ -64,6 +65,7 @@ export interface InventoryItem {
 export interface InventoryStats {
   productsWithStock: number;
   belowMinimum: number;
+  belowReorderPoint: number;    // Products below reorder point (F1)
   outOfStock: number;
   stagnant4Months: number;
   stagnant6Months: number;
@@ -82,7 +84,8 @@ export type InventoryStockFilter =
   | 'low_stock'
   | 'out_of_stock'
   | 'stagnant'
-  | 'arriving';
+  | 'arriving'
+  | 'below_reorder';
 
 export interface InventoryFilters {
   search?: string;

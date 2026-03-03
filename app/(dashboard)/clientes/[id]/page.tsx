@@ -27,9 +27,15 @@ import {
   Clock,
   TrendingUp,
   Globe,
+  Shield,
+  FileCheck,
+  Plus,
+  Send,
+  Save,
+  Ban,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClientById, getCreditStatus } from '@/lib/mock-data/clients';
+import { getClientById, getCreditStatus, updateClient } from '@/lib/mock-data/clients';
 import {
   getPendingInvoicesForClient,
   getPayments,
@@ -47,6 +53,13 @@ import {
   CXC_STATUS_CONFIG,
   CXC_STATUS_LABELS,
 } from '@/lib/types/accounts-receivable';
+import type { KYCForm, KYCDocument, KYCStatus } from '@/lib/types/kyc';
+import {
+  KYC_STATUS_CONFIG,
+  SOURCE_OF_FUNDS_OPTIONS,
+  ID_TYPE_OPTIONS,
+  ANNUAL_REVENUE_RANGES,
+} from '@/lib/types/kyc';
 
 const STATUS_CONFIG: Record<ClientStatus, { label: string; bg: string; text: string; icon: React.ElementType }> = {
   active: { label: 'Activo', bg: 'bg-emerald-500/10', text: 'text-emerald-500', icon: CheckCircle2 },
@@ -54,7 +67,7 @@ const STATUS_CONFIG: Record<ClientStatus, { label: string; bg: string; text: str
   blocked: { label: 'Bloqueado', bg: 'bg-red-500/10', text: 'text-red-500', icon: AlertTriangle },
 };
 
-const TABS = [
+const BASE_TABS = [
   { key: 'general', label: 'General', icon: Building2 },
   { key: 'comercial', label: 'Comercial', icon: DollarSign },
   { key: 'historial', label: 'Historial', icon: Clock },
@@ -62,7 +75,82 @@ const TABS = [
   { key: 'cxc', label: 'CxC', icon: Receipt },
 ] as const;
 
-type TabKey = (typeof TABS)[number]['key'];
+const KYC_TAB = { key: 'kyc' as const, label: 'Debida Diligencia', icon: Shield };
+
+type TabKey = 'general' | 'comercial' | 'historial' | 'documentos' | 'cxc' | 'kyc';
+
+// Mock KYC data per client
+const MOCK_KYC_DATA: Record<string, Partial<KYCForm>> = {
+  'CLI-00007': {
+    beneficiaryName: 'María del Mar Pérez',
+    beneficiaryIdType: 'Cédula',
+    beneficiaryIdNumber: '0614-150120-102-7',
+    beneficiaryNationality: 'Salvadoreña',
+    beneficiaryAddress: 'Calle Max Block, Centro Comercial Las Cascadas, San Salvador',
+    beneficiaryPhone: '+503 2222-3333',
+    beneficiaryEmail: 'mdelmar@distribuidoradelmar.sv',
+    sourceOfFunds: 'Actividad Comercial',
+    sourceOfFundsDetail: 'Distribución de bebidas y licores en El Salvador',
+    annualRevenue: '$200,000 - $500,000',
+    isPEP: false,
+    companyRegistration: 'SV-2020-0315',
+    companyActivity: 'Distribución mayorista de bebidas',
+    companyYearsInBusiness: 6,
+    documents: [
+      { id: 'DOC-001', name: 'Copia de Cédula', type: 'id_copy', uploadedAt: '2025-12-01', fileName: 'cedula_mdelmar.pdf', status: 'verified' },
+      { id: 'DOC-002', name: 'Registro Mercantil', type: 'company_registration', uploadedAt: '2025-12-01', fileName: 'registro_mercantil.pdf', status: 'verified' },
+      { id: 'DOC-003', name: 'Estado Financiero 2025', type: 'financial_statement', uploadedAt: '2025-12-10', fileName: 'estados_financieros_2025.pdf', status: 'verified' },
+    ],
+  },
+  'CLI-00509': {
+    beneficiaryName: 'Ahmed Sultan',
+    beneficiaryIdType: 'Pasaporte',
+    beneficiaryIdNumber: 'US-98765432',
+    beneficiaryNationality: 'Estadounidense',
+    beneficiaryAddress: '1200 Brickell Ave, Suite 500, Miami FL',
+    beneficiaryPhone: '+1 305-555-1234',
+    beneficiaryEmail: 'ahmed@sultanwholesale.com',
+    sourceOfFunds: 'Actividad Comercial',
+    sourceOfFundsDetail: 'Importación y distribución mayorista en LATAM',
+    annualRevenue: 'Más de $1,000,000',
+    isPEP: false,
+    companyRegistration: 'FL-2019-0620',
+    companyActivity: 'Importación y distribución de bebidas',
+    companyYearsInBusiness: 7,
+    documents: [
+      { id: 'DOC-004', name: 'Copia de Pasaporte', type: 'id_copy', uploadedAt: '2024-10-15', fileName: 'passport_sultan.pdf', status: 'verified' },
+      { id: 'DOC-005', name: 'Registro LLC', type: 'company_registration', uploadedAt: '2024-10-15', fileName: 'llc_registration.pdf', status: 'rejected' },
+      { id: 'DOC-006', name: 'Estado Financiero 2024', type: 'financial_statement', uploadedAt: '2024-10-20', fileName: 'financials_2024.pdf', status: 'pending' },
+    ],
+  },
+  'CLI-00077': {
+    beneficiaryName: 'Roberto Medina',
+    beneficiaryIdType: 'RUC',
+    beneficiaryIdNumber: '155678-1-456789',
+    beneficiaryNationality: 'Panameña',
+    beneficiaryAddress: 'Vía España, Torre Banco General, Piso 12, Ciudad de Panamá',
+    beneficiaryPhone: '+507 263-4567',
+    beneficiaryEmail: 'rmedina@medimex.pa',
+    sourceOfFunds: 'Actividad Comercial',
+    sourceOfFundsDetail: 'Importación de productos médicos y farmacéuticos',
+    annualRevenue: '$500,000 - $1,000,000',
+    isPEP: true,
+    pepDetail: 'Miembro del consejo directivo de la Cámara de Comercio de Panamá',
+    companyRegistration: 'PA-2018-1105',
+    companyActivity: 'Importación de productos médicos',
+    companyYearsInBusiness: 8,
+    documents: [
+      { id: 'DOC-007', name: 'Copia de RUC', type: 'id_copy', uploadedAt: '2026-01-10', fileName: 'ruc_medina.pdf', status: 'pending' },
+      { id: 'DOC-008', name: 'Carta de Referencia Bancaria', type: 'reference_letter', uploadedAt: '2026-01-12', fileName: 'ref_bancaria.pdf', status: 'pending' },
+    ],
+  },
+};
+
+const KYC_DOC_STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
+  pending: { label: 'Pendiente', bg: 'bg-amber-500/10', text: 'text-amber-500' },
+  verified: { label: 'Verificado', bg: 'bg-emerald-500/10', text: 'text-emerald-500' },
+  rejected: { label: 'Rechazado', bg: 'bg-red-500/10', text: 'text-red-500' },
+};
 
 // Mock orders history
 const MOCK_ORDERS = [
@@ -109,10 +197,42 @@ export default function ClientDetailPage() {
   const { checkPermission } = useAuth();
   const canManageClients = checkPermission('canManageClients');
   const canViewPriceLevels = checkPermission('canViewPriceLevels');
+  const canViewKYC = checkPermission('canViewKYCStatus');
+  const canManageKYC = checkPermission('canManageKYC');
 
   const [activeTab, setActiveTab] = useState<TabKey>('general');
 
+  // KYC form state
+  const [kycBeneficiaryName, setKycBeneficiaryName] = useState('');
+  const [kycBeneficiaryIdType, setKycBeneficiaryIdType] = useState('');
+  const [kycBeneficiaryIdNumber, setKycBeneficiaryIdNumber] = useState('');
+  const [kycBeneficiaryNationality, setKycBeneficiaryNationality] = useState('');
+  const [kycBeneficiaryAddress, setKycBeneficiaryAddress] = useState('');
+  const [kycBeneficiaryPhone, setKycBeneficiaryPhone] = useState('');
+  const [kycBeneficiaryEmail, setKycBeneficiaryEmail] = useState('');
+  const [kycSourceOfFunds, setKycSourceOfFunds] = useState('');
+  const [kycSourceOfFundsDetail, setKycSourceOfFundsDetail] = useState('');
+  const [kycAnnualRevenue, setKycAnnualRevenue] = useState('');
+  const [kycIsPEP, setKycIsPEP] = useState(false);
+  const [kycPepDetail, setKycPepDetail] = useState('');
+  const [kycCompanyRegistration, setKycCompanyRegistration] = useState('');
+  const [kycCompanyActivity, setKycCompanyActivity] = useState('');
+  const [kycCompanyYears, setKycCompanyYears] = useState<number | ''>('');
+  const [kycDocuments, setKycDocuments] = useState<KYCDocument[]>([]);
+  const [kycInitialized, setKycInitialized] = useState(false);
+
   const client = getClientById(clientId);
+
+  // Build tabs dynamically based on permissions
+  const TABS = useMemo(() => {
+    const tabs: { key: TabKey; label: string; icon: React.ElementType }[] = [
+      ...BASE_TABS,
+    ];
+    if (canViewKYC) {
+      tabs.push(KYC_TAB);
+    }
+    return tabs;
+  }, [canViewKYC]);
 
   const pendingInvoices = useMemo(() => {
     if (!client) return [];
@@ -137,11 +257,67 @@ export default function ClientDetailPage() {
     );
   }
 
+  // Initialize KYC form from mock data
+  if (client && !kycInitialized) {
+    const mockKyc = MOCK_KYC_DATA[client.id];
+    if (mockKyc) {
+      setKycBeneficiaryName(mockKyc.beneficiaryName || '');
+      setKycBeneficiaryIdType(mockKyc.beneficiaryIdType || '');
+      setKycBeneficiaryIdNumber(mockKyc.beneficiaryIdNumber || '');
+      setKycBeneficiaryNationality(mockKyc.beneficiaryNationality || '');
+      setKycBeneficiaryAddress(mockKyc.beneficiaryAddress || '');
+      setKycBeneficiaryPhone(mockKyc.beneficiaryPhone || '');
+      setKycBeneficiaryEmail(mockKyc.beneficiaryEmail || '');
+      setKycSourceOfFunds(mockKyc.sourceOfFunds || '');
+      setKycSourceOfFundsDetail(mockKyc.sourceOfFundsDetail || '');
+      setKycAnnualRevenue(mockKyc.annualRevenue || '');
+      setKycIsPEP(mockKyc.isPEP || false);
+      setKycPepDetail(mockKyc.pepDetail || '');
+      setKycCompanyRegistration(mockKyc.companyRegistration || '');
+      setKycCompanyActivity(mockKyc.companyActivity || '');
+      setKycCompanyYears(mockKyc.companyYearsInBusiness || '');
+      setKycDocuments(mockKyc.documents || []);
+    }
+    setKycInitialized(true);
+  }
+
   const creditStatus = getCreditStatus(client);
   const statusConfig = STATUS_CONFIG[client.status];
   const StatusIcon = statusConfig.icon;
 
   const totalCxCBalance = pendingInvoices.reduce((sum, inv) => sum + inv.balance, 0);
+
+  // KYC helpers
+  const kycStatus = client.kycStatus || 'not_required';
+  const kycStatusConfig = KYC_STATUS_CONFIG[kycStatus];
+  const kycExpiresAt = client.kycExpiresAt ? new Date(client.kycExpiresAt) : null;
+  const kycDaysRemaining = kycExpiresAt
+    ? Math.ceil((kycExpiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  const handleKycSaveDraft = () => {
+    toast.success('Borrador guardado correctamente', { id: 'kyc-draft' });
+  };
+
+  const handleKycSubmitForReview = () => {
+    updateClient(client.id, { kycStatus: 'in_review' });
+    toast.success('Formulario enviado a revisión', { id: 'kyc-submit' });
+  };
+
+  const handleKycApprove = () => {
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    updateClient(client.id, {
+      kycStatus: 'approved',
+      kycExpiresAt: expiresAt.toISOString(),
+    });
+    toast.success('KYC aprobado - válido por 1 año', { id: 'kyc-approve' });
+  };
+
+  const handleKycReject = () => {
+    updateClient(client.id, { kycStatus: 'rejected' });
+    toast.error('KYC rechazado', { id: 'kyc-reject' });
+  };
 
   return (
     <motion.div
@@ -716,6 +892,417 @@ export default function ClientDetailPage() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* KYC / DEBIDA DILIGENCIA TAB */}
+          {activeTab === 'kyc' && canViewKYC && (
+            <div className="space-y-6">
+              {/* KYC Status Header */}
+              <div className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      'flex h-12 w-12 items-center justify-center rounded-xl',
+                      kycStatusConfig.bg
+                    )}>
+                      <Shield className={cn('h-6 w-6', kycStatusConfig.text)} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Debida Diligencia (KYC)</h3>
+                      <div className="mt-1 flex items-center gap-3">
+                        <span className={cn(
+                          'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
+                          kycStatusConfig.bg,
+                          kycStatusConfig.text
+                        )}>
+                          {kycStatusConfig.label}
+                        </span>
+                        {kycExpiresAt && (
+                          <span className={cn(
+                            'text-xs',
+                            kycDaysRemaining !== null && kycDaysRemaining <= 30
+                              ? 'text-red-500 font-medium'
+                              : kycDaysRemaining !== null && kycDaysRemaining <= 90
+                              ? 'text-amber-500'
+                              : 'text-gray-500 dark:text-[#888888]'
+                          )}>
+                            <Clock className="mr-1 inline h-3 w-3" />
+                            Vence: {kycExpiresAt.toLocaleDateString('es-ES')}
+                            {kycDaysRemaining !== null && (
+                              <span className="ml-1">
+                                ({kycDaysRemaining > 0 ? `${kycDaysRemaining} dias restantes` : 'Vencido'})
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {canManageKYC && (
+                    <div className="flex items-center gap-2">
+                      {(kycStatus === 'in_review' || kycStatus === 'pending') && (
+                        <>
+                          <Button
+                            size="sm"
+                            color="success"
+                            variant="flat"
+                            startContent={<CheckCircle2 className="h-4 w-4" />}
+                            onPress={handleKycApprove}
+                          >
+                            Aprobar
+                          </Button>
+                          <Button
+                            size="sm"
+                            color="danger"
+                            variant="flat"
+                            startContent={<Ban className="h-4 w-4" />}
+                            onPress={handleKycReject}
+                          >
+                            Rechazar
+                          </Button>
+                        </>
+                      )}
+                      {kycStatus === 'rejected' && (
+                        <Button
+                          size="sm"
+                          color="success"
+                          variant="flat"
+                          startContent={<CheckCircle2 className="h-4 w-4" />}
+                          onPress={handleKycApprove}
+                        >
+                          Aprobar
+                        </Button>
+                      )}
+                      {kycStatus === 'expired' && (
+                        <Button
+                          size="sm"
+                          color="success"
+                          variant="flat"
+                          startContent={<CheckCircle2 className="h-4 w-4" />}
+                          onPress={handleKycApprove}
+                        >
+                          Renovar y Aprobar
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Beneficiario Final */}
+              <div className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] p-6">
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  <User className="mr-2 inline h-4 w-4" />
+                  Beneficiario Final
+                </h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Nombre Completo</label>
+                    <input
+                      type="text"
+                      value={kycBeneficiaryName}
+                      onChange={(e) => setKycBeneficiaryName(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      placeholder="Nombre del beneficiario final"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Tipo de Identificacion</label>
+                    <select
+                      value={kycBeneficiaryIdType}
+                      onChange={(e) => setKycBeneficiaryIdType(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {ID_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Numero de Identificacion</label>
+                    <input
+                      type="text"
+                      value={kycBeneficiaryIdNumber}
+                      onChange={(e) => setKycBeneficiaryIdNumber(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      placeholder="Numero de documento"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Nacionalidad</label>
+                    <input
+                      type="text"
+                      value={kycBeneficiaryNationality}
+                      onChange={(e) => setKycBeneficiaryNationality(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      placeholder="Nacionalidad"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Direccion</label>
+                    <input
+                      type="text"
+                      value={kycBeneficiaryAddress}
+                      onChange={(e) => setKycBeneficiaryAddress(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      placeholder="Direccion completa"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Telefono</label>
+                    <input
+                      type="text"
+                      value={kycBeneficiaryPhone}
+                      onChange={(e) => setKycBeneficiaryPhone(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      placeholder="+000 0000-0000"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Correo Electronico</label>
+                    <input
+                      type="email"
+                      value={kycBeneficiaryEmail}
+                      onChange={(e) => setKycBeneficiaryEmail(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      placeholder="correo@ejemplo.com"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Origen de Fondos */}
+              <div className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] p-6">
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  <DollarSign className="mr-2 inline h-4 w-4" />
+                  Origen de Fondos
+                </h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Fuente de Fondos</label>
+                    <select
+                      value={kycSourceOfFunds}
+                      onChange={(e) => setKycSourceOfFunds(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {SOURCE_OF_FUNDS_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Ingresos Anuales</label>
+                    <select
+                      value={kycAnnualRevenue}
+                      onChange={(e) => setKycAnnualRevenue(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {ANNUAL_REVENUE_RANGES.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2 lg:col-span-1">
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Detalle</label>
+                    <input
+                      type="text"
+                      value={kycSourceOfFundsDetail}
+                      onChange={(e) => setKycSourceOfFundsDetail(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      placeholder="Descripcion de la fuente de fondos"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* PEP */}
+              <div className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] p-6">
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  <AlertTriangle className="mr-2 inline h-4 w-4" />
+                  Persona Politicamente Expuesta (PEP)
+                </h3>
+                <div className="space-y-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={kycIsPEP}
+                      disabled={!canManageKYC}
+                      onClick={() => canManageKYC && setKycIsPEP(!kycIsPEP)}
+                      className={cn(
+                        'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed',
+                        kycIsPEP ? 'bg-amber-500' : 'bg-gray-200 dark:bg-[#2a2a2a]'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform',
+                          kycIsPEP ? 'translate-x-5' : 'translate-x-0'
+                        )}
+                      />
+                    </button>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Es Persona Politicamente Expuesta
+                    </span>
+                  </label>
+                  {kycIsPEP && (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Detalle PEP</label>
+                      <textarea
+                        value={kycPepDetail}
+                        onChange={(e) => setKycPepDetail(e.target.value)}
+                        disabled={!canManageKYC}
+                        rows={3}
+                        className="w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                        placeholder="Describa la relacion politica o cargo publico..."
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Datos Empresariales */}
+              <div className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] p-6">
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                  <Building2 className="mr-2 inline h-4 w-4" />
+                  Datos Empresariales
+                </h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Registro Mercantil</label>
+                    <input
+                      type="text"
+                      value={kycCompanyRegistration}
+                      onChange={(e) => setKycCompanyRegistration(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      placeholder="Numero de registro"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Actividad Comercial</label>
+                    <input
+                      type="text"
+                      value={kycCompanyActivity}
+                      onChange={(e) => setKycCompanyActivity(e.target.value)}
+                      disabled={!canManageKYC}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      placeholder="Giro del negocio"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-[#888888]">Anos en Operacion</label>
+                    <input
+                      type="number"
+                      value={kycCompanyYears}
+                      onChange={(e) => setKycCompanyYears(e.target.value ? parseInt(e.target.value) : '')}
+                      disabled={!canManageKYC}
+                      min={0}
+                      className="h-10 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666666] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Documentos KYC */}
+              <div className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                    <FileCheck className="mr-2 inline h-4 w-4" />
+                    Documentos
+                  </h3>
+                  {canManageKYC && (
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      startContent={<Plus className="h-4 w-4" />}
+                      onPress={() => toast.info('Funcionalidad proximamente', { id: 'kyc-add-doc' })}
+                    >
+                      Agregar Documento
+                    </Button>
+                  )}
+                </div>
+                {kycDocuments.length > 0 ? (
+                  <div className="space-y-3">
+                    {kycDocuments.map((doc) => {
+                      const docStatusConf = KYC_DOC_STATUS_CONFIG[doc.status] || KYC_DOC_STATUS_CONFIG.pending;
+                      return (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between rounded-lg border border-gray-100 dark:border-[#2a2a2a] p-4"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#2a2a2a]">
+                              <FileText className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900 dark:text-white">{doc.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-[#888888]">
+                                {doc.fileName} &middot; {doc.uploadedAt}
+                              </p>
+                            </div>
+                          </div>
+                          <span className={cn(
+                            'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
+                            docStatusConf.bg,
+                            docStatusConf.text
+                          )}>
+                            {docStatusConf.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-[#2a2a2a] py-8">
+                    <FileCheck className="mb-2 h-8 w-8 text-gray-300 dark:text-[#444444]" />
+                    <p className="text-sm text-gray-500 dark:text-[#888888]">No hay documentos adjuntos</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Buttons */}
+              {canManageKYC && (
+                <div className="flex flex-col gap-3 rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] p-6 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-gray-500 dark:text-[#888888]">
+                    {!MOCK_KYC_DATA[client.id] && !kycBeneficiaryName
+                      ? 'Complete el formulario de debida diligencia para este cliente.'
+                      : 'Guarde los cambios o envie el formulario a revision.'}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="flat"
+                      startContent={<Save className="h-4 w-4" />}
+                      onPress={handleKycSaveDraft}
+                    >
+                      Guardar Borrador
+                    </Button>
+                    <Button
+                      color="primary"
+                      className="bg-brand-700"
+                      startContent={<Send className="h-4 w-4" />}
+                      onPress={handleKycSubmitForReview}
+                    >
+                      Enviar a Revision
+                    </Button>
                   </div>
                 </div>
               )}

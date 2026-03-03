@@ -144,48 +144,54 @@ const SEED_ROLE_TEMPLATES: RoleTemplate[] = [
 
 const SEED_APPROVAL_FLOWS: ApprovalFlow[] = [
   {
-    id: 'AF-001', name: 'Ventas con Margen Bajo', description: 'Requiere aprobación cuando el margen de una venta es menor al 10%',
-    triggerCondition: 'Margen de venta < 10%', isActive: true,
+    id: 'AF-001', name: 'Pedidos B2B', description: 'Aprobación de pedidos de venta B2B. Escalación en cascada si no hay respuesta.',
+    triggerCondition: 'Pedido B2B creado o margen < 10%', isActive: true,
     steps: [
-      { id: 'AS-001', order: 1, approverRole: 'gerencia', approverLabel: 'Gerencia', isRequired: true, canSkip: false, timeoutHours: 24 },
+      { id: 'AS-001', order: 1, approverRole: 'compras', approverLabel: 'Jackie García', approverUserId: 'USR-003', approverUserName: 'Jackie García', isRequired: true, canSkip: false, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
+      { id: 'AS-001b', order: 1, approverRole: 'contabilidad', approverLabel: 'Estelia Romero', approverUserId: 'USR-002', approverUserName: 'Estelia Romero', isRequired: false, canSkip: true, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
+      { id: 'AS-002', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Ureña (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 48 },
     ],
-    escalationTimeout: 48, escalateTo: 'gerencia',
+    escalationTimeout: 24, escalateTo: 'gerencia',
   },
   {
-    id: 'AF-002', name: 'Devoluciones y Notas de Crédito', description: 'Aprobación de devoluciones y emisión de notas de crédito',
+    id: 'AF-002', name: 'Devoluciones y Notas de Crédito', description: 'Aprobación de devoluciones con escalación a gerencia.',
     triggerCondition: 'Solicitud de devolución creada', isActive: true,
     steps: [
-      { id: 'AS-002', order: 1, approverRole: 'contabilidad', approverLabel: 'Contabilidad', isRequired: true, canSkip: false, timeoutHours: 12 },
-      { id: 'AS-003', order: 2, approverRole: 'gerencia', approverLabel: 'Gerencia', isRequired: true, canSkip: false, timeoutHours: 24 },
+      { id: 'AS-003', order: 1, approverRole: 'contabilidad', approverLabel: 'Estelia Romero', approverUserId: 'USR-002', approverUserName: 'Estelia Romero', isRequired: true, canSkip: false, timeoutHours: 12, escalationTimeoutHours: 12, notifyAlways: ['USR-001'] },
+      { id: 'AS-004', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Ureña (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 24 },
     ],
-    escalationTimeout: 72,
+    escalationTimeout: 12, escalateTo: 'gerencia',
   },
   {
-    id: 'AF-003', name: 'Ajustes de Inventario', description: 'Aprobación de ajustes de inventario (merma, rotura, etc.)',
+    id: 'AF-003', name: 'Ajustes de Inventario', description: 'Ajustes de inventario aprobados por Estelia, escalación a Javier.',
     triggerCondition: 'Ajuste de inventario creado', isActive: true,
     steps: [
-      { id: 'AS-004', order: 1, approverRole: 'compras', approverLabel: 'Compras', isRequired: true, canSkip: false, timeoutHours: 24 },
+      { id: 'AS-005', order: 1, approverRole: 'contabilidad', approverLabel: 'Estelia Romero', approverUserId: 'USR-002', approverUserName: 'Estelia Romero', isRequired: true, canSkip: false, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
+      { id: 'AS-006', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Ureña (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 48 },
     ],
+    escalationTimeout: 24, escalateTo: 'gerencia',
   },
   {
-    id: 'AF-004', name: 'Órdenes de Compra Grandes', description: 'OC que excedan $50,000 requieren aprobación de gerencia',
-    triggerCondition: 'Monto de OC > $50,000', isActive: true,
+    id: 'AF-004', name: 'Órdenes de Compra (OC)', description: 'OC aprobadas por Estelia, escalación a Javier.',
+    triggerCondition: 'Orden de compra creada', isActive: true,
     steps: [
-      { id: 'AS-005', order: 1, approverRole: 'gerencia', approverLabel: 'Gerencia', isRequired: true, canSkip: false, timeoutHours: 48 },
+      { id: 'AS-007', order: 1, approverRole: 'contabilidad', approverLabel: 'Estelia Romero', approverUserId: 'USR-002', approverUserName: 'Estelia Romero', isRequired: true, canSkip: false, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
+      { id: 'AS-008', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Ureña (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 48 },
     ],
+    escalationTimeout: 24, escalateTo: 'gerencia',
   },
   {
-    id: 'AF-005', name: 'Anulaciones de Documentos', description: 'Toda anulación de factura, cobro o NC requiere aprobación',
+    id: 'AF-005', name: 'Anulaciones de Documentos', description: 'Toda anulación requiere aprobación exclusiva de Javier.',
     triggerCondition: 'Solicitud de anulación creada', isActive: true,
     steps: [
-      { id: 'AS-006', order: 1, approverRole: 'gerencia', approverLabel: 'Gerencia', isRequired: true, canSkip: false, timeoutHours: 24 },
+      { id: 'AS-009', order: 1, approverRole: 'gerencia', approverLabel: 'Javier Ureña', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 24 },
     ],
   },
   {
-    id: 'AF-006', name: 'Modificaciones Post-Aprobación', description: 'Cambios a pedidos ya aprobados (amendments)',
-    triggerCondition: 'Enmienda a pedido aprobado', isActive: true,
+    id: 'AF-006', name: 'Aprobación de Crédito', description: 'Asignación o aumento de crédito requiere aprobación de Javier.',
+    triggerCondition: 'Solicitud de crédito o aumento de límite', isActive: true,
     steps: [
-      { id: 'AS-007', order: 1, approverRole: 'gerencia', approverLabel: 'Gerencia', isRequired: true, canSkip: false, timeoutHours: 12 },
+      { id: 'AS-010', order: 1, approverRole: 'gerencia', approverLabel: 'Javier Ureña', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 48 },
     ],
   },
 ];

@@ -31,7 +31,7 @@ const SEED_USERS: User[] = [
     id: 'USR-004',
     name: 'Celly Ortega',
     email: 'celly@evolution.com',
-    role: 'vendedor',
+    role: 'compras',
     avatar: '/images/avatars/celly.jpg',
   },
   {

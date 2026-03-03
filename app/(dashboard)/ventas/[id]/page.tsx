@@ -43,7 +43,7 @@ import { STATUS_CONFIG, DOCUMENT_TYPE_LABELS } from '@/lib/types/sales-order';
 import { cn } from '@/lib/utils/cn';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { useState } from 'react';
-import { printSalesOrder } from '@/lib/utils/print-utils';
+import { printSalesOrder, getSwornDeclarationStamp } from '@/lib/utils/print-utils';
 
 export default function SalesOrderDetailPage() {
   const params = useParams();
@@ -178,6 +178,12 @@ export default function SalesOrderDetailPage() {
                 <span className={cn('h-1.5 w-1.5 rounded-full', statusConfig.dot)} />
                 {statusConfig.label}
               </span>
+              {order.includesIncomingStock && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                  <Truck className="h-3 w-3" />
+                  Mercancía Por Llegar
+                </span>
+              )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Creado el {formatDate(order.createdAt)} por {order.createdByName}
@@ -276,7 +282,8 @@ export default function SalesOrderDetailPage() {
                   total: order.total,
                   notes: order.notes,
                 },
-                true // showPrices
+                true, // showPrices
+                order.status === 'facturado' ? getSwornDeclarationStamp() : undefined
               );
               toast.success('Documento generado', {
                 description: `${DOCUMENT_TYPE_LABELS[order.documentType]} ${order.orderNumber} lista para imprimir.`,
@@ -299,6 +306,34 @@ export default function SalesOrderDetailPage() {
           <div>
             <p className="font-medium">Este pedido requiere aprobación</p>
             <p className="text-sm opacity-80">Contiene líneas con margen menor al 10%. Un gerente debe aprobar antes de continuar.</p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* F10: Incoming Stock Warning */}
+      {order.includesIncomingStock && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            'flex items-center gap-3 rounded-lg p-4',
+            order.status === 'facturado'
+              ? 'bg-red-500/10 text-red-500'
+              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+          )}
+        >
+          <Truck className="h-5 w-5 shrink-0" />
+          <div>
+            <p className="font-medium">
+              {order.status === 'facturado'
+                ? 'Factura con mercancía por llegar'
+                : 'Este documento incluye mercancía por llegar'}
+            </p>
+            <p className="text-sm opacity-80">
+              {order.status === 'facturado'
+                ? 'Advertencia: Esta factura fue creada con mercancía que aún no ha sido recibida físicamente. Verifique la recepción antes de despachar.'
+                : order.incomingStockNote || 'Algunos productos en esta orden dependen de stock en tránsito. No se puede facturar hasta que la mercancía sea recibida.'}
+            </p>
           </div>
         </motion.div>
       )}
@@ -699,6 +734,32 @@ export default function SalesOrderDetailPage() {
             <div>
               <p className="text-foreground">Aprobado por <span className="font-medium">{order.approvedByName}</span></p>
               <p className="text-muted-foreground">{order.approvalDate && formatDateTime(order.approvalDate)}</p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Sworn Declaration Stamp (F12) - visible when status is facturado */}
+      {order.status === 'facturado' && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="rounded-xl border border-border bg-card p-5"
+        >
+          <div className="rounded-lg border border-muted-foreground/20 bg-muted/30 p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Declaraci&oacute;n Jurada
+            </p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Declaro bajo juramento que la mercanc&iacute;a amparada en esta factura comercial es de leg&iacute;tima procedencia,
+              que los precios, cantidades, descripciones y dem&aacute;s datos aqu&iacute; consignados son verdaderos y corresponden
+              a la realidad de la operaci&oacute;n comercial. Esta declaraci&oacute;n se realiza en cumplimiento de las disposiciones
+              legales vigentes en la Rep&uacute;blica de Panam&aacute; y la normativa de la Zona Libre de Col&oacute;n.
+            </p>
+            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+              <span className="font-medium">Evolution Zona Libre, S.A.</span>
+              <span>{new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
           </div>
         </motion.div>

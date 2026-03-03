@@ -26,7 +26,7 @@ export const PERMISSIONS: Record<PermissionKey, UserRole[]> = {
   canConfirmTransfers: ['gerencia', 'bodega'],
   canCreateCountSessions: ['gerencia', 'compras', 'bodega'],
   // Sales (Ventas B2B) module permissions
-  canAccessVentas: ['gerencia', 'contabilidad', 'vendedor'],
+  canAccessVentas: ['gerencia', 'contabilidad', 'vendedor', 'compras'],
   canCreateQuotes: ['gerencia', 'vendedor', 'contabilidad'],
   canConvertToOrder: ['gerencia', 'vendedor'],
   canApproveOrders: ['gerencia'],
@@ -75,6 +75,25 @@ export const PERMISSIONS: Record<PermissionKey, UserRole[]> = {
   canViewPOSMargins: ['gerencia'],
   canConfigurePOSPrices: ['gerencia'],
   canRequestReplenishment: ['gerencia', 'bodega'],
+  // Doc09 Feature Permissions
+  canConfigureReorderPoints: ['gerencia', 'compras'],
+  canViewInventoryAlerts: ['gerencia', 'compras', 'bodega'],
+  canAcceptReorderRecommendations: ['gerencia', 'compras'],
+  canManageBarcodes: ['gerencia', 'compras', 'bodega'],
+  canManageExpiryDates: ['gerencia', 'compras', 'bodega'],
+  canViewExpiryAlerts: ['gerencia', 'compras', 'bodega'],
+  canConfigureApprovalChains: ['gerencia'],
+  canApproveEscalated: ['gerencia'],
+  canCreateB2BtoB2CTransfer: ['gerencia', 'compras', 'bodega'],
+  canReceiveB2CTransfer: ['gerencia', 'bodega'],
+  canGroupDocsByRubro: ['gerencia', 'trafico'],
+  canManageKYC: ['gerencia', 'contabilidad'],
+  canViewKYCStatus: ['gerencia', 'contabilidad', 'vendedor'],
+  canSellIncoming: ['gerencia', 'vendedor'],
+  canProrateCosts: ['gerencia', 'compras'],
+  canViewCostAlerts: ['gerencia', 'compras', 'contabilidad'],
+  canViewProductAnalytics: ['gerencia', 'compras', 'contabilidad'],
+  canConfigureBrandProtection: ['gerencia'],
 };
 
 /**

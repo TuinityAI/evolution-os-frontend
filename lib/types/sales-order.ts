@@ -161,6 +161,10 @@ export interface SalesOrder {
   packedAt?: string;
   packingNotes?: string;
 
+  // F10: Venta anticipada - mercancía por llegar
+  includesIncomingStock?: boolean;  // true if order includes arriving stock
+  incomingStockNote?: string;       // Note about incoming stock
+
   // Metadata
   notes?: string;                  // Customer-visible notes
   internalNotes?: string;          // Internal only

@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Select, SelectItem, Textarea, Tooltip } from '@heroui/react';
-import { ArrowLeft, ClipboardList, Plus, Trash2, Package, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Plus, Trash2, Package, AlertTriangle, CheckCircle2, XCircle, Truck, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { Switch } from '@/components/ui/switch';
 import {
   formatCurrency,
   getNextOrderNumber,
@@ -33,12 +34,14 @@ export default function NuevaCotizacionPage() {
   const { checkPermission } = useAuth();
   const canViewMargins = checkPermission('canViewMargins');
   const canApproveOrders = checkPermission('canApproveOrders');
+  const canSellIncoming = checkPermission('canSellIncoming');
   const isVendedor = !canViewMargins; // Vendedores no pueden ver márgenes exactos
 
   // Form state
   const [quoteFormData, setQuoteFormData] = useState(initialQuoteForm);
   const [quoteLines, setQuoteLines] = useState<Partial<SalesOrderLine>[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [includeIncomingStock, setIncludeIncomingStock] = useState(false);
 
   // New line state
   const [newLineProduct, setNewLineProduct] = useState('');
@@ -159,6 +162,8 @@ export default function NuevaCotizacionPage() {
       createdByName: 'Usuario Actual',
       requiresApproval: hasLowMargin,
       notes: quoteFormData.notes || undefined,
+      includesIncomingStock: includeIncomingStock || undefined,
+      incomingStockNote: includeIncomingStock ? 'Orden incluye mercancía por llegar' : undefined,
     };
 
     addSalesOrder(newOrder);
@@ -283,6 +288,38 @@ export default function NuevaCotizacionPage() {
               </div>
             </div>
 
+            {/* F10: Incoming Stock Toggle */}
+            {canSellIncoming && (
+              <div className="rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+                      <Truck className="h-4 w-4 text-amber-500" />
+                    </div>
+                    <div>
+                      <label htmlFor="incoming-stock-toggle" className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+                        Incluir mercancía por llegar
+                      </label>
+                      <p className="text-xs text-gray-500 dark:text-[#888888]">
+                        Permite vender productos con stock en tránsito
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="incoming-stock-toggle"
+                    checked={includeIncomingStock}
+                    onCheckedChange={setIncludeIncomingStock}
+                  />
+                </div>
+                {includeIncomingStock && (
+                  <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    <span>Las órdenes con mercancía por llegar solo pueden ser cotización o pedido, no se pueden facturar</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Products Section */}
             <div className="border-t border-gray-200 dark:border-[#2a2a2a] pt-6">
               <h3 className="mb-4 text-sm font-medium text-gray-700 dark:text-gray-300">Productos</h3>
@@ -301,16 +338,36 @@ export default function NuevaCotizacionPage() {
                     isDisabled={!selectedClient}
                     classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]' }}
                   >
-                    {MOCK_PRODUCTS.slice(0, 20).map((product) => (
-                      <SelectItem key={product.id} textValue={product.description}>
-                        <div className="flex flex-col">
-                          <span className="text-sm">{product.description}</span>
-                          <span className="text-xs text-gray-500">
-                            {product.reference} - ${product.prices[selectedClient?.priceLevel || 'C']}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {MOCK_PRODUCTS.slice(0, 20).map((product) => {
+                      const physicalAvailable = product.stock.existence - product.stock.reserved;
+                      const effectiveAvailable = includeIncomingStock
+                        ? physicalAvailable + product.stock.arriving
+                        : physicalAvailable;
+                      return (
+                        <SelectItem key={product.id} textValue={product.description}>
+                          <div className="flex flex-col">
+                            <span className="text-sm">{product.description}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">
+                                {product.reference} - ${product.prices[selectedClient?.priceLevel || 'C']}
+                              </span>
+                              <span className={cn(
+                                'text-xs',
+                                effectiveAvailable > 0 ? 'text-emerald-500' : 'text-red-500'
+                              )}>
+                                Disp: {effectiveAvailable}
+                              </span>
+                              {product.stock.arriving > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  Por Llegar: {product.stock.arriving} cajas
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </Select>
                 </div>
                 <div className="w-20">

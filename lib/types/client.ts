@@ -40,7 +40,8 @@ export interface ShippingAddress {
 
 // Main Client interface
 export interface Client {
-  id: string;                      // CLI-00001 format
+  id: string;                      // CLI-00001 or {ISO}-{SEQ} format (F8)
+  countryCode?: string;            // ISO country code for auto-generated IDs (F8)
   name: string;                    // Company name
   tradeName?: string;              // Nombre comercial
   taxId: string;                   // RUC / Tax ID / NIT
@@ -63,6 +64,10 @@ export interface Client {
   // Relationships
   salesRepId?: string;             // Assigned vendedor
   salesRepName?: string;           // Denormalized for display
+
+  // KYC / Due Diligence (F9)
+  kycStatus?: 'not_required' | 'pending' | 'in_review' | 'approved' | 'expired' | 'rejected';
+  kycExpiresAt?: string;
 
   // Status & Metadata
   status: ClientStatus;

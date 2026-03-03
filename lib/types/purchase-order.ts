@@ -56,6 +56,11 @@ export interface PurchaseOrder {
   expenseBreakdown?: ExpenseBreakdown;
   totalExpenses?: number;
   totalCIF?: number;
+  // F11: Cost proration
+  costProrated?: boolean;           // true when costs have been prorated to line items
+  proratedAt?: string;              // When proration was applied
+  proratedBy?: string;              // Who applied proration
+  costIncreaseAlert?: boolean;      // true if any product cost increased >10%
   // Metadata
   createdBy: string;
   notes?: string;

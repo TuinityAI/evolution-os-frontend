@@ -36,6 +36,7 @@ export interface Product {
   supplier: string;            // Supplier name (hidden from vendedores)
   country: string;             // Country of origin
   barcode?: string;
+  barcodes?: { code: string; label: string }[];  // Up to 5 barcodes (F3)
   tariffCode: string;          // Código arancelario (e.g., "2208309000")
   unit: string;                // CJA (case), UND (unit), etc.
   unitsPerCase: number;
@@ -45,6 +46,7 @@ export interface Product {
   cubicMeters?: number;        // Calculated volume
   cubicFeet?: number;
   weightPerCase?: number;      // kg
+  reorderPoint?: number;       // Punto mínimo / alerta de inventario (F1)
   minimumQty: number;          // Minimum order quantity
   stock: ProductStock;
   prices: ProductPrices;
@@ -52,6 +54,8 @@ export interface Product {
   costCIF: number;             // CIF cost (hidden from vendedores)
   costAvgWeighted: number;     // Weighted average cost
   priceB2C?: number;           // Retail price per bottle/unit (B2C)
+  brandProtection?: boolean;   // Protección de marca activa (F14)
+  brandProtectionRate?: number; // Tasa de protección (default 0.05 = 5%)
   status: ProductStatus;
   image?: string;
   createdAt?: string;

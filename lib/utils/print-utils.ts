@@ -30,6 +30,7 @@ interface PrintTableOptions {
   summary?: { label: string; value: string }[];
   metadata?: { label: string; value: string }[];
   footer?: string;
+  extraContent?: string;
 }
 
 /**
@@ -427,7 +428,7 @@ function generateSummaryHTML(
  * Imprime una tabla con datos formateados
  */
 export function printTable(options: PrintTableOptions): void {
-  const { title, subtitle, columns, data, summary, metadata, footer } = options;
+  const { title, subtitle, columns, data, summary, metadata, footer, extraContent } = options;
 
   let content = '';
 
@@ -439,6 +440,10 @@ export function printTable(options: PrintTableOptions): void {
 
   if (summary && summary.length > 0) {
     content += generateSummaryHTML(summary);
+  }
+
+  if (extraContent) {
+    content += extraContent;
   }
 
   openPrintWindow({
@@ -572,7 +577,8 @@ export interface SalesOrderPrintData {
 
 export function printSalesOrder(
   order: SalesOrderPrintData,
-  showPrices: boolean = false
+  showPrices: boolean = false,
+  extraContent?: string
 ): void {
   const columns: TableColumn[] = [
     { key: 'index', label: '#', align: 'center', width: '40px' },
@@ -630,6 +636,7 @@ export function printSalesOrder(
     metadata,
     summary: summary.length > 0 ? summary : undefined,
     footer: order.notes,
+    extraContent,
   });
 }
 
@@ -709,6 +716,36 @@ export function printReport(report: ReportPrintData): void {
     metadata: report.metadata,
     footer: report.footer,
   });
+}
+
+/**
+ * Sello de juramentación digital (F12)
+ * Se incluye automáticamente en facturas impresas
+ */
+export function getSwornDeclarationStamp(): string {
+  return `
+    <div style="margin-top: 24px; padding: 16px; border: 2px solid #1a1a1a; border-radius: 6px; background: #fafafa;">
+      <p style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; color: #1a1a1a;">
+        Declaración Jurada
+      </p>
+      <p style="font-size: 9px; line-height: 1.6; color: #333;">
+        Declaro bajo juramento que la mercancía amparada en esta factura comercial es de legítima procedencia,
+        que los precios, cantidades, descripciones y demás datos aquí consignados son verdaderos y corresponden
+        a la realidad de la operación comercial. Esta declaración se realiza en cumplimiento de las disposiciones
+        legales vigentes en la República de Panamá y la normativa de la Zona Libre de Colón.
+      </p>
+      <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+          <p style="font-size: 8px; color: #888; margin-bottom: 2px;">Representante Legal</p>
+          <p style="font-size: 10px; font-weight: 600;">Evolution Zona Libre, S.A.</p>
+        </div>
+        <div style="text-align: right;">
+          <p style="font-size: 8px; color: #888; margin-bottom: 2px;">Fecha de Emisión</p>
+          <p style="font-size: 10px; font-weight: 600;">${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 /**

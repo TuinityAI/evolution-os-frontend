@@ -91,4 +91,35 @@ export type PermissionKey =
   | 'canViewPOSReports'
   | 'canViewPOSMargins'
   | 'canConfigurePOSPrices'
-  | 'canRequestReplenishment';
+  | 'canRequestReplenishment'
+  // Doc09 Feature Permissions
+  // F1: Alertas de inventario
+  | 'canConfigureReorderPoints'
+  | 'canViewInventoryAlerts'
+  // F2: Recomendación inteligente
+  | 'canAcceptReorderRecommendations'
+  // F3: Múltiples códigos de barra
+  | 'canManageBarcodes'
+  // F4: Fechas de vencimiento
+  | 'canManageExpiryDates'
+  | 'canViewExpiryAlerts'
+  // F5: Aprobación en cascada
+  | 'canConfigureApprovalChains'
+  | 'canApproveEscalated'
+  // F6: Transferencias bodega→tienda
+  | 'canCreateB2BtoB2CTransfer'
+  | 'canReceiveB2CTransfer'
+  // F7: Documentos por rubro
+  | 'canGroupDocsByRubro'
+  // F9: KYC / Debida diligencia
+  | 'canManageKYC'
+  | 'canViewKYCStatus'
+  // F10: Venta anticipada
+  | 'canSellIncoming'
+  // F11: Prorrateo de costos
+  | 'canProrateCosts'
+  | 'canViewCostAlerts'
+  // F13: Analytics por producto
+  | 'canViewProductAnalytics'
+  // F14: Protección de marca
+  | 'canConfigureBrandProtection';
