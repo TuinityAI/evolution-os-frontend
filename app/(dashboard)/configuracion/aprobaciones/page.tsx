@@ -38,9 +38,9 @@ import type { ApprovalFlow, ApprovalStep } from '@/lib/types/configuration';
 
 // Map of user IDs to display names for notifyAlways resolution
 const USER_NAME_MAP: Record<string, string> = {
-  'USR-001': 'Javier Ureña',
-  'USR-002': 'Estelia Romero',
-  'USR-003': 'Jackie García',
+  'USR-001': 'Javier Lange',
+  'USR-002': 'Astelvia Watts',
+  'USR-003': 'Jakeira Chavez',
 };
 
 // Helper: get initials from a name

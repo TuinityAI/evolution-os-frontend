@@ -58,7 +58,7 @@ const SEED_COMPANY_INFO: CompanyInfo = {
 const SEED_BRANCHES: Branch[] = [
   { id: 'BR-001', name: 'Zona Libre de Colón', code: 'ZL', type: 'zona_libre', address: 'Zona Libre de Colón, Edificio 2045', city: 'Colón', country: 'Panamá', phone: '+507 441-8900', manager: 'Javier Lange', isActive: true, isHeadquarters: true },
   { id: 'BR-002', name: 'Tienda PTY', code: 'PTY-TIENDA', type: 'tienda', address: 'Vía España, Local 42', city: 'Ciudad de Panamá', country: 'Panamá', phone: '+507 263-4567', manager: 'Pedro Bodega', isActive: true, isHeadquarters: false },
-  { id: 'BR-003', name: 'Bodega CFZ', code: 'CFZ', type: 'bodega', address: 'Colón Free Zone, Warehouse 15', city: 'Colón', country: 'Panamá', phone: '+507 441-2345', manager: 'Eduardo Almacén', isActive: true, isHeadquarters: false },
+  { id: 'BR-003', name: 'Bodega CFZ', code: 'CFZ', type: 'bodega', address: 'Colón Free Zone, Warehouse 15', city: 'Colón', country: 'Panamá', phone: '+507 441-2345', manager: 'Jesus Ferreira', isActive: true, isHeadquarters: false },
 ];
 
 // ============================================================================
@@ -147,9 +147,9 @@ const SEED_APPROVAL_FLOWS: ApprovalFlow[] = [
     id: 'AF-001', name: 'Pedidos B2B', description: 'Aprobación de pedidos de venta B2B. Escalación en cascada si no hay respuesta.',
     triggerCondition: 'Pedido B2B creado o margen < 10%', isActive: true,
     steps: [
-      { id: 'AS-001', order: 1, approverRole: 'compras', approverLabel: 'Jackie García', approverUserId: 'USR-003', approverUserName: 'Jackie García', isRequired: true, canSkip: false, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
-      { id: 'AS-001b', order: 1, approverRole: 'contabilidad', approverLabel: 'Estelia Romero', approverUserId: 'USR-002', approverUserName: 'Estelia Romero', isRequired: false, canSkip: true, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
-      { id: 'AS-002', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Ureña (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 48 },
+      { id: 'AS-001', order: 1, approverRole: 'contabilidad', approverLabel: 'Jakeira Chavez', approverUserId: 'USR-003', approverUserName: 'Jakeira Chavez', isRequired: true, canSkip: false, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
+      { id: 'AS-001b', order: 1, approverRole: 'gerencia', approverLabel: 'Astelvia Watts', approverUserId: 'USR-002', approverUserName: 'Astelvia Watts', isRequired: false, canSkip: true, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
+      { id: 'AS-002', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Lange (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Lange', isRequired: true, canSkip: false, timeoutHours: 48 },
     ],
     escalationTimeout: 24, escalateTo: 'gerencia',
   },
@@ -157,26 +157,26 @@ const SEED_APPROVAL_FLOWS: ApprovalFlow[] = [
     id: 'AF-002', name: 'Devoluciones y Notas de Crédito', description: 'Aprobación de devoluciones con escalación a gerencia.',
     triggerCondition: 'Solicitud de devolución creada', isActive: true,
     steps: [
-      { id: 'AS-003', order: 1, approverRole: 'contabilidad', approverLabel: 'Estelia Romero', approverUserId: 'USR-002', approverUserName: 'Estelia Romero', isRequired: true, canSkip: false, timeoutHours: 12, escalationTimeoutHours: 12, notifyAlways: ['USR-001'] },
-      { id: 'AS-004', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Ureña (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 24 },
+      { id: 'AS-003', order: 1, approverRole: 'gerencia', approverLabel: 'Astelvia Watts', approverUserId: 'USR-002', approverUserName: 'Astelvia Watts', isRequired: true, canSkip: false, timeoutHours: 12, escalationTimeoutHours: 12, notifyAlways: ['USR-001'] },
+      { id: 'AS-004', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Lange (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Lange', isRequired: true, canSkip: false, timeoutHours: 24 },
     ],
     escalationTimeout: 12, escalateTo: 'gerencia',
   },
   {
-    id: 'AF-003', name: 'Ajustes de Inventario', description: 'Ajustes de inventario aprobados por Estelia, escalación a Javier.',
+    id: 'AF-003', name: 'Ajustes de Inventario', description: 'Ajustes de inventario aprobados por Astelvia, escalación a Javier.',
     triggerCondition: 'Ajuste de inventario creado', isActive: true,
     steps: [
-      { id: 'AS-005', order: 1, approverRole: 'contabilidad', approverLabel: 'Estelia Romero', approverUserId: 'USR-002', approverUserName: 'Estelia Romero', isRequired: true, canSkip: false, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
-      { id: 'AS-006', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Ureña (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 48 },
+      { id: 'AS-005', order: 1, approverRole: 'gerencia', approverLabel: 'Astelvia Watts', approverUserId: 'USR-002', approverUserName: 'Astelvia Watts', isRequired: true, canSkip: false, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
+      { id: 'AS-006', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Lange (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Lange', isRequired: true, canSkip: false, timeoutHours: 48 },
     ],
     escalationTimeout: 24, escalateTo: 'gerencia',
   },
   {
-    id: 'AF-004', name: 'Órdenes de Compra (OC)', description: 'OC aprobadas por Estelia, escalación a Javier.',
+    id: 'AF-004', name: 'Órdenes de Compra (OC)', description: 'OC aprobadas por Astelvia, escalación a Javier.',
     triggerCondition: 'Orden de compra creada', isActive: true,
     steps: [
-      { id: 'AS-007', order: 1, approverRole: 'contabilidad', approverLabel: 'Estelia Romero', approverUserId: 'USR-002', approverUserName: 'Estelia Romero', isRequired: true, canSkip: false, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
-      { id: 'AS-008', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Ureña (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 48 },
+      { id: 'AS-007', order: 1, approverRole: 'gerencia', approverLabel: 'Astelvia Watts', approverUserId: 'USR-002', approverUserName: 'Astelvia Watts', isRequired: true, canSkip: false, timeoutHours: 24, escalationTimeoutHours: 24, notifyAlways: ['USR-001'] },
+      { id: 'AS-008', order: 2, approverRole: 'gerencia', approverLabel: 'Javier Lange (Escalación)', approverUserId: 'USR-001', approverUserName: 'Javier Lange', isRequired: true, canSkip: false, timeoutHours: 48 },
     ],
     escalationTimeout: 24, escalateTo: 'gerencia',
   },
@@ -184,14 +184,14 @@ const SEED_APPROVAL_FLOWS: ApprovalFlow[] = [
     id: 'AF-005', name: 'Anulaciones de Documentos', description: 'Toda anulación requiere aprobación exclusiva de Javier.',
     triggerCondition: 'Solicitud de anulación creada', isActive: true,
     steps: [
-      { id: 'AS-009', order: 1, approverRole: 'gerencia', approverLabel: 'Javier Ureña', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 24 },
+      { id: 'AS-009', order: 1, approverRole: 'gerencia', approverLabel: 'Javier Lange', approverUserId: 'USR-001', approverUserName: 'Javier Lange', isRequired: true, canSkip: false, timeoutHours: 24 },
     ],
   },
   {
     id: 'AF-006', name: 'Aprobación de Crédito', description: 'Asignación o aumento de crédito requiere aprobación de Javier.',
     triggerCondition: 'Solicitud de crédito o aumento de límite', isActive: true,
     steps: [
-      { id: 'AS-010', order: 1, approverRole: 'gerencia', approverLabel: 'Javier Ureña', approverUserId: 'USR-001', approverUserName: 'Javier Ureña', isRequired: true, canSkip: false, timeoutHours: 48 },
+      { id: 'AS-010', order: 1, approverRole: 'gerencia', approverLabel: 'Javier Lange', approverUserId: 'USR-001', approverUserName: 'Javier Lange', isRequired: true, canSkip: false, timeoutHours: 48 },
     ],
   },
 ];
@@ -346,14 +346,14 @@ const SEED_NOTIFICATION_CONFIGS: NotificationConfig[] = [
 const SEED_AUDIT_LOG: AuditLogEntry[] = [
   { id: 'AL-001', timestamp: '2026-02-26T09:15:00Z', userId: 'USR-001', userName: 'Javier Lange', userRole: 'gerencia', action: 'login', module: 'auth', moduleLabel: 'Autenticación', entityType: 'session', entityId: 'SES-001', description: 'Inicio de sesión exitoso', ipAddress: '190.218.45.123' },
   { id: 'AL-002', timestamp: '2026-02-26T09:20:00Z', userId: 'USR-001', userName: 'Javier Lange', userRole: 'gerencia', action: 'aprobar', module: 'ventas', moduleLabel: 'Ventas B2B', entityType: 'sales_order', entityId: 'PED-00089', description: 'Aprobó pedido PED-00089 de GIACOMO PAOLO LECCESE TURCONI', ipAddress: '190.218.45.123' },
-  { id: 'AL-003', timestamp: '2026-02-26T08:45:00Z', userId: 'USR-006', userName: 'Jackie Chen', userRole: 'contabilidad', action: 'crear', module: 'contabilidad', moduleLabel: 'Contabilidad', entityType: 'journal_entry', entityId: 'JE-00014', description: 'Creó asiento contable JE-00014 (Comisiones de ventas)', ipAddress: '190.218.45.125' },
-  { id: 'AL-004', timestamp: '2026-02-25T16:30:00Z', userId: 'USR-003', userName: 'Margarita Morelos', userRole: 'vendedor', action: 'crear', module: 'ventas', moduleLabel: 'Ventas B2B', entityType: 'sales_order', entityId: 'COT-00156', description: 'Creó cotización COT-00156 para BRAND DISTRIBUIDOR CURACAO', ipAddress: '190.218.45.130' },
-  { id: 'AL-005', timestamp: '2026-02-25T15:00:00Z', userId: 'USR-006', userName: 'Jackie Chen', userRole: 'contabilidad', action: 'crear', module: 'cxc', moduleLabel: 'Cuentas por Cobrar', entityType: 'payment', entityId: 'COB-00007', description: 'Registró cobro COB-00007 de MARIA DEL MAR PEREZ SV por $12,000', ipAddress: '190.218.45.125' },
-  { id: 'AL-006', timestamp: '2026-02-25T14:00:00Z', userId: 'USR-004', userName: 'Eduardo Almacén', userRole: 'bodega', action: 'crear', module: 'inventario', moduleLabel: 'Inventario', entityType: 'transfer', entityId: 'TR-00032', description: 'Creó transferencia TR-00032 de ZL a PTY-TIENDA', ipAddress: '190.218.45.128' },
+  { id: 'AL-003', timestamp: '2026-02-26T08:45:00Z', userId: 'USR-003', userName: 'Jakeira Chavez', userRole: 'contabilidad', action: 'crear', module: 'contabilidad', moduleLabel: 'Contabilidad', entityType: 'journal_entry', entityId: 'JE-00014', description: 'Creó asiento contable JE-00014 (Comisiones de ventas)', ipAddress: '190.218.45.125' },
+  { id: 'AL-004', timestamp: '2026-02-25T16:30:00Z', userId: 'USR-005', userName: 'Margarita Morelos', userRole: 'vendedor', action: 'crear', module: 'ventas', moduleLabel: 'Ventas B2B', entityType: 'sales_order', entityId: 'COT-00156', description: 'Creó cotización COT-00156 para BRAND DISTRIBUIDOR CURACAO', ipAddress: '190.218.45.130' },
+  { id: 'AL-005', timestamp: '2026-02-25T15:00:00Z', userId: 'USR-003', userName: 'Jakeira Chavez', userRole: 'contabilidad', action: 'crear', module: 'cxc', moduleLabel: 'Cuentas por Cobrar', entityType: 'payment', entityId: 'COB-00007', description: 'Registró cobro COB-00007 de MARIA DEL MAR PEREZ SV por $12,000', ipAddress: '190.218.45.125' },
+  { id: 'AL-006', timestamp: '2026-02-25T14:00:00Z', userId: 'USR-004', userName: 'Ariel Brome', userRole: 'trafico', action: 'crear', module: 'inventario', moduleLabel: 'Inventario', entityType: 'transfer', entityId: 'TR-00032', description: 'Creó transferencia TR-00032 de ZL a PTY-TIENDA', ipAddress: '190.218.45.128' },
   { id: 'AL-007', timestamp: '2026-02-25T11:00:00Z', userId: 'USR-001', userName: 'Javier Lange', userRole: 'gerencia', action: 'aprobar', module: 'cxc', moduleLabel: 'Cuentas por Cobrar', entityType: 'annulment', entityId: 'ANU-00002', description: 'Aprobó anulación ANU-00002 de cobro COB-00010', ipAddress: '190.218.45.123' },
-  { id: 'AL-008', timestamp: '2026-02-24T10:00:00Z', userId: 'USR-002', userName: 'Ana Compradora', userRole: 'compras', action: 'crear', module: 'compras', moduleLabel: 'Compras', entityType: 'purchase_order', entityId: 'OC-03572', description: 'Creó orden de compra OC-03572 para Diageo', ipAddress: '190.218.45.126' },
-  { id: 'AL-009', timestamp: '2026-02-24T09:30:00Z', userId: 'USR-006', userName: 'Jackie Chen', userRole: 'contabilidad', action: 'editar', module: 'clientes', moduleLabel: 'Clientes', entityType: 'client', entityId: 'CLI-00999', description: 'Actualizó estado de CLI-00999 a Bloqueado', ipAddress: '190.218.45.125', changes: [{ field: 'status', fieldLabel: 'Estado', oldValue: 'active', newValue: 'blocked' }] },
-  { id: 'AL-010', timestamp: '2026-02-23T16:00:00Z', userId: 'USR-005', userName: 'Fernando Tráfico', userRole: 'trafico', action: 'editar', module: 'trafico', moduleLabel: 'Tráfico', entityType: 'shipment', entityId: 'SHP-00045', description: 'Actualizó tracking de embarque SHP-00045', ipAddress: '190.218.45.129' },
+  { id: 'AL-008', timestamp: '2026-02-24T10:00:00Z', userId: 'USR-002', userName: 'Astelvia Watts', userRole: 'gerencia', action: 'crear', module: 'compras', moduleLabel: 'Compras', entityType: 'purchase_order', entityId: 'OC-03572', description: 'Creó orden de compra OC-03572 para Diageo', ipAddress: '190.218.45.126' },
+  { id: 'AL-009', timestamp: '2026-02-24T09:30:00Z', userId: 'USR-003', userName: 'Jakeira Chavez', userRole: 'contabilidad', action: 'editar', module: 'clientes', moduleLabel: 'Clientes', entityType: 'client', entityId: 'CLI-00999', description: 'Actualizó estado de CLI-00999 a Bloqueado', ipAddress: '190.218.45.125', changes: [{ field: 'status', fieldLabel: 'Estado', oldValue: 'active', newValue: 'blocked' }] },
+  { id: 'AL-010', timestamp: '2026-02-23T16:00:00Z', userId: 'USR-004', userName: 'Ariel Brome', userRole: 'trafico', action: 'editar', module: 'trafico', moduleLabel: 'Tráfico', entityType: 'shipment', entityId: 'SHP-00045', description: 'Actualizó tracking de embarque SHP-00045', ipAddress: '190.218.45.129' },
   { id: 'AL-011', timestamp: '2026-02-23T14:00:00Z', userId: 'USR-001', userName: 'Javier Lange', userRole: 'gerencia', action: 'exportar', module: 'reportes', moduleLabel: 'Reportes', entityType: 'report', entityId: 'RPT-SALES-FEB', description: 'Exportó reporte de ventas de febrero 2026', ipAddress: '190.218.45.123' },
   { id: 'AL-012', timestamp: '2026-02-22T10:00:00Z', userId: 'USR-001', userName: 'Javier Lange', userRole: 'gerencia', action: 'rechazar', module: 'cxc', moduleLabel: 'Cuentas por Cobrar', entityType: 'annulment', entityId: 'ANU-00003', description: 'Rechazó anulación ANU-00003 de NC-00003', ipAddress: '190.218.45.123' },
 ];
@@ -364,9 +364,9 @@ const SEED_AUDIT_LOG: AuditLogEntry[] = [
 
 const SEED_ACTIVE_SESSIONS: ActiveSession[] = [
   { id: 'SES-001', userId: 'USR-001', userName: 'Javier Lange', userRole: 'gerencia', loginAt: '2026-02-26T09:15:00Z', lastActivity: '2026-02-26T10:30:00Z', ipAddress: '190.218.45.123', browser: 'Chrome 122 / Windows 11', isCurrent: true },
-  { id: 'SES-002', userId: 'USR-006', userName: 'Jackie Chen', userRole: 'contabilidad', loginAt: '2026-02-26T08:30:00Z', lastActivity: '2026-02-26T10:25:00Z', ipAddress: '190.218.45.125', browser: 'Firefox 123 / macOS', isCurrent: false },
-  { id: 'SES-003', userId: 'USR-003', userName: 'Margarita Morelos', userRole: 'vendedor', loginAt: '2026-02-26T09:00:00Z', lastActivity: '2026-02-26T10:20:00Z', ipAddress: '190.218.45.130', browser: 'Chrome 122 / Windows 10', isCurrent: false },
-  { id: 'SES-004', userId: 'USR-004', userName: 'Eduardo Almacén', userRole: 'bodega', loginAt: '2026-02-26T07:00:00Z', lastActivity: '2026-02-26T10:15:00Z', ipAddress: '190.218.45.128', browser: 'Safari 17 / iPad', isCurrent: false },
+  { id: 'SES-002', userId: 'USR-003', userName: 'Jakeira Chavez', userRole: 'contabilidad', loginAt: '2026-02-26T08:30:00Z', lastActivity: '2026-02-26T10:25:00Z', ipAddress: '190.218.45.125', browser: 'Firefox 123 / macOS', isCurrent: false },
+  { id: 'SES-003', userId: 'USR-005', userName: 'Margarita Morelos', userRole: 'vendedor', loginAt: '2026-02-26T09:00:00Z', lastActivity: '2026-02-26T10:20:00Z', ipAddress: '190.218.45.130', browser: 'Chrome 122 / Windows 10', isCurrent: false },
+  { id: 'SES-004', userId: 'USR-004', userName: 'Ariel Brome', userRole: 'trafico', loginAt: '2026-02-26T07:00:00Z', lastActivity: '2026-02-26T10:15:00Z', ipAddress: '190.218.45.128', browser: 'Safari 17 / iPad', isCurrent: false },
 ];
 
 // ============================================================================
@@ -401,8 +401,8 @@ const SEED_COMMERCIAL_PARAMS: CommercialParams = {
   commissionThreshold: 10,
   commissionRates: [
     { userId: 'USR-001', userName: 'Javier Lange', rate: 3, isActive: true },
-    { userId: 'USR-003', userName: 'Margarita Morelos', rate: 2.5, isActive: true },
-    { userId: 'USR-007', userName: 'Carlos Vendedor', rate: 2, isActive: true },
+    { userId: 'USR-005', userName: 'Margarita Morelos', rate: 2.5, isActive: true },
+    { userId: 'USR-006', userName: 'Arnold Arenas', rate: 2, isActive: true },
   ],
   taxRate: 7,
   taxExemptZones: ['Zona Libre de Colón'],

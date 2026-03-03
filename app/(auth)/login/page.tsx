@@ -118,7 +118,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@evolution.com"
+                    placeholder="tu@evolutionzl.com"
                     className="h-10 w-full rounded-lg border-2 border-white/40 bg-white/60 pl-10 pr-4 text-sm text-gray-800 outline-none placeholder:text-gray-400 backdrop-blur-sm focus:border-blue-500 focus:bg-white/80"
                     required
                   />

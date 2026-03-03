@@ -197,7 +197,7 @@ const SEED_JOURNAL_ENTRIES: JournalEntry[] = [
       { id: 'JEL-017', accountId: 'ACC-004', accountCode: '1100-002', accountName: 'Bancos', debit: 0, credit: 36200 },
     ],
     totalDebit: 42000, totalCredit: 42000, isBalanced: true,
-    createdBy: 'USR-006', createdByName: 'Jackie Chen', createdAt: '2026-02-15T10:00:00Z',
+    createdBy: 'USR-003', createdByName: 'Jakeira Chavez', createdAt: '2026-02-15T10:00:00Z',
     approvedBy: 'USR-001', approvedByName: 'Javier Lange', approvedAt: '2026-02-15T11:00:00Z',
   },
   {
@@ -222,7 +222,7 @@ const SEED_JOURNAL_ENTRIES: JournalEntry[] = [
       { id: 'JEL-021', accountId: 'ACC-004', accountCode: '1100-002', accountName: 'Bancos', debit: 0, credit: 6000 },
     ],
     totalDebit: 6000, totalCredit: 6000, isBalanced: true,
-    createdBy: 'USR-006', createdByName: 'Jackie Chen', createdAt: '2026-02-18T10:00:00Z',
+    createdBy: 'USR-003', createdByName: 'Jakeira Chavez', createdAt: '2026-02-18T10:00:00Z',
     approvedBy: 'USR-001', approvedByName: 'Javier Lange', approvedAt: '2026-02-18T14:00:00Z',
   },
   {
@@ -260,7 +260,7 @@ const SEED_JOURNAL_ENTRIES: JournalEntry[] = [
       { id: 'JEL-027', accountId: 'ACC-004', accountCode: '1100-002', accountName: 'Bancos', debit: 0, credit: 1500 },
     ],
     totalDebit: 1500, totalCredit: 1500, isBalanced: true,
-    createdBy: 'USR-006', createdByName: 'Jackie Chen', createdAt: '2026-02-24T10:00:00Z',
+    createdBy: 'USR-003', createdByName: 'Jakeira Chavez', createdAt: '2026-02-24T10:00:00Z',
     notes: 'Pendiente de aprobación por gerencia',
   },
   {
@@ -272,7 +272,7 @@ const SEED_JOURNAL_ENTRIES: JournalEntry[] = [
       { id: 'JEL-029', accountId: 'ACC-018', accountCode: '2100-004', accountName: 'Comisiones por Pagar', debit: 0, credit: 4800 },
     ],
     totalDebit: 4800, totalCredit: 4800, isBalanced: true,
-    createdBy: 'USR-006', createdByName: 'Jackie Chen', createdAt: '2026-02-25T10:00:00Z',
+    createdBy: 'USR-003', createdByName: 'Jakeira Chavez', createdAt: '2026-02-25T10:00:00Z',
     notes: 'Borrador - pendiente de verificar montos con gerencia',
   },
 ];
@@ -319,13 +319,13 @@ const SEED_MONTHLY_CLOSES: MonthlyClose[] = [
     id: 'MC-202601', period: '2026-01', year: 2026, month: 1, monthName: 'Enero 2026',
     status: 'cerrado',
     checklist: [
-      { id: 'CK-01', description: 'Todas las conciliaciones bancarias completadas', isCompleted: true, completedAt: '2026-02-03T10:00:00Z', completedBy: 'Jackie Chen' },
-      { id: 'CK-02', description: 'Todos los asientos contables registrados', isCompleted: true, completedAt: '2026-02-03T11:00:00Z', completedBy: 'Jackie Chen' },
-      { id: 'CK-03', description: 'Facturas del período emitidas', isCompleted: true, completedAt: '2026-02-03T12:00:00Z', completedBy: 'Jackie Chen' },
-      { id: 'CK-04', description: 'Cobros del período registrados', isCompleted: true, completedAt: '2026-02-03T13:00:00Z', completedBy: 'Jackie Chen' },
-      { id: 'CK-05', description: 'Depreciaciones calculadas', isCompleted: true, completedAt: '2026-02-03T14:00:00Z', completedBy: 'Jackie Chen' },
+      { id: 'CK-01', description: 'Todas las conciliaciones bancarias completadas', isCompleted: true, completedAt: '2026-02-03T10:00:00Z', completedBy: 'Jakeira Chavez' },
+      { id: 'CK-02', description: 'Todos los asientos contables registrados', isCompleted: true, completedAt: '2026-02-03T11:00:00Z', completedBy: 'Jakeira Chavez' },
+      { id: 'CK-03', description: 'Facturas del período emitidas', isCompleted: true, completedAt: '2026-02-03T12:00:00Z', completedBy: 'Jakeira Chavez' },
+      { id: 'CK-04', description: 'Cobros del período registrados', isCompleted: true, completedAt: '2026-02-03T13:00:00Z', completedBy: 'Jakeira Chavez' },
+      { id: 'CK-05', description: 'Depreciaciones calculadas', isCompleted: true, completedAt: '2026-02-03T14:00:00Z', completedBy: 'Jakeira Chavez' },
     ],
-    closedBy: 'USR-006', closedByName: 'Jackie Chen', closedAt: '2026-02-05T10:00:00Z',
+    closedBy: 'USR-003', closedByName: 'Jakeira Chavez', closedAt: '2026-02-05T10:00:00Z',
     totalEntries: 45, totalDebit: 892000, totalCredit: 892000,
   },
   {
@@ -338,7 +338,7 @@ const SEED_MONTHLY_CLOSES: MonthlyClose[] = [
       { id: 'CK-09', description: 'Cobros del período registrados', isCompleted: true },
       { id: 'CK-10', description: 'Depreciaciones calculadas', isCompleted: true },
     ],
-    closedBy: 'USR-006', closedByName: 'Jackie Chen', closedAt: '2026-01-08T10:00:00Z',
+    closedBy: 'USR-003', closedByName: 'Jakeira Chavez', closedAt: '2026-01-08T10:00:00Z',
     totalEntries: 52, totalDebit: 1050000, totalCredit: 1050000,
   },
   {
@@ -348,7 +348,7 @@ const SEED_MONTHLY_CLOSES: MonthlyClose[] = [
       { id: 'CK-11', description: 'Todas las conciliaciones bancarias completadas', isCompleted: false },
       { id: 'CK-12', description: 'Todos los asientos contables registrados', isCompleted: false },
       { id: 'CK-13', description: 'Facturas del período emitidas', isCompleted: false },
-      { id: 'CK-14', description: 'Cobros del período registrados', isCompleted: true, completedAt: '2026-02-25T10:00:00Z', completedBy: 'Jackie Chen' },
+      { id: 'CK-14', description: 'Cobros del período registrados', isCompleted: true, completedAt: '2026-02-25T10:00:00Z', completedBy: 'Jakeira Chavez' },
       { id: 'CK-15', description: 'Depreciaciones calculadas', isCompleted: false },
     ],
     totalEntries: 14, totalDebit: 342937, totalCredit: 342937,

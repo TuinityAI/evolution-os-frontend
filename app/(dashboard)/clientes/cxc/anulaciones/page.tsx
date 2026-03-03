@@ -109,7 +109,7 @@ export default function AnulacionesPage() {
         observations: newObservations || undefined,
         status: 'solicitada',
         requestedBy: 'USR-006',
-        requestedByName: 'Jackie Chen',
+        requestedByName: 'Jakeira Chavez',
         requestedAt: new Date().toISOString(),
       });
       toast.success('Solicitud creada exitosamente', {

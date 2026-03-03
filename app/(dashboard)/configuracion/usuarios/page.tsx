@@ -439,7 +439,7 @@ export default function UsuariosPage() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Correo Electrónico</label>
               <Input
-                placeholder="juan@evolution.com"
+                placeholder="juan@evolutionzl.com"
                 type="email"
                 value={userForm.email}
                 onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}

@@ -181,7 +181,7 @@ export default function RegistrarCobroPage() {
         bankName: selectedBank?.name,
         applications,
         createdBy: 'USR-006',
-        createdByName: 'Jackie Chen',
+        createdByName: 'Jakeira Chavez',
         createdAt: new Date().toISOString(),
         notes: paymentNotes || undefined,
       });

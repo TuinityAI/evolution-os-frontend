@@ -61,7 +61,7 @@ const MOCK_NOTIFICATIONS: Notification[] = [
     id: 'n-esc-1',
     type: 'escalation',
     title: 'Pedido escalado a Gerencia',
-    description: 'Pedido PED-00005 escalado a Gerencia (sin respuesta de Jackie en 24h)',
+    description: 'Pedido PED-00005 escalado a Gerencia (sin respuesta de Jakeira en 24h)',
     time: 'Hace 10 min',
     isRead: false,
     icon: 'AlertTriangle',
