@@ -433,39 +433,43 @@ export default function NuevoClientePage() {
                 )}
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Input
-                  label="Nombre"
-                  placeholder="Nombre del contacto"
-                  variant="bordered"
-                  size="sm"
-                  value={contact.name}
-                  onChange={(e) => updateContact(contact.id, 'name', e.target.value)}
-                />
-                <Input
-                  label="Cargo"
-                  placeholder="Gerente, Director..."
-                  variant="bordered"
-                  size="sm"
-                  value={contact.role}
-                  onChange={(e) => updateContact(contact.id, 'role', e.target.value)}
-                />
-                <Input
-                  label="Email"
-                  placeholder="email@empresa.com"
-                  type="email"
-                  variant="bordered"
-                  size="sm"
-                  value={contact.email}
-                  onChange={(e) => updateContact(contact.id, 'email', e.target.value)}
-                />
-                <Input
-                  label="Telefono"
-                  placeholder="+507 000-0000"
-                  variant="bordered"
-                  size="sm"
-                  value={contact.phone}
-                  onChange={(e) => updateContact(contact.id, 'phone', e.target.value)}
-                />
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">Nombre</label>
+                  <input
+                    placeholder="Nombre del contacto"
+                    value={contact.name}
+                    onChange={(e) => updateContact(contact.id, 'name', e.target.value)}
+                    className="h-9 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#555] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">Cargo</label>
+                  <input
+                    placeholder="Gerente, Director..."
+                    value={contact.role}
+                    onChange={(e) => updateContact(contact.id, 'role', e.target.value)}
+                    className="h-9 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#555] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">Email</label>
+                  <input
+                    type="email"
+                    placeholder="email@empresa.com"
+                    value={contact.email}
+                    onChange={(e) => updateContact(contact.id, 'email', e.target.value)}
+                    className="h-9 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#555] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">Telefono</label>
+                  <input
+                    placeholder="+507 000-0000"
+                    value={contact.phone}
+                    onChange={(e) => updateContact(contact.id, 'phone', e.target.value)}
+                    className="h-9 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#555] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                </div>
               </div>
             </div>
           ))}
@@ -511,39 +515,42 @@ export default function NuevoClientePage() {
                 )}
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <Input
-                  label="Etiqueta"
-                  placeholder="Principal, Bodega..."
-                  variant="bordered"
-                  size="sm"
-                  value={addr.label}
-                  onChange={(e) => updateAddress(addr.id, 'label', e.target.value)}
-                />
-                <Input
-                  label="Direccion"
-                  placeholder="Direccion completa"
-                  variant="bordered"
-                  size="sm"
-                  value={addr.address}
-                  onChange={(e) => updateAddress(addr.id, 'address', e.target.value)}
-                  className="lg:col-span-2"
-                />
-                <Input
-                  label="Ciudad"
-                  placeholder="Ciudad"
-                  variant="bordered"
-                  size="sm"
-                  value={addr.city}
-                  onChange={(e) => updateAddress(addr.id, 'city', e.target.value)}
-                />
-                <Input
-                  label="Codigo Postal"
-                  placeholder="00000"
-                  variant="bordered"
-                  size="sm"
-                  value={addr.postalCode}
-                  onChange={(e) => updateAddress(addr.id, 'postalCode', e.target.value)}
-                />
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">Etiqueta</label>
+                  <input
+                    placeholder="Principal, Bodega..."
+                    value={addr.label}
+                    onChange={(e) => updateAddress(addr.id, 'label', e.target.value)}
+                    className="h-9 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#555] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                </div>
+                <div className="lg:col-span-2">
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">Direccion</label>
+                  <input
+                    placeholder="Direccion completa"
+                    value={addr.address}
+                    onChange={(e) => updateAddress(addr.id, 'address', e.target.value)}
+                    className="h-9 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#555] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">Ciudad</label>
+                  <input
+                    placeholder="Ciudad"
+                    value={addr.city}
+                    onChange={(e) => updateAddress(addr.id, 'city', e.target.value)}
+                    className="h-9 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#555] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-[#888888]">Codigo Postal</label>
+                  <input
+                    placeholder="00000"
+                    value={addr.postalCode}
+                    onChange={(e) => updateAddress(addr.id, 'postalCode', e.target.value)}
+                    className="h-9 w-full rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-3 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#555] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                </div>
               </div>
             </div>
           ))}
