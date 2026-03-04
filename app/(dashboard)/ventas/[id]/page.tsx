@@ -283,7 +283,7 @@ export default function SalesOrderDetailPage() {
                   notes: order.notes,
                 },
                 true, // showPrices
-                order.status === 'facturado' ? getSwornDeclarationStamp() : undefined
+                getSwornDeclarationStamp()
               );
               toast.success('Documento generado', {
                 description: `${DOCUMENT_TYPE_LABELS[order.documentType]} ${order.orderNumber} lista para imprimir.`,
@@ -739,31 +739,19 @@ export default function SalesOrderDetailPage() {
         </motion.div>
       )}
 
-      {/* Sworn Declaration Stamp (F12) - visible when status is facturado */}
-      {order.status === 'facturado' && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="rounded-xl border border-border bg-card p-5"
-        >
-          <div className="rounded-lg border border-muted-foreground/20 bg-muted/30 p-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Declaraci&oacute;n Jurada
-            </p>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Declaro bajo juramento que la mercanc&iacute;a amparada en esta factura comercial es de leg&iacute;tima procedencia,
-              que los precios, cantidades, descripciones y dem&aacute;s datos aqu&iacute; consignados son verdaderos y corresponden
-              a la realidad de la operaci&oacute;n comercial. Esta declaraci&oacute;n se realiza en cumplimiento de las disposiciones
-              legales vigentes en la Rep&uacute;blica de Panam&aacute; y la normativa de la Zona Libre de Col&oacute;n.
-            </p>
-            <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-              <span className="font-medium">Evolution Zona Libre, S.A.</span>
-              <span>{new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-            </div>
-          </div>
-        </motion.div>
-      )}
+      {/* Sworn Declaration Stamp (F12) - sello de juramentación */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="flex justify-center"
+      >
+        <img
+          src="/images/sello-de-factura-evolution.jpeg"
+          alt="Sello de Juramentación"
+          className="max-w-xs"
+        />
+      </motion.div>
 
       {/* Approve Modal */}
       <CustomModal isOpen={isApproveOpen} onClose={() => setIsApproveOpen(false)} size="md">

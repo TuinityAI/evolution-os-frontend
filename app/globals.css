@@ -809,3 +809,56 @@ div:has(> [data-slot="wrapper"]) > div.fixed {
   --tw-backdrop-opacity: 1 !important;
   background-color: rgba(0, 0, 0, 0.35) !important;
 }
+
+/* ═══════════════════════════════════════════════
+   PRINT STYLES
+   Hide navigation, header, and layout chrome when printing
+   ═══════════════════════════════════════════════ */
+@media print {
+  /* Hide sidebar, header, and other UI chrome */
+  aside,
+  nav,
+  header,
+  motion.header,
+  [style*="background-color: rgb(26, 26, 26)"],
+  .fixed {
+    display: none !important;
+  }
+
+  /* Make main content full width without offsets */
+  main,
+  main > div {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Remove dark mode backgrounds for print */
+  body,
+  html {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Cards and containers - white bg, thin borders */
+  .rounded-xl,
+  .rounded-lg,
+  .rounded-2xl {
+    box-shadow: none !important;
+    border-color: #e5e7eb !important;
+  }
+
+  /* Force light mode colors for text */
+  * {
+    color-scheme: light;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+}

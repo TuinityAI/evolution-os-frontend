@@ -3,6 +3,8 @@
  * Genera documentos formateados con el logo de Evolution listos para imprimir como PDF
  */
 
+import { STAMP_IMAGE_BASE64 } from './stamp-image';
+
 // Logo de Evolution en negro (Cloudinary)
 const EVOLUTION_LOGO_URL =
   'https://res.cloudinary.com/db3espoei/image/upload/v1771993730/Logo_Evolution_ZL__1_-1_wgd1hg.svg';
@@ -721,29 +723,12 @@ export function printReport(report: ReportPrintData): void {
 /**
  * Sello de juramentación digital (F12)
  * Se incluye automáticamente en facturas impresas
+ * Usa la imagen real del sello físico de Evolution
  */
 export function getSwornDeclarationStamp(): string {
   return `
-    <div style="margin-top: 24px; padding: 16px; border: 2px solid #1a1a1a; border-radius: 6px; background: #fafafa;">
-      <p style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; color: #1a1a1a;">
-        Declaración Jurada
-      </p>
-      <p style="font-size: 9px; line-height: 1.6; color: #333;">
-        Declaro bajo juramento que la mercancía amparada en esta factura comercial es de legítima procedencia,
-        que los precios, cantidades, descripciones y demás datos aquí consignados son verdaderos y corresponden
-        a la realidad de la operación comercial. Esta declaración se realiza en cumplimiento de las disposiciones
-        legales vigentes en la República de Panamá y la normativa de la Zona Libre de Colón.
-      </p>
-      <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
-        <div>
-          <p style="font-size: 8px; color: #888; margin-bottom: 2px;">Representante Legal</p>
-          <p style="font-size: 10px; font-weight: 600;">Evolution Zona Libre, S.A.</p>
-        </div>
-        <div style="text-align: right;">
-          <p style="font-size: 8px; color: #888; margin-bottom: 2px;">Fecha de Emisión</p>
-          <p style="font-size: 10px; font-weight: 600;">${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-        </div>
-      </div>
+    <div style="margin-top: 30px; text-align: center;">
+      <img src="${STAMP_IMAGE_BASE64}" alt="Sello de Juramentación" style="max-width: 320px; height: auto;" />
     </div>
   `;
 }
