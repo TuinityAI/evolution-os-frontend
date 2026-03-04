@@ -59,7 +59,7 @@ interface CartLine {
 type PaymentMethodSelection = 'efectivo' | 'tarjeta_debito' | 'tarjeta_credito' | 'transferencia';
 
 const SUB_NAV_ITEMS = [
-  { label: '\u00d3rdenes', href: '/ventas/pos/ordenes', icon: History },
+  { label: 'Órdenes', href: '/ventas/pos/ordenes', icon: History },
   { label: 'Caja', href: '/ventas/pos/caja', icon: Wallet },
   { label: 'Inventario', href: '/ventas/pos/inventario', icon: Boxes },
   { label: 'Clientes', href: '/ventas/pos/clientes', icon: Users },
@@ -249,7 +249,7 @@ export default function POSPage() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Buscar producto, c\u00f3digo o barcode..."
+                  placeholder="Buscar producto, código o barcode..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-10 w-full rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] pl-10 pr-4 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#666] focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -406,7 +406,7 @@ export default function POSPage() {
               {cart.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 px-4">
                   <ShoppingCart className="mb-3 h-10 w-10 text-gray-200 dark:text-gray-700" />
-                  <p className="text-sm text-gray-400 dark:text-[#666]">Carrito vac\u00edo</p>
+                  <p className="text-sm text-gray-400 dark:text-[#666]">Carrito vacío</p>
                   <p className="text-xs text-gray-300 dark:text-[#555] mt-1">Selecciona productos para agregar</p>
                 </div>
               ) : (
@@ -497,12 +497,12 @@ export default function POSPage() {
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">M\u00e9todo de Pago</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Método de Pago</p>
               <div className="grid grid-cols-2 gap-2">
                 {([
                   { key: 'efectivo' as const, label: 'Efectivo', icon: Banknote },
-                  { key: 'tarjeta_debito' as const, label: 'D\u00e9bito', icon: CreditCard },
-                  { key: 'tarjeta_credito' as const, label: 'Cr\u00e9dito', icon: CreditCard },
+                  { key: 'tarjeta_debito' as const, label: 'Débito', icon: CreditCard },
+                  { key: 'tarjeta_credito' as const, label: 'Crédito', icon: CreditCard },
                   { key: 'transferencia' as const, label: 'Transferencia', icon: ArrowLeftRight },
                 ]).map((method) => (
                   <button
@@ -546,7 +546,7 @@ export default function POSPage() {
 
               {(paymentMethod === 'tarjeta_debito' || paymentMethod === 'tarjeta_credito') && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">\u00daltimos 4 d\u00edgitos</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Últimos 4 dígitos</label>
                   <input
                     type="text"
                     maxLength={4}
@@ -566,7 +566,7 @@ export default function POSPage() {
                     type="text"
                     value={transferRef}
                     onChange={(e) => setTransferRef(e.target.value)}
-                    placeholder="N\u00famero de referencia"
+                    placeholder="Número de referencia"
                     className="h-10 w-full rounded-lg border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] px-4 text-sm text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-[#555] focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     autoFocus
                   />

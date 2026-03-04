@@ -49,7 +49,7 @@ const SUB_NAV_ITEMS = [
   { label: 'DMC', href: '/trafico/dmc/nuevo', icon: ScrollText },
   { label: 'Bill of Lading', href: '/trafico/bl/nuevo', icon: Anchor },
   { label: 'Certificados', href: '/trafico/certificados', icon: Award },
-  { label: 'Configuraci\u00f3n', href: '/trafico/configuracion', icon: Settings },
+  { label: 'Configuración', href: '/trafico/configuracion', icon: Settings },
 ];
 
 const PRIORITY_DOT_CLASS: Record<ShipmentPriority, string> = {
@@ -106,7 +106,7 @@ export default function TraficoPage() {
   const statCards = [
     { label: 'Pendientes Hoy', value: stats.pendingToday, icon: Clock, color: 'amber' },
     { label: 'DMC por Generar', value: stats.dmcPending, icon: FileText, color: 'blue' },
-    { label: 'En Tr\u00e1nsito', value: stats.inTransit, icon: Truck, color: 'sky' },
+    { label: 'En Tránsito', value: stats.inTransit, icon: Truck, color: 'sky' },
     { label: 'Completados Semana', value: stats.completedThisWeek, icon: CheckCircle2, color: 'emerald' },
   ];
 
@@ -119,7 +119,7 @@ export default function TraficoPage() {
             <Ship className="h-5 w-5 text-sky-600 dark:text-sky-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Tr\u00e1fico y Documentaci\u00f3n</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Tráfico y Documentación</h1>
             <p className="text-sm text-gray-500 dark:text-[#888888]">Expedientes, DMC, Bill of Lading, Certificados</p>
           </div>
         </div>
@@ -250,7 +250,7 @@ export default function TraficoPage() {
               <DropdownItem key="en_proceso">En Proceso</DropdownItem>
               <DropdownItem key="documentado">Documentado</DropdownItem>
               <DropdownItem key="despachado">Despachado</DropdownItem>
-              <DropdownItem key="en_transito">En Tr\u00e1nsito</DropdownItem>
+              <DropdownItem key="en_transito">En Tránsito</DropdownItem>
               <DropdownItem key="entregado">Entregado</DropdownItem>
               <DropdownItem key="cancelado">Cancelado</DropdownItem>
             </DropdownMenu>
@@ -378,7 +378,7 @@ export default function TraficoPage() {
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] py-16">
           <Ship className="mb-4 h-12 w-12 text-gray-300 dark:text-gray-600" />
           <h3 className="mb-1 text-lg font-medium text-gray-900 dark:text-white">No se encontraron expedientes</h3>
-          <p className="text-sm text-gray-500 dark:text-[#888]">Intenta ajustar los filtros de b\u00fasqueda</p>
+          <p className="text-sm text-gray-500 dark:text-[#888]">Intenta ajustar los filtros de búsqueda</p>
         </div>
       )}
 
