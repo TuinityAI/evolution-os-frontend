@@ -586,12 +586,12 @@ export default function InventarioPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex flex-nowrap items-center justify-end gap-2">
                         <span className={cn('text-sm font-semibold', stockStatus.textColor)}>
                           {item.available}
                         </span>
                         {canViewInventoryAlerts && stockStatus.label !== 'En Stock' && (
-                          <span className={cn('inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium', stockStatus.badge)}>
+                          <span className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-medium', stockStatus.badge)}>
                             {stockStatus.label}
                           </span>
                         )}

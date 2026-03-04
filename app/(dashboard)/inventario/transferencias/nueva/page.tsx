@@ -197,23 +197,23 @@ export default function NuevaTransferenciaPage() {
                 selectedKeys={[sourceWarehouseId]}
                 onChange={(e) => setSourceWarehouseId(e.target.value)}
                 variant="bordered"
-                classNames={{ trigger: 'bg-white' }}
+                classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]', value: 'text-gray-900 dark:text-white', popoverContent: 'bg-white dark:bg-[#1a1a1a]' }}
               >
                 {warehouses.map((w) => (
-                  <SelectItem key={w.id}>{w.name} ({w.type})</SelectItem>
+                  <SelectItem key={w.id} classNames={{ base: 'text-gray-900 dark:text-white' }}>{w.name} ({w.type})</SelectItem>
                 ))}
               </Select>
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">Bodega Destino</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Bodega Destino</label>
               <Select
                 selectedKeys={[destWarehouseId]}
                 onChange={(e) => setDestWarehouseId(e.target.value)}
                 variant="bordered"
-                classNames={{ trigger: 'bg-white' }}
+                classNames={{ trigger: 'bg-white dark:bg-[#1a1a1a]', value: 'text-gray-900 dark:text-white', popoverContent: 'bg-white dark:bg-[#1a1a1a]' }}
               >
                 {warehouses.filter((w) => w.id !== sourceWarehouseId).map((w) => (
-                  <SelectItem key={w.id}>{w.name} ({w.type})</SelectItem>
+                  <SelectItem key={w.id} classNames={{ base: 'text-gray-900 dark:text-white' }}>{w.name} ({w.type})</SelectItem>
                 ))}
               </Select>
             </div>

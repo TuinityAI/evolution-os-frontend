@@ -123,7 +123,7 @@ export function Header() {
             <DropdownMenu
               aria-label="Cambiar usuario"
               classNames={{
-                base: 'bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] shadow-lg min-w-[220px]',
+                base: 'bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#2a2a2a] shadow-lg min-w-[220px] max-h-[70vh] overflow-y-auto',
               }}
               onAction={(key) => {
                 const selectedUser = MOCK_USERS.find((u) => u.id === key);

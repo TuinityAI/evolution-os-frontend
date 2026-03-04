@@ -631,7 +631,7 @@ ul[role="menu"] {
 [data-slot="base"] li,
 li[data-slot="item"],
 div[role="menuitem"],
-li[role="option"] {
+[role="option"] {
   background-color: transparent !important;
   color: #374151 !important;
   padding: 8px 12px !important;
@@ -643,15 +643,37 @@ li[role="option"] {
 .dark [data-slot="base"] li,
 .dark li[data-slot="item"],
 .dark div[role="menuitem"],
-.dark li[role="option"] {
+.dark [role="option"] {
   color: #FFFFFF !important;
+}
+
+/* HeroUI Select trigger value text */
+[data-slot="value"],
+[data-slot="value"] span {
+  color: #374151 !important;
+}
+
+.dark [data-slot="value"],
+.dark [data-slot="value"] span {
+  color: #FFFFFF !important;
+}
+
+/* HeroUI Select placeholder (when no value selected) */
+[data-slot="value"][data-slot="placeholder"],
+[data-slot="value"].text-foreground-500 {
+  color: #9CA3AF !important;
+}
+
+.dark [data-slot="value"][data-slot="placeholder"],
+.dark [data-slot="value"].text-foreground-500 {
+  color: #666666 !important;
 }
 
 /* Dropdown Items hover state */
 [data-slot="base"] li:hover,
 li[data-slot="item"]:hover,
 div[role="menuitem"]:hover,
-li[role="option"]:hover,
+[role="option"]:hover,
 [data-hover="true"] {
   background-color: #F3F4F6 !important;
 }
@@ -659,7 +681,7 @@ li[role="option"]:hover,
 .dark [data-slot="base"] li:hover,
 .dark li[data-slot="item"]:hover,
 .dark div[role="menuitem"]:hover,
-.dark li[role="option"]:hover,
+.dark [role="option"]:hover,
 .dark [data-hover="true"] {
   background-color: #252525 !important;
 }
