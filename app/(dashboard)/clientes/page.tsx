@@ -253,10 +253,10 @@ export default function ClientesPage() {
               <thead>
                 <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Cliente</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Pais</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Nivel</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Credito</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Compras</th>
+                  <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Pais</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Nivel</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Credito</th>
+                  <th className="hidden lg:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Compras</th>
                   <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Estado</th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Acciones</th>
                 </tr>
@@ -278,11 +278,11 @@ export default function ClientesPage() {
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#2a2a2a]">
+                          <div className="hidden h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#2a2a2a] sm:flex">
                             <Building2 className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-[#00D1B2]">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-[#00D1B2]">
                               {client.name}
                             </p>
                             <div className="flex items-center gap-1.5">
@@ -297,13 +297,13 @@ export default function ClientesPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="hidden sm:table-cell px-4 py-3">
                         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                          <MapPin className="h-4 w-4" />
-                          <span>{client.country}</span>
+                          <MapPin className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{client.country}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="hidden md:table-cell px-4 py-3 text-center">
                         <span className={cn(
                           'inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold',
                           PRICE_LEVEL_COLORS[client.priceLevel]
@@ -311,7 +311,7 @@ export default function ClientesPage() {
                           {client.priceLevel}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="hidden md:table-cell px-4 py-3 text-right">
                         {client.creditLimit > 0 ? (
                           <div>
                             <p className={cn(
@@ -330,7 +330,7 @@ export default function ClientesPage() {
                           <span className="text-sm text-gray-500 dark:text-[#888888]">Contado</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="hidden lg:table-cell px-4 py-3 text-right">
                         <p className="font-mono font-semibold text-gray-900 dark:text-white">
                           {formatCurrency(client.totalPurchases || 0)}
                         </p>
@@ -341,7 +341,7 @@ export default function ClientesPage() {
                       <td className="px-4 py-3 text-center">
                         <div className="flex flex-col items-center gap-1">
                           <span className={cn(
-                            'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
+                            'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium',
                             statusConfig.bg,
                             statusConfig.text
                           )}>

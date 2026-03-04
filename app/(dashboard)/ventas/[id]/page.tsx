@@ -156,10 +156,10 @@ export default function SalesOrderDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <span
                 className={cn(
-                  'inline-flex rounded-md px-2 py-0.5 text-xs font-medium',
+                  'inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium',
                   order.documentType === 'cotizacion' && 'bg-blue-500/10 text-blue-500',
                   order.documentType === 'pedido' && 'bg-purple-500/10 text-purple-500',
                   order.documentType === 'factura' && 'bg-teal-500/10 text-teal-500'
@@ -167,10 +167,10 @@ export default function SalesOrderDetailPage() {
               >
                 {DOCUMENT_TYPE_LABELS[order.documentType]}
               </span>
-              <h1 className="font-mono text-2xl font-semibold text-foreground">{order.orderNumber}</h1>
+              <h1 className="font-mono text-xl font-semibold text-foreground sm:text-2xl">{order.orderNumber}</h1>
               <span
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
+                  'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium sm:px-3 sm:py-1',
                   statusConfig.bg,
                   statusConfig.text
                 )}
@@ -179,9 +179,9 @@ export default function SalesOrderDetailPage() {
                 {statusConfig.label}
               </span>
               {order.includesIncomingStock && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 sm:px-3 sm:py-1">
                   <Truck className="h-3 w-3" />
-                  Mercancía Por Llegar
+                  Por Llegar
                 </span>
               )}
             </div>

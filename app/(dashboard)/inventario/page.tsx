@@ -285,14 +285,15 @@ export default function InventarioPage() {
             <p className="text-sm text-gray-500 dark:text-[#888888]">Control de stock, ajustes y transferencias</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {canAcceptReorderRecommendations && (
             <button
               onClick={handleOpenRecommendations}
               className="flex h-9 items-center gap-2 rounded-lg border border-purple-300 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/30 px-3 text-sm font-medium text-purple-700 dark:text-purple-300 transition-colors hover:bg-purple-100 dark:hover:bg-purple-950/50"
             >
               <Sparkles className="h-4 w-4" />
-              Recomendaciones IA
+              <span className="hidden sm:inline">Recomendaciones IA</span>
+              <span className="sm:hidden">IA</span>
             </button>
           )}
           {canCreateCountSessions && (
@@ -301,7 +302,7 @@ export default function InventarioPage() {
               className="flex h-9 items-center gap-2 rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] px-3 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
             >
               <ClipboardList className="h-4 w-4" />
-              Conteo Físico
+              <span className="hidden sm:inline">Conteo Físico</span>
             </button>
           )}
           {canCreateTransfers && (
@@ -310,7 +311,7 @@ export default function InventarioPage() {
               className="flex h-9 items-center gap-2 rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] px-3 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
             >
               <ArrowRightLeft className="h-4 w-4" />
-              Transferencia
+              <span className="hidden sm:inline">Transferencia</span>
             </button>
           )}
           {canCreateAdjustments && (
@@ -319,7 +320,7 @@ export default function InventarioPage() {
               className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-800"
             >
               <Plus className="h-4 w-4" />
-              Nuevo Ajuste
+              <span className="hidden sm:inline">Nuevo Ajuste</span>
             </button>
           )}
         </div>
@@ -515,24 +516,24 @@ export default function InventarioPage() {
             <thead>
               <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Producto</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Grupo</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Existencia</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Por Llegar</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Separado</th>
+                <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Grupo</th>
+                <th className="hidden sm:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Existencia</th>
+                <th className="hidden lg:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Por Llegar</th>
+                <th className="hidden lg:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Separado</th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Disponible</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Mínimo</th>
+                <th className="hidden md:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Mínimo</th>
                 {canViewInventoryAlerts && (
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Pto. Reorden</th>
+                  <th className="hidden xl:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Pto. Reorden</th>
                 )}
                 {canViewExpiryAlerts && (
-                  <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Venc. Próximo</th>
+                  <th className="hidden xl:table-cell px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Venc. Próximo</th>
                 )}
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Últ. Compra</th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Últ. Venta</th>
+                <th className="hidden xl:table-cell px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Últ. Compra</th>
+                <th className="hidden xl:table-cell px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Últ. Venta</th>
                 {canViewCosts && (
                   <>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Costo CIF</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Valor</th>
+                    <th className="hidden lg:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Costo CIF</th>
+                    <th className="hidden lg:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Valor</th>
                   </>
                 )}
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Alerta</th>
@@ -555,32 +556,32 @@ export default function InventarioPage() {
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-[#1a1a1a]">
+                        <div className="hidden h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-[#1a1a1a] sm:block">
                           <img src={imageUrl} alt={item.productDescription} className="h-full w-full object-cover" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <button
                             onClick={() => handleViewProduct(item)}
-                            className="max-w-xs truncate text-sm font-medium text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-[#00D1B2]"
+                            className="block max-w-28 truncate text-sm font-medium text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-[#00D1B2] sm:max-w-xs"
                           >
                             {item.productDescription}
                           </button>
-                          <p className="text-xs text-gray-500 dark:text-[#888888]">{item.productReference}</p>
+                          <p className="truncate text-xs text-gray-500 dark:text-[#888888]">{item.productReference}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden md:table-cell px-4 py-3">
                       <span className="text-sm text-gray-600 dark:text-gray-400">{item.group}</span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="hidden sm:table-cell px-4 py-3 text-right">
                       <span className="text-sm font-medium text-gray-900 dark:text-white">{item.existence}</span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="hidden lg:table-cell px-4 py-3 text-right">
                       <span className={cn('text-sm', item.arriving > 0 ? 'font-medium text-sky-600' : 'text-gray-400 dark:text-[#666666]')}>
                         {item.arriving || '-'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="hidden lg:table-cell px-4 py-3 text-right">
                       <span className={cn('text-sm', item.reserved > 0 ? 'font-medium text-amber-600' : 'text-gray-400 dark:text-[#666666]')}>
                         {item.reserved || '-'}
                       </span>
@@ -597,11 +598,11 @@ export default function InventarioPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="hidden md:table-cell px-4 py-3 text-right">
                       <span className="text-sm text-gray-600 dark:text-gray-400">{item.minimumQty}</span>
                     </td>
                     {canViewInventoryAlerts && (
-                      <td className="px-4 py-3 text-right">
+                      <td className="hidden xl:table-cell px-4 py-3 text-right">
                         <span className={cn(
                           'text-sm',
                           item.reorderPoint != null ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-[#444444]'
@@ -614,34 +615,34 @@ export default function InventarioPage() {
                       const expiry = getNearestExpiry(item.productId);
                       if (!expiry) {
                         return (
-                          <td className="px-4 py-3 text-center">
+                          <td className="hidden xl:table-cell px-4 py-3 text-center">
                             <span className="text-gray-300 dark:text-[#444444]">-</span>
                           </td>
                         );
                       }
                       const config = EXPIRY_ALERT_CONFIG[expiry.alertLevel];
                       return (
-                        <td className="px-4 py-3 text-center">
-                          <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium', config.bg, config.text)}>
+                        <td className="hidden xl:table-cell px-4 py-3 text-center">
+                          <span className={cn('inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium', config.bg, config.text)}>
                             {expiry.daysUntilExpiry < 0
                               ? 'Vencido'
-                              : `${expiry.daysUntilExpiry} días`}
+                              : `${expiry.daysUntilExpiry}d`}
                           </span>
                         </td>
                       );
                     })()}
-                    <td className="px-4 py-3 text-center">
+                    <td className="hidden xl:table-cell px-4 py-3 text-center">
                       <span className="text-xs text-gray-500 dark:text-[#888888]">{formatDate(item.lastPurchaseDate)}</span>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="hidden xl:table-cell px-4 py-3 text-center">
                       <span className="text-xs text-gray-500 dark:text-[#888888]">{formatDate(item.lastSaleDate)}</span>
                     </td>
                     {canViewCosts && (
                       <>
-                        <td className="px-4 py-3 text-right">
+                        <td className="hidden lg:table-cell px-4 py-3 text-right">
                           <span className="font-mono text-sm text-gray-700 dark:text-gray-400">{formatCurrency(item.costCIF)}</span>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="hidden lg:table-cell px-4 py-3 text-right">
                           <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">{formatCurrency(item.stockValue)}</span>
                         </td>
                       </>

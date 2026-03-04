@@ -435,23 +435,23 @@ export default function VentasPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   No. Doc
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Tipo
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Cliente
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Fecha
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <th className="hidden lg:table-cell px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Líneas
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Total
                 </th>
                 {/* Margin column - different display per role */}
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <th className="hidden lg:table-cell px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   {canViewMargins ? 'Margen' : isVendedor ? 'Comisión' : ''}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -486,10 +486,10 @@ export default function VentasPage() {
                         {order.orderNumber}
                       </button>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden sm:table-cell px-4 py-3">
                       <span
                         className={cn(
-                          'inline-flex rounded-md px-2 py-0.5 text-xs font-medium',
+                          'inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium',
                           order.documentType === 'cotizacion' && 'bg-blue-500/10 text-blue-500',
                           order.documentType === 'pedido' && 'bg-purple-500/10 text-purple-500',
                           order.documentType === 'factura' && 'bg-teal-500/10 text-teal-500'
@@ -499,16 +499,16 @@ export default function VentasPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div>
-                        <span className="max-w-[200px] truncate text-sm text-foreground">{order.customerName}</span>
+                      <div className="min-w-0">
+                        <span className="block max-w-32 truncate text-sm text-foreground sm:max-w-50">{order.customerName}</span>
                         <p className="text-xs text-muted-foreground">{order.customerCountry}</p>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden md:table-cell px-4 py-3">
                       <span className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</span>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground">
+                    <td className="hidden lg:table-cell px-4 py-3 text-center">
+                      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground">
                         {order.lines.length}
                       </span>
                     </td>
@@ -518,7 +518,7 @@ export default function VentasPage() {
                       </span>
                     </td>
                     {/* Margin/Commission column */}
-                    <td className="px-4 py-3 text-center">
+                    <td className="hidden lg:table-cell px-4 py-3 text-center">
                       {canViewMargins ? (
                         <span className="font-mono text-sm text-muted-foreground">
                           {order.marginPercent?.toFixed(1)}%
@@ -547,7 +547,7 @@ export default function VentasPage() {
                     <td className="px-4 py-3 text-center">
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                          'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium',
                           statusConfig.bg,
                           statusConfig.text
                         )}

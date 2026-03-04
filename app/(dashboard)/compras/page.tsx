@@ -371,27 +371,27 @@ export default function ComprasPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
                   No. Orden
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
                   Fecha
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
                   Proveedor
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
                   No. Factura
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                <th className="hidden sm:table-cell px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
                   Productos
                 </th>
                 {canViewCosts && (
                   <>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                    <th className="hidden md:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
                       Total FOB
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                    <th className="hidden lg:table-cell px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
                       %Gastos
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                    <th className="hidden md:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
                       Total CIF
                     </th>
                   </>
@@ -399,7 +399,7 @@ export default function ComprasPage() {
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
                   Estado
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
+                <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
                   Llegada
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">
@@ -427,33 +427,33 @@ export default function ComprasPage() {
                         {order.orderNumber}
                       </button>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden md:table-cell px-4 py-3">
                       <span className="text-sm text-gray-600 dark:text-gray-400">{formatDate(order.createdAt)}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="max-w-[200px] truncate text-sm text-gray-900 dark:text-white">{order.supplierName}</span>
+                      <span className="block max-w-24 truncate text-sm text-gray-900 dark:text-white sm:max-w-50">{order.supplierName}</span>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{order.supplierInvoice || '-'}</span>
+                    <td className="hidden lg:table-cell px-4 py-3">
+                      <span className="font-mono text-sm text-gray-600 dark:text-gray-400 truncate">{order.supplierInvoice || '-'}</span>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-gray-100 dark:bg-[#2a2a2a] px-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+                    <td className="hidden sm:table-cell px-4 py-3 text-center">
+                      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-gray-100 dark:bg-[#2a2a2a] px-2 text-xs font-medium text-gray-700 dark:text-gray-300">
                         {order.lines.length}
                       </span>
                     </td>
                     {canViewCosts && (
                       <>
-                        <td className="px-4 py-3 text-right">
+                        <td className="hidden md:table-cell px-4 py-3 text-right">
                           <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
                             {formatCurrency(order.totalFOB)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="hidden lg:table-cell px-4 py-3 text-center">
                           <span className="text-sm text-gray-600 dark:text-gray-400">
                             {order.expensePercentage ? `${order.expensePercentage}%` : '-'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="hidden md:table-cell px-4 py-3 text-right">
                           <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
                             {order.totalCIF ? formatCurrency(order.totalCIF) : '-'}
                           </span>
@@ -463,7 +463,7 @@ export default function ComprasPage() {
                     <td className="px-4 py-3 text-center">
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                          'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium',
                           statusConfig.bg,
                           statusConfig.text
                         )}
@@ -472,7 +472,7 @@ export default function ComprasPage() {
                         {statusConfig.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden sm:table-cell px-4 py-3">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
                         {order.expectedArrivalDate ? formatDate(order.expectedArrivalDate) : '-'}
                       </span>

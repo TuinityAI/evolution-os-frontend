@@ -274,14 +274,14 @@ export default function TraficoPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Pri</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Tipo</th>
+                <th className="hidden sm:table-cell px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Pri</th>
+                <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Tipo</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Expediente</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Cliente / Proveedor</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Destino</th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Docs</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Valor FOB</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Fecha Est.</th>
+                <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Destino</th>
+                <th className="hidden lg:table-cell px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Docs</th>
+                <th className="hidden md:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Valor FOB</th>
+                <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Fecha Est.</th>
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888]">Estado</th>
               </tr>
             </thead>
@@ -297,13 +297,13 @@ export default function TraficoPage() {
                     onClick={() => router.push(`/trafico/expedientes/${exp.id}`)}
                     className="group cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
                   >
-                    <td className="px-4 py-3 text-center">
+                    <td className="hidden sm:table-cell px-4 py-3 text-center">
                       <span className={cn('inline-block h-3 w-3 rounded-full', PRIORITY_DOT_CLASS[exp.priority])} title={PRIORITY_LABELS[exp.priority]} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden sm:table-cell px-4 py-3">
                       <span
                         className={cn(
-                          'inline-flex rounded-md px-2 py-0.5 text-xs font-medium',
+                          'inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium',
                           exp.type === 'salida' && 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
                           exp.type === 'entrada' && 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
                           exp.type === 'traspaso' && 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
@@ -314,23 +314,23 @@ export default function TraficoPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div>
+                      <div className="min-w-0">
                         <span className="font-mono text-sm font-medium text-sky-600 dark:text-sky-400 group-hover:underline">
                           {exp.id}
                         </span>
-                        <p className="text-xs text-gray-500 dark:text-[#888]">{exp.sourceDocumentId}</p>
+                        <p className="truncate text-xs text-gray-500 dark:text-[#888]">{exp.sourceDocumentId}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm text-gray-900 dark:text-white">{exp.counterpartName}</span>
+                      <span className="block max-w-24 truncate text-sm text-gray-900 dark:text-white sm:max-w-none">{exp.counterpartName}</span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden md:table-cell px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        <Globe className="h-3.5 w-3.5 text-gray-400" />
+                        <Globe className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">{exp.counterpartCountry}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="hidden lg:table-cell px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <span title={exp.dmcId ? 'DMC generada' : 'DMC pendiente'}>
                           {exp.dmcId ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-red-400" />}
@@ -343,12 +343,12 @@ export default function TraficoPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="hidden md:table-cell px-4 py-3 text-right">
                       <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
                         {formatCurrency(exp.totalValueFOB)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden lg:table-cell px-4 py-3">
                       <span className="text-sm text-gray-500 dark:text-[#888]">
                         {exp.estimatedDispatchDate ? formatDate(exp.estimatedDispatchDate) : '\u2014'}
                       </span>
@@ -356,7 +356,7 @@ export default function TraficoPage() {
                     <td className="px-4 py-3 text-center">
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                          'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium',
                           statusConfig.bg,
                           statusConfig.text
                         )}

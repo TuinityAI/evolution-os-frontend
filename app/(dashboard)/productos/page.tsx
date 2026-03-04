@@ -492,15 +492,16 @@ export default function ProductosPage() {
       {/* Products List View - Table format */}
       {viewMode === 'list' && (
         <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414]">
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-[#1a1a1a]">
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Producto</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Referencia</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Categoría</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Marca</th>
+                <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Referencia</th>
+                <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Categoría</th>
+                <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Marca</th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Stock</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Precio</th>
+                <th className="hidden sm:table-cell px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Precio</th>
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Estado</th>
                 <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-[#888888]">Acciones</th>
               </tr>
@@ -520,24 +521,24 @@ export default function ProductosPage() {
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-[#1a1a1a]">
+                        <div className="hidden h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-[#1a1a1a] sm:block">
                           <img src={imageUrl} alt={product.description} className="h-full w-full object-cover" />
                         </div>
                         <button
                           onClick={() => handleViewProduct(product)}
-                          className="max-w-xs truncate text-sm font-medium text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-[#00D1B2]"
+                          className="max-w-28 truncate text-sm font-medium text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-[#00D1B2] sm:max-w-xs"
                         >
                           {product.description}
                         </button>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden md:table-cell px-4 py-3">
                       <span className="font-mono text-sm text-gray-600 dark:text-gray-400">{product.reference}</span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden lg:table-cell px-4 py-3">
                       <span className="text-sm text-gray-600 dark:text-gray-400">{product.group}</span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden sm:table-cell px-4 py-3">
                       <span className="text-sm text-gray-600 dark:text-gray-400">{product.brand}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -549,12 +550,12 @@ export default function ProductosPage() {
                         {product.stock.available}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="hidden sm:table-cell px-4 py-3 text-right">
                       <span className="text-sm font-semibold text-gray-900 dark:text-white">${product.prices.A}</span>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium',
                         product.status === 'active'
                           ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400'
                           : 'bg-gray-100 dark:bg-[#2a2a2a] text-gray-600 dark:text-gray-400'
@@ -597,6 +598,7 @@ export default function ProductosPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
