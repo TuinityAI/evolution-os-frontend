@@ -264,40 +264,40 @@ export default function VentasPage() {
 
       {/* Pipeline Visual */}
       <div className="rounded-xl border border-border bg-card p-4">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-sm font-medium text-foreground">Pipeline de Ventas</h3>
-          <span className="text-sm text-muted-foreground">
-            Valor en pipeline: <span className="font-semibold text-foreground">{formatCurrency(stats.pipelineValue)}</span>
+          <span className="text-xs text-muted-foreground sm:text-sm">
+            Pipeline: <span className="font-semibold text-foreground">{formatCurrency(stats.pipelineValue)}</span>
           </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 overflow-x-auto pb-1 sm:gap-1">
           {PIPELINE_STAGES.map((stage, index) => {
             const count = stats.byStatus[stage.status];
             const config = STATUS_CONFIG[stage.status];
             const isActive = statusFilter === stage.status;
 
             return (
-              <div key={stage.status} className="flex flex-1 items-center">
+              <div key={stage.status} className="flex min-w-0 flex-1 items-center">
                 <button
                   onClick={() => setStatusFilter(isActive ? 'all' : stage.status)}
                   className={cn(
-                    'flex flex-1 flex-col items-center rounded-lg p-3 transition-all',
+                    'flex flex-1 flex-col items-center rounded-lg px-1.5 py-2 transition-all sm:p-3',
                     isActive ? 'bg-brand-500/10 ring-1 ring-brand-500' : 'hover:bg-accent'
                   )}
                 >
                   <span
                     className={cn(
-                      'mb-1 flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold',
+                      'mb-0.5 flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold sm:mb-1 sm:h-8 sm:w-8 sm:text-sm',
                       config.bg,
                       config.text
                     )}
                   >
                     {count}
                   </span>
-                  <span className="text-xs text-muted-foreground">{stage.label}</span>
+                  <span className="whitespace-nowrap text-[10px] text-muted-foreground sm:text-xs">{stage.label}</span>
                 </button>
                 {index < PIPELINE_STAGES.length - 1 && (
-                  <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground/50" />
+                  <ChevronRight className="h-3 w-3 flex-shrink-0 text-muted-foreground/50 sm:h-4 sm:w-4" />
                 )}
               </div>
             );

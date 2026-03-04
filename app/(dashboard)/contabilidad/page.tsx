@@ -247,7 +247,7 @@ export default function ContabilidadPage() {
         {/* Key Indicators */}
         <div className="rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#141414] p-5">
           <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">Indicadores Clave</h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             {indicators.map((ind) => (
               <div
                 key={ind.label}
@@ -255,7 +255,7 @@ export default function ContabilidadPage() {
               >
                 <p
                   className={cn(
-                    'text-xl font-bold',
+                    'text-lg font-bold sm:text-xl',
                     ind.color === 'emerald' && 'text-emerald-600',
                     ind.color === 'blue' && 'text-blue-600',
                     ind.color === 'amber' && 'text-amber-600'

@@ -252,7 +252,7 @@ export default function LibroDiarioPage() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -266,14 +266,14 @@ export default function LibroDiarioPage() {
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="h-9 rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-2 text-sm text-gray-700 dark:text-gray-300 focus:border-purple-500 focus:outline-none"
+            className="h-9 w-[130px] rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-2 text-sm text-gray-700 dark:text-gray-300 focus:border-purple-500 focus:outline-none"
             placeholder="Desde"
           />
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="h-9 rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-2 text-sm text-gray-700 dark:text-gray-300 focus:border-purple-500 focus:outline-none"
+            className="h-9 w-[130px] rounded-lg border border-gray-300 dark:border-[#2a2a2a] bg-white dark:bg-[#1a1a1a] px-2 text-sm text-gray-700 dark:text-gray-300 focus:border-purple-500 focus:outline-none"
             placeholder="Hasta"
           />
           {hasActiveFilters && (

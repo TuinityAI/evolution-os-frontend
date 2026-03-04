@@ -46,7 +46,7 @@ function DashboardContent({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] transition-colors duration-200">
+    <div className="min-h-screen overflow-x-hidden bg-gray-50 dark:bg-[#0a0a0a] transition-colors duration-200">
       {/* Sidebar */}
       <Sidebar />
 
@@ -58,7 +58,7 @@ function DashboardContent({ children }: DashboardLayoutProps) {
         initial={false}
         animate={{ paddingLeft: sidebarWidth }}
         transition={{ duration: 0.2, ease: 'easeInOut' }}
-        className="min-h-screen pt-12"
+        className="min-h-screen min-w-0 overflow-x-hidden pt-12"
       >
         <AnimatePresence mode="wait">
           <motion.div
@@ -67,7 +67,7 @@ function DashboardContent({ children }: DashboardLayoutProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15 }}
-            className="p-6"
+            className="min-w-0 p-4 sm:p-6"
           >
             <Breadcrumbs />
             {children}

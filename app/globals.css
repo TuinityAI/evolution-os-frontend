@@ -140,6 +140,7 @@ html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 body {
@@ -149,6 +150,7 @@ body {
   line-height: 1.5;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
 }
 
 /* ═══════════════════════════════════════════════
@@ -808,6 +810,21 @@ div:has(> [data-slot="wrapper"]) > div.fixed {
   -webkit-backdrop-filter: blur(8px) !important;
   --tw-backdrop-opacity: 1 !important;
   background-color: rgba(0, 0, 0, 0.35) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   MOBILE LAYOUT FIX
+   Before JS hydration, sidebarWidth defaults to 240px
+   which pushes content right on mobile. This CSS
+   ensures proper mobile layout before JS takes over.
+   ═══════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  main {
+    padding-left: 0 !important;
+  }
+  header.fixed {
+    left: 0 !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════

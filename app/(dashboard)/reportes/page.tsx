@@ -210,18 +210,18 @@ export default function ReportesPage() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="flex items-center justify-between"
+        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
       >
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-100 dark:bg-brand-900/30">
-            <BarChart3 className="h-6 w-6 text-brand-600 dark:text-brand-400" />
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 dark:bg-brand-900/30 sm:h-12 sm:w-12">
+            <BarChart3 className="h-5 w-5 text-brand-600 dark:text-brand-400 sm:h-6 sm:w-6" />
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-text-primary">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold text-text-primary sm:text-2xl">
               Métricas y Reportes
             </h1>
-            <p className="mt-1 text-sm text-text-secondary">
-              Panel de indicadores de rendimiento • {MONTH_NAMES[selectedMonth]} {selectedYear}
+            <p className="mt-0.5 text-xs text-text-secondary sm:mt-1 sm:text-sm">
+              Indicadores • {MONTH_NAMES[selectedMonth]} {selectedYear}
             </p>
           </div>
         </div>
